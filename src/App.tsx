@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List } from 'lucide-react'
+import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { EpubProcessor } from './services/epubProcessor'
@@ -64,6 +64,7 @@ function App() {
   const [bookData, setBookData] = useState<{ title: string; author: string } | null>(null)
   // error状态已移除，改用toast通知
   const [cacheService] = useState(new CacheService())
+  const [showBackToTop, setShowBackToTop] = useState(false)
 
   // 使用zustand store管理配置
   const aiConfig = useAIConfig()
@@ -74,6 +75,24 @@ function App() {
   const { processingMode, bookType, useSmartDetection, skipNonEssentialChapters } = processingOptions
 
   // zustand的persist中间件会自动处理配置的加载和保存
+
+  // 监听滚动事件，控制回到顶部按钮显示
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 300)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // 回到顶部函数
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
+  }, [])
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0]
@@ -865,6 +884,18 @@ function App() {
           </Card>
         )}
       </div>
+      
+      {/* 回到顶部按钮 */}
+      {showBackToTop && (
+        <Button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 rounded-full w-12 h-12 shadow-lg hover:shadow-xl transition-all duration-300 bg-blue-600 hover:bg-blue-700"
+          size="icon"
+          aria-label="回到顶部"
+        >
+          <ChevronUp className="h-6 w-6" />
+        </Button>
+      )}
     </div>
   )
 }
