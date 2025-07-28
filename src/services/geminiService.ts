@@ -66,8 +66,8 @@ export class AIService {
   async analyzeConnections(chapters: Chapter[]): Promise<string> {
     try {
       // 构建章节摘要信息
-      const chapterSummaries = chapters.map((chapter, index) => 
-        `第${index + 1}章 - ${chapter.title}:\n${chapter.summary || '无总结'}`
+      const chapterSummaries = chapters.map((chapter) => 
+        `${chapter.title}:\n${chapter.summary || '无总结'}`
       ).join('\n\n')
 
       const prompt = getChapterConnectionsAnalysisPrompt(chapterSummaries)
