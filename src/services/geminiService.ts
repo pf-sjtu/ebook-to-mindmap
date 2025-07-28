@@ -22,27 +22,36 @@ interface AIConfig {
   apiKey: string
   apiUrl?: string // 用于OpenAI兼容的API地址
   model?: string
+  temperature?: number
 }
 
 export class AIService {
-  private config: AIConfig
+  private config: AIConfig | (() => AIConfig)
   private genAI?: GoogleGenerativeAI
   private model: any
 
-  constructor(config: AIConfig) {
+  constructor(config: AIConfig | (() => AIConfig)) {
     this.config = config
     
-    if (config.provider === 'gemini') {
-      this.genAI = new GoogleGenerativeAI(config.apiKey)
-      this.model = this.genAI.getGenerativeModel({ model: config.model || 'gemini-1.5-flash' })
-    } else if (config.provider === 'openai') {
+    const currentConfig = typeof config === 'function' ? config() : config
+    
+    if (currentConfig.provider === 'gemini') {
+      this.genAI = new GoogleGenerativeAI(currentConfig.apiKey)
+      this.model = this.genAI.getGenerativeModel({ 
+        model: currentConfig.model || 'gemini-1.5-flash'
+      })
+    } else if (currentConfig.provider === 'openai') {
       // OpenAI兼容的配置
       this.model = {
-        apiUrl: config.apiUrl || 'https://api.openai.com/v1',
-        apiKey: config.apiKey,
-        model: config.model || 'gpt-3.5-turbo'
+        apiUrl: currentConfig.apiUrl || 'https://api.openai.com/v1',
+        apiKey: currentConfig.apiKey,
+        model: currentConfig.model || 'gpt-3.5-turbo'
       }
     }
+  }
+
+  private getCurrentConfig(): AIConfig {
+    return typeof this.config === 'function' ? this.config() : this.config
   }
 
   async summarizeChapter(title: string, content: string, bookType: 'fiction' | 'non-fiction' = 'non-fiction'): Promise<string> {
@@ -92,7 +101,7 @@ export class AIService {
     try {
       // 构建简化的章节信息
       const chapterInfo = chapters.map((chapter, index) => 
-        `第${index + 1}章：${chapter.title}，内容：${chapter.content}`
+        `第${index + 1}章：${chapter.title}，内容：${chapter.summary || '无总结'}`
       ).join('\n')
 
       const prompt = getOverallSummaryPrompt(bookTitle, chapterInfo, connections)
@@ -205,11 +214,17 @@ export class AIService {
 
   // 统一的内容生成方法
   private async generateContent(prompt: string): Promise<string> {
-    if (this.config.provider === 'gemini') {
-      const result = await this.model.generateContent(prompt)
+    const config = this.getCurrentConfig()
+    
+    if (config.provider === 'gemini') {
+      const result = await this.model.generateContent(prompt, {
+        generationConfig: {
+          temperature: config.temperature || 0.7
+        }
+      })
       const response = await result.response
       return response.text()
-    } else if (this.config.provider === 'openai') {
+    } else if (config.provider === 'openai') {
       const response = await fetch(`${this.model.apiUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -224,7 +239,7 @@ export class AIService {
               content: prompt
             }
           ],
-          temperature: 0.7
+          temperature: config.temperature || 0.7
         })
       })
 

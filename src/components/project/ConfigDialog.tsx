@@ -21,6 +21,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
     setApiKey,
     setApiUrl,
     setModel,
+    setTemperature,
     setProcessingMode,
     setBookType,
     setUseSmartDetection,
@@ -28,7 +29,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
   } = useConfigStore()
 
   // 从store中解构状态值
-  const { provider: aiProvider, apiKey, apiUrl, model } = aiConfig
+  const { provider: aiProvider, apiKey, apiUrl, model, temperature } = aiConfig
   const { processingMode, bookType, useSmartDetection, skipNonEssentialChapters } = processingOptions
 
   return (
@@ -92,44 +93,82 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
             </div>
 
             {aiProvider === 'openai' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="api-url">API 地址</Label>
+                    <Input
+                      id="api-url"
+                      type="url"
+                      placeholder="https://api.openai.com/v1"
+                      value={apiUrl}
+                      onChange={(e) => setApiUrl(e.target.value)}
+                      disabled={processing}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="model">模型名称（可选）</Label>
+                    <Input
+                      id="model"
+                      type="text"
+                      placeholder="gpt-3.5-turbo, gpt-4 等"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      disabled={processing}
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="api-url">API 地址</Label>
+                  <Label htmlFor="openai-temperature">Temperature（可选）</Label>
                   <Input
-                    id="api-url"
-                    type="url"
-                    placeholder="https://api.openai.com/v1"
-                    value={apiUrl}
-                    onChange={(e) => setApiUrl(e.target.value)}
+                    id="openai-temperature"
+                    type="number"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    placeholder="0.7"
+                    value={temperature}
+                    onChange={(e) => setTemperature(parseFloat(e.target.value))}
                     disabled={processing}
                   />
+                  <p className="text-xs text-gray-600">
+                    控制AI回答的随机性，范围0-2，值越高越随机，建议0.7
+                  </p>
                 </div>
+              </>
+            )}
 
+            {aiProvider === 'gemini' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="model">模型名称（可选）</Label>
+                  <Label htmlFor="gemini-model">模型名称（可选）</Label>
                   <Input
-                    id="model"
+                    id="gemini-model"
                     type="text"
-                    placeholder="gpt-3.5-turbo, gpt-4 等"
+                    placeholder="gemini-1.5-flash, gemini-1.5-pro 等"
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                     disabled={processing}
                   />
                 </div>
-              </div>
-            )}
-
-            {aiProvider === 'gemini' && (
-              <div className="space-y-2">
-                <Label htmlFor="gemini-model">模型名称（可选）</Label>
-                <Input
-                  id="gemini-model"
-                  type="text"
-                  placeholder="gemini-1.5-flash, gemini-1.5-pro 等"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  disabled={processing}
-                />
+                <div className="space-y-2">
+                   <Label htmlFor="gemini-temperature">Temperature（可选）</Label>
+                   <Input
+                     id="gemini-temperature"
+                     type="number"
+                     min="0"
+                     max="2"
+                     step="0.1"
+                     placeholder="0.7"
+                     value={temperature}
+                     onChange={(e) => setTemperature(parseFloat(e.target.value) || 0.7)}
+                     disabled={processing}
+                   />
+                   <p className="text-xs text-gray-600">
+                     控制AI回答的随机性，范围0-2，值越高越随机，建议0.7
+                   </p>
+                 </div>
               </div>
             )}
           </div>

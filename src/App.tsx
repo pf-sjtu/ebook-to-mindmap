@@ -49,7 +49,7 @@ interface BookMindMap {
 }
 
 // 导入配置store
-import { useAIConfig, useProcessingOptions } from './stores/configStore'
+import { useAIConfig, useProcessingOptions, useConfigStore } from './stores/configStore'
 
 function App() {
   const [file, setFile] = useState<File | null>(null)
@@ -298,11 +298,16 @@ function App() {
     setCurrentStep('')
 
     try {
-      const aiService = new AIService({
-        provider: aiProvider,
-        apiKey,
-        apiUrl: aiProvider === 'openai' ? apiUrl : undefined,
-        model: model || undefined
+      const aiService = new AIService(() => {
+        const currentState = useConfigStore.getState()
+        const currentAiConfig = currentState.aiConfig
+        return {
+          provider: currentAiConfig.provider,
+          apiKey: currentAiConfig.apiKey,
+          apiUrl: currentAiConfig.provider === 'openai' ? currentAiConfig.apiUrl : undefined,
+          model: currentAiConfig.model || undefined,
+          temperature: currentAiConfig.temperature
+        }
       })
 
       // 只处理选中的章节

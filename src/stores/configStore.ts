@@ -7,6 +7,7 @@ interface AIConfig {
   apiKey: string
   apiUrl: string
   model: string
+  temperature: number
 }
 
 // 处理选项接口
@@ -26,6 +27,7 @@ interface ConfigState {
   setApiKey: (apiKey: string) => void
   setApiUrl: (apiUrl: string) => void
   setModel: (model: string) => void
+  setTemperature: (temperature: number) => void
   
   // 处理选项
   processingOptions: ProcessingOptions
@@ -41,7 +43,8 @@ const defaultAIConfig: AIConfig = {
   provider: 'gemini',
   apiKey: '',
   apiUrl: 'https://api.openai.com/v1',
-  model: 'gemini-1.5-flash'
+  model: 'gemini-1.5-flash',
+  temperature: 0.7
 }
 
 const defaultProcessingOptions: ProcessingOptions = {
@@ -69,6 +72,9 @@ export const useConfigStore = create<ConfigState>()(
       })),
       setModel: (model) => set((state) => ({
         aiConfig: { ...state.aiConfig, model }
+      })),
+      setTemperature: (temperature) => set((state) => ({
+        aiConfig: { ...state.aiConfig, temperature }
       })),
       
       // 处理选项
