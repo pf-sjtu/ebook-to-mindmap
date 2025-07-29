@@ -17,7 +17,7 @@ export function ViewContentDialog({ title, content, chapterIndex }: ViewContentD
           variant="outline"
           size="sm"
         >
-          <Eye className="h-4 w-4 mr-1" />
+          <Eye className="h-4 w-4 " />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh]">

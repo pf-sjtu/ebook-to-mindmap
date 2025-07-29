@@ -17,6 +17,7 @@ import { CacheService } from './services/cacheService'
 import MindElixirReact from './components/project/MindElixirReact'
 import { ConfigDialog } from './components/project/ConfigDialog'
 import { ViewContentDialog } from './components/ViewContentDialog'
+import { CopyButton } from './components/ui/copy-button'
 import type { MindElixirData } from 'mind-elixir'
 import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
 import { toast } from 'sonner'
@@ -742,12 +743,17 @@ function App() {
                               {chapter.title}
                             </div>
                             <div className="flex items-center gap-2">
+                              <CopyButton
+                                content={chapter.summary}
+                                successMessage="已复制章节总结到剪贴板"
+                                title="复制章节总结"
+                              />
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => clearChapterCache(chapter.id)}
                               >
-                                <Trash2 className="h-4 w-4 mr-1" />
+                                <Trash2 className="h-4 w-4 " />
                               </Button>
                               <ViewContentDialog
                                 title={chapter.title}
@@ -808,12 +814,17 @@ function App() {
                               {chapter.title}
                             </div>
                             <div className="flex items-center gap-2">
+                              <CopyButton
+                                content={chapter.content}
+                                successMessage="已复制章节内容到剪贴板"
+                                title="复制章节内容"
+                              />
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => clearChapterCache(chapter.id)}
                               >
-                                <Trash2 className="h-4 w-4 mr-1" />
+                                <Trash2 className="h-4 w-4 " />
                               </Button>
                               <ViewContentDialog
                                 title={chapter.title}
