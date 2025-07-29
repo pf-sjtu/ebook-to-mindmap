@@ -735,7 +735,7 @@ function App() {
 
                   <TabsContent value="chapters" className="grid grid-cols-1 gap-4">
                     {bookSummary.chapters.map((chapter, index) => (
-                      <Card key={chapter.id}>
+                      <Card key={chapter.id} className='gap-0'>
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -895,7 +895,7 @@ function App() {
           </Card>
         )}
       </div>
-      
+
       {/* 回到顶部按钮 */}
       {showBackToTop && (
         <Button
