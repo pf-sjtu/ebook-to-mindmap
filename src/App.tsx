@@ -441,7 +441,7 @@ function App() {
           let mindMap: MindElixirData = cacheService.get(cacheKey)
 
           if (!mindMap) {
-            mindMap = await aiService.generateChapterMindMap(chapter.title, chapter.content)
+            mindMap = await aiService.generateChapterMindMap(chapter.content)
             cacheService.set(cacheKey, mindMap)
           }
 

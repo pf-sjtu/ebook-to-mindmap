@@ -118,7 +118,7 @@ export class AIService {
     }
   }
 
-  async generateChapterMindMap(title: string, content: string): Promise<MindElixirData> {
+  async generateChapterMindMap(content: string): Promise<MindElixirData> {
     try {
       const prompt = getChapterMindMapPrompt() + `章节内容：\n${content}`
 

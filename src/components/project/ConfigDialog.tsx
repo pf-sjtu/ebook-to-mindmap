@@ -12,7 +12,7 @@ interface ConfigDialogProps {
   file: File | null
 }
 
-export function ConfigDialog({ processing, file }: ConfigDialogProps) {
+export function ConfigDialog({ processing }: ConfigDialogProps) {
   // 使用zustand store管理配置
   const aiConfig = useAIConfig()
   const processingOptions = useProcessingOptions()
