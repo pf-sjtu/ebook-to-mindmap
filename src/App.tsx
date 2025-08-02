@@ -724,8 +724,17 @@ function App() {
                 ))}
               </div>
               <Button
-                onClick={processEbook}
-                disabled={!extractedChapters || !apiKey || processing || extractingChapters || selectedChapters.size === 0}
+                onClick={() => {
+                  if (!apiKey) {
+                    toast.error('请先在配置中填写 API Key', {
+                      duration: 3000,
+                      position: 'top-center',
+                    })
+                    return
+                  }
+                  processEbook()
+                }}
+                disabled={!extractedChapters || processing || extractingChapters || selectedChapters.size === 0}
                 className="w-full"
               >
                 {processing ? (
