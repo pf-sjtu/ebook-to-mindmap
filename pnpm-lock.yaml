@@ -14,6 +14,12 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.1.1
         version: 5.1.1(react-hook-form@7.60.0(react@19.1.0))
+      '@mind-elixir/export-mindmap':
+        specifier: ^0.0.3
+        version: 0.0.3
+      '@mind-elixir/open-desktop':
+        specifier: ^0.0.1
+        version: 0.0.1
       '@radix-ui/react-accordion':
         specifier: ^1.2.11
         version: 1.2.11(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -493,6 +499,12 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.29':
     resolution: {integrity: sha512-uw6guiW/gcAGPDhLmd77/6lW8QLeiV5RUTsAX46Db6oLhGaVj4lhnPwb184s1bkc8kdVg/+h988dro8GRDpmYQ==}
+
+  '@mind-elixir/export-mindmap@0.0.3':
+    resolution: {integrity: sha512-fRs0t/WQ3m8Dys0zBeG3ITq+/C50tLXnuOscLftsrbNKtOJaCyZGt6gLaNbKjt6h/ZV43R3kDMSVJ8KstxixeA==}
+
+  '@mind-elixir/open-desktop@0.0.1':
+    resolution: {integrity: sha512-MhpsQmvfGO9fNNTBpitA+ut+7JYFfYbg4qp9j31iTI/IPIAQx/vWNnWbBpDusXR3xij0nDNPPWY9bfYpOhEfaA==}
 
   '@napi-rs/canvas-android-arm64@0.1.74':
     resolution: {integrity: sha512-aq5ode+9Z/ZR0H485dI2jdRdttg/hl9Ob+iPCt0nj+QFiirpxDrbUHKeTZWQWEtkWyC7vI5R2dMTbDINBfl9eg==}
@@ -1293,6 +1305,9 @@ packages:
 
   '@ssshooter/epubjs@0.3.93':
     resolution: {integrity: sha512-vZ86HIPopUWBC3VatCgnpNFMQL2Q1rrz8aEEdrNGJIrE4yoWltYAXF6+JK1bFTUy7nlt7Tm2sz52GD9JI+U2Yw==}
+
+  '@ssshooter/modern-screenshot@4.5.0':
+    resolution: {integrity: sha512-/aAXhXOW1lyooUu8KlSvpe3nBvqEOZCL8OXUZ/g4A3nwEiMfGpqY3gBkaxIUUr2k/3dh51vh9u66oTIQ/Eq+1A==}
 
   '@standard-schema/utils@0.3.0':
     resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
@@ -2392,6 +2407,9 @@ packages:
     resolution: {integrity: sha512-Ysbi9uYW9hFyfrThdDEQuykN4Ey6BuwPD2kpI5ES/nFTDn/98yxYNLZJcgUAKPT/mcrLLKaGzJR9YVxJrIdASQ==}
     engines: {node: '>=8'}
 
+  mind-elixir@4.6.2:
+    resolution: {integrity: sha512-KjIjInLbMtW7J68Hm+oJ/+g/fhG+h6kkJkU5HL1LgqLSIyKFQM4V5xogibbqm+9ycBmKu2TTOlE+5O2/3VZPtA==}
+
   mind-elixir@5.0.4:
     resolution: {integrity: sha512-/hffgIS8OsdMhSk6ZwcGQbbaQ84vOPIh0F31X8ywP7oq1LOzRn0mT+AXTR5bDlVUdXzKUcoAa3xcS/JP6hLwlQ==}
 
@@ -3100,6 +3118,15 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.4
+
+  '@mind-elixir/export-mindmap@0.0.3':
+    dependencies:
+      '@ssshooter/modern-screenshot': 4.5.0
+      '@types/node': 24.0.15
+      fast-xml-parser: 4.5.3
+      jszip: 3.10.1
+
+  '@mind-elixir/open-desktop@0.0.1': {}
 
   '@napi-rs/canvas-android-arm64@0.1.74':
     optional: true
@@ -3894,6 +3921,10 @@ snapshots:
       lodash: 4.17.21
       marks-pane: 1.0.9
       path-webpack: 0.0.3
+
+  '@ssshooter/modern-screenshot@4.5.0':
+    dependencies:
+      mind-elixir: 4.6.2
 
   '@standard-schema/utils@0.3.0': {}
 
@@ -5189,6 +5220,8 @@ snapshots:
       mime-db: 1.52.0
 
   mimic-fn@3.1.0: {}
+
+  mind-elixir@4.6.2: {}
 
   mind-elixir@5.0.4: {}
 

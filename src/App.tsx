@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp } from 'lucide-react'
+import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp, ExternalLink } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { EpubProcessor } from './services/epubProcessor'
@@ -20,8 +20,13 @@ import { ViewContentDialog } from './components/ViewContentDialog'
 import { CopyButton } from './components/ui/copy-button'
 import type { MindElixirData } from 'mind-elixir'
 import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
+import type { MindElixirReactRef } from './components/project/MindElixirReact'
+import { DownloadMindMapButton } from './components/DownloadMindMapButton'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
+import { launchMindElixir } from '@mind-elixir/open-desktop'
+import { downloadMethodList } from '@mind-elixir/export-mindmap'
+
 
 const options = { direction: 1, alignment: 'nodes' } as const
 
@@ -67,6 +72,11 @@ function App() {
   const [cacheService] = useState(new CacheService())
   const [showBackToTop, setShowBackToTop] = useState(false)
 
+  // MindElixir 实例引用
+  const chapterMindElixirRefs = useRef<{ [key: string]: MindElixirReactRef | null }>({})
+  const combinedMindElixirRef = useRef<MindElixirReactRef | null>(null)
+  const wholeMindElixirRef = useRef<MindElixirReactRef | null>(null)
+
   // 使用zustand store管理配置
   const aiConfig = useAIConfig()
   const processingOptions = useProcessingOptions()
@@ -93,6 +103,48 @@ function App() {
       top: 0,
       behavior: 'smooth'
     })
+  }, [])
+
+  // 在MindElixir中打开思维导图
+  const openInMindElixir = useCallback(async (mindmapData: MindElixirData, title: string) => {
+    try {
+      await launchMindElixir(mindmapData)
+      toast.success(`已成功发送"${title}"到 Mind Elixir Desktop`, {
+        duration: 3000,
+        position: 'top-center',
+      })
+    } catch (error) {
+      console.error('启动 Mind Elixir 失败:', error)
+      toast.error('启动 Mind Elixir Desktop 失败，请确保已安装 Mind Elixir Desktop 应用', {
+        duration: 5000,
+        position: 'top-center',
+      })
+    }
+  }, [])
+
+  // 下载思维导图函数
+  const downloadMindMap = useCallback(async (mindElixirInstance: any, title: string, format: string) => {
+    try {
+      // 查找对应的下载方法
+      const method = downloadMethodList.find(item => item.type === format)
+      if (!method) {
+        throw new Error(`不支持的格式: ${format}`)
+      }
+
+      // 执行下载
+      await method.download(mindElixirInstance)
+
+      toast.success(`${title} 已成功导出为 ${format} 格式`, {
+        duration: 3000,
+        position: 'top-center',
+      })
+    } catch (error) {
+      console.error('导出思维导图失败:', error)
+      toast.error(`导出 ${format} 格式失败: ${error instanceof Error ? error.message : '未知错误'}`, {
+        duration: 5000,
+        position: 'top-center',
+      })
+    }
   }, [])
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -814,6 +866,23 @@ function App() {
                               {chapter.title}
                             </div>
                             <div className="flex items-center gap-2">
+                              {chapter.mindMap && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openInMindElixir(chapter.mindMap!, chapter.title)}
+                                    title="在 Mind Elixir Desktop 中打开"
+                                  >
+                                    <ExternalLink className="h-4 w-4 mr-1" />
+                                  </Button>
+                                  <DownloadMindMapButton
+                                    mindElixirRef={() => chapterMindElixirRefs.current[chapter.id]}
+                                    title={chapter.title}
+                                    downloadMindMap={downloadMindMap}
+                                  />
+                                </>
+                              )}
                               <CopyButton
                                 content={chapter.content}
                                 successMessage="已复制章节内容到剪贴板"
@@ -838,6 +907,9 @@ function App() {
                           {chapter.mindMap && (
                             <div className="border rounded-lg">
                               <MindElixirReact
+                                ref={(ref) => {
+                                  chapterMindElixirRefs.current[chapter.id] = ref
+                                }}
                                 data={chapter.mindMap}
                                 fitPage={false}
                                 options={options}
@@ -852,10 +924,33 @@ function App() {
 
                   <TabsContent value="combined">
                     <Card>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">整书思维导图</CardTitle>
+                          {bookMindMap.combinedMindMap && (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openInMindElixir(bookMindMap.combinedMindMap!, `《${bookMindMap.title}》整书思维导图`)}
+                                title="在 Mind Elixir Desktop 中打开"
+                              >
+                                <ExternalLink className="h-4 w-4 mr-1" />
+                              </Button>
+                              <DownloadMindMapButton
+                                mindElixirRef={combinedMindElixirRef}
+                                title={`《${bookMindMap.title}》整书思维导图`}
+                                downloadMindMap={downloadMindMap}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </CardHeader>
                       <CardContent>
                         {bookMindMap.combinedMindMap ? (
                           <div className="border rounded-lg">
                             <MindElixirReact
+                              ref={combinedMindElixirRef}
                               data={bookMindMap.combinedMindMap}
                               fitPage={false}
                               options={options}
@@ -873,10 +968,33 @@ function App() {
                 </Tabs>
               ) : processingMode === 'combined-mindmap' && bookMindMap ? (
                 <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">整书思维导图</CardTitle>
+                      {bookMindMap.combinedMindMap && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openInMindElixir(bookMindMap.combinedMindMap!, `《${bookMindMap.title}》整书思维导图`)}
+                            title="在 Mind Elixir Desktop 中打开"
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                          </Button>
+                          <DownloadMindMapButton
+                            mindElixirRef={wholeMindElixirRef}
+                            title={`《${bookMindMap.title}》整书思维导图`}
+                            downloadMindMap={downloadMindMap}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
                   <CardContent>
                     {bookMindMap.combinedMindMap ? (
                       <div className="border rounded-lg">
                         <MindElixirReact
+                          ref={wholeMindElixirRef}
                           data={bookMindMap.combinedMindMap}
                           fitPage={false}
                           options={options}
