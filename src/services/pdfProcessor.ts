@@ -1,9 +1,10 @@
 import * as pdfjsLib from 'pdfjs-dist'
+import workerSrc from 'pdfjs-dist/build/pdf.worker?worker&url'
 import { SKIP_CHAPTER_KEYWORDS } from './constants'
 
 // 设置 PDF.js worker - 使用本地文件
 if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/src/lib/pdf.worker.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 }
 
 export interface ChapterData {
