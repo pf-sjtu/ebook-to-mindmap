@@ -166,7 +166,13 @@
     "recursion3Layers": "Recursive 3 layers sub-chapters",
     "recursion4Layers": "Recursive 4 layers sub-chapters",
     "recursion5Layers": "Recursive 5 layers sub-chapters",
-    "recursionDepthDescription": "Only applicable to PDF files. Setting to 0 means no recursive processing of sub-chapters, only processing top-level chapters; setting to a value greater than 0 means recursive processing of the specified number of sub-chapter layers."
+    "recursionDepthDescription": "Only applicable to PDF files. Setting to 0 means no recursive processing of sub-chapters, only processing top-level chapters; setting to a value greater than 0 means recursive processing of the specified number of sub-chapter layers.",
+    "outputLanguage": "Output Language",
+    "selectOutputLanguage": "Select Output Language",
+    "outputLanguageAuto": "Auto (Follow Interface Language)",
+    "outputLanguageEn": "English",
+    "outputLanguageZh": "Chinese",
+    "outputLanguageDescription": "Control the language of AI-generated content. Auto mode will follow the current interface language."
   },
   "download": {
     "title": "Download Mind Map",

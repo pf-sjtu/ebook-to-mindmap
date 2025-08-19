@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useConfigStore, useAIConfig, useProcessingOptions } from '../../stores/configStore'
+import type { SupportedLanguage } from '../../services/prompts/utils'
 
 interface ConfigDialogProps {
   processing: boolean
@@ -27,12 +28,13 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
     setProcessingMode,
     setBookType,
     setUseSmartDetection,
-    setSkipNonEssentialChapters
+    setSkipNonEssentialChapters,
+    setOutputLanguage
   } = useConfigStore()
 
   // 从store中解构状态值
   const { provider: aiProvider, apiKey, apiUrl, model, temperature } = aiConfig
-  const { processingMode, bookType, useSmartDetection, skipNonEssentialChapters } = processingOptions
+  const { processingMode, bookType, useSmartDetection, skipNonEssentialChapters, outputLanguage } = processingOptions
 
   return (
     <Dialog>
@@ -274,6 +276,32 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               </Select>
               <p className="text-xs text-gray-600">
                 {t('config.recursionDepthDescription')}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-indigo-50 rounded-lg border">
+            <div className="space-y-2">
+              <Label htmlFor="output-language" className="text-sm font-medium">
+                {t('config.outputLanguage')}
+              </Label>
+              <Select value={outputLanguage} onValueChange={(value: SupportedLanguage) => setOutputLanguage(value)} disabled={processing}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('config.selectOutputLanguage')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">{t('config.outputLanguageAuto')}</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="zh">中文</SelectItem>
+                  <SelectItem value="ja">日本語</SelectItem>
+                  <SelectItem value="fr">Français</SelectItem>
+                  <SelectItem value="de">Deutsch</SelectItem>
+                  <SelectItem value="es">Español</SelectItem>
+                  <SelectItem value="ru">Русский</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-600">
+                {t('config.outputLanguageDescription')}
               </p>
             </div>
           </div>

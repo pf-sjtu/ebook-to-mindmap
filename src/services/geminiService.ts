@@ -9,6 +9,7 @@ import {
   getMindMapArrowPrompt,
 } from './prompts'
 import type { MindElixirData } from 'mind-elixir'
+import { getLanguageInstruction, type SupportedLanguage } from './prompts/utils'
 
 interface Chapter {
   id: string
@@ -54,13 +55,13 @@ export class AIService {
     return typeof this.config === 'function' ? this.config() : this.config
   }
 
-  async summarizeChapter(title: string, content: string, bookType: 'fiction' | 'non-fiction' = 'non-fiction'): Promise<string> {
+  async summarizeChapter(title: string, content: string, bookType: 'fiction' | 'non-fiction' = 'non-fiction', outputLanguage: SupportedLanguage = 'en'): Promise<string> {
     try {
-      const prompt = bookType === 'fiction' 
-        ? getFictionChapterSummaryPrompt(title, content)
-        : getNonFictionChapterSummaryPrompt(title, content)
+      const promptData = bookType === 'fiction' 
+        ? getFictionChapterSummaryPrompt(title, content, outputLanguage)
+        : getNonFictionChapterSummaryPrompt(title, content, outputLanguage)
 
-      const summary = await this.generateContent(prompt)
+      const summary = await this.generateContent(promptData.userPrompt, outputLanguage)
 
       if (!summary || summary.trim().length === 0) {
         throw new Error('AI返回了空的总结')
@@ -72,16 +73,16 @@ export class AIService {
     }
   }
 
-  async analyzeConnections(chapters: Chapter[]): Promise<string> {
+  async analyzeConnections(chapters: Chapter[], outputLanguage: SupportedLanguage = 'en'): Promise<string> {
     try {
       // 构建章节摘要信息
       const chapterSummaries = chapters.map((chapter) => 
         `${chapter.title}:\n${chapter.summary || '无总结'}`
       ).join('\n\n')
 
-      const prompt = getChapterConnectionsAnalysisPrompt(chapterSummaries)
+      const promptData = getChapterConnectionsAnalysisPrompt(chapterSummaries, outputLanguage)
 
-      const connections = await this.generateContent(prompt)
+      const connections = await this.generateContent(promptData.userPrompt, outputLanguage)
 
       if (!connections || connections.trim().length === 0) {
         throw new Error('AI返回了空的关联分析')
@@ -96,7 +97,8 @@ export class AIService {
   async generateOverallSummary(
     bookTitle: string, 
     chapters: Chapter[], 
-    connections: string
+    connections: string,
+    outputLanguage: SupportedLanguage = 'en'
   ): Promise<string> {
     try {
       // 构建简化的章节信息
@@ -104,9 +106,9 @@ export class AIService {
         `第${index + 1}章：${chapter.title}，内容：${chapter.summary || '无总结'}`
       ).join('\n')
 
-      const prompt = getOverallSummaryPrompt(bookTitle, chapterInfo, connections)
+      const promptData = getOverallSummaryPrompt(bookTitle, chapterInfo, connections, outputLanguage)
 
-      const summary = await this.generateContent(prompt)
+      const summary = await this.generateContent(promptData.userPrompt, outputLanguage)
 
       if (!summary || summary.trim().length === 0) {
         throw new Error('AI返回了空的全书总结')
@@ -118,11 +120,12 @@ export class AIService {
     }
   }
 
-  async generateChapterMindMap(content: string): Promise<MindElixirData> {
+  async generateChapterMindMap(content: string, outputLanguage: SupportedLanguage = 'en'): Promise<MindElixirData> {
     try {
-      const prompt = getChapterMindMapPrompt() + `章节内容：\n${content}`
+      const promptData = getChapterMindMapPrompt(outputLanguage)
+      const prompt = promptData.userPrompt + `章节内容：\n${content}`
 
-      const mindMapJson = await this.generateContent(prompt)
+      const mindMapJson = await this.generateContent(prompt, outputLanguage)
 
       if (!mindMapJson || mindMapJson.trim().length === 0) {
         throw new Error('AI返回了空的思维导图数据')
@@ -148,11 +151,12 @@ export class AIService {
     }
   }
 
-  async generateMindMapArrows(combinedMindMapData: any): Promise<any> {
+  async generateMindMapArrows(combinedMindMapData: any, outputLanguage: SupportedLanguage = 'en'): Promise<any> {
     try {
-      const prompt = getMindMapArrowPrompt() + `\n\n当前思维导图数据：\n${JSON.stringify(combinedMindMapData, null, 2)}`
+      const promptData = getMindMapArrowPrompt(outputLanguage)
+      const prompt = promptData.userPrompt + `\n\n当前思维导图数据：\n${JSON.stringify(combinedMindMapData, null, 2)}`
 
-      const arrowsJson = await this.generateContent(prompt)
+      const arrowsJson = await this.generateContent(prompt, outputLanguage)
 
       if (!arrowsJson || arrowsJson.trim().length === 0) {
         throw new Error('AI返回了空的箭头数据')
@@ -180,12 +184,13 @@ export class AIService {
 
   async generateCombinedMindMap(bookTitle: string, chapters: Chapter[]): Promise<MindElixirData> {
     try {
-      const prompt = getChapterMindMapPrompt()
+      const promptData = getChapterMindMapPrompt()
       const chaptersContent = chapters.map(item=>item.content).join('\n\n ------------- \n\n')
       const mindMapJson = await this.generateContent(
-        `${prompt}
+        `${promptData.userPrompt}
         请为整本书《${bookTitle}》生成一个完整的思维导图，将所有章节的内容整合在一起。
-        章节内容：\n${chaptersContent}`
+        章节内容：\n${chaptersContent}`,
+        'en'
       )
 
       if (!mindMapJson || mindMapJson.trim().length === 0) {
@@ -213,11 +218,15 @@ export class AIService {
   }
 
   // 统一的内容生成方法
-  private async generateContent(prompt: string): Promise<string> {
+  private async generateContent(prompt: string, outputLanguage?: SupportedLanguage): Promise<string> {
     const config = this.getCurrentConfig()
+    const language = outputLanguage || 'en'
+    const systemPrompt = getLanguageInstruction(language)
     
     if (config.provider === 'gemini') {
-      const result = await this.model.generateContent(prompt, {
+      // Gemini API 不直接支持系统提示，将系统提示合并到用户提示前面
+      const finalPrompt = `${systemPrompt}\n\n${prompt}`
+      const result = await this.model.generateContent(finalPrompt, {
         generationConfig: {
           temperature: config.temperature || 0.7
         }
@@ -225,6 +234,17 @@ export class AIService {
       const response = await result.response
       return response.text()
     } else if (config.provider === 'openai') {
+      const messages: Array<{role: 'system' | 'user', content: string}> = [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+      
       const response = await fetch(`${this.model.apiUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -233,12 +253,7 @@ export class AIService {
         },
         body: JSON.stringify({
           model: this.model.model,
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
+          messages,
           temperature: config.temperature || 0.7
         })
       })

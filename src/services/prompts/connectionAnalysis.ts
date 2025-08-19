@@ -1,6 +1,9 @@
 // 章节关联分析相关的prompt模板
+import { getLanguageInstruction, type SupportedLanguage } from './utils'
 
-export const getChapterConnectionsAnalysisPrompt = (chapterSummaries: string) => `请帮我分析这本书各章节之间的关系，并总结全书的核心内容：
+export const getChapterConnectionsAnalysisPrompt = (chapterSummaries: string, language: SupportedLanguage = 'en') => {
+  const systemPrompt = getLanguageInstruction(language)
+  const userPrompt = `请帮我分析这本书各章节之间的关系，并总结全书的核心内容：
 
 ${chapterSummaries}
 
@@ -27,3 +30,6 @@ ${chapterSummaries}
 - 阅读这本书的最大收获是什么
 
 请用通俗易懂的语言来分析，让普通读者也能轻松理解书籍的价值和意义。`
+  
+  return { systemPrompt, userPrompt }
+}

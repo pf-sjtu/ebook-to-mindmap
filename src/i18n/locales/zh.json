@@ -128,7 +128,13 @@
     "recursion3Layers": "递归3层子章节",
     "recursion4Layers": "递归4层子章节",
     "recursion5Layers": "递归5层子章节",
-    "recursionDepthDescription": "仅适用于PDF文件。设置为0表示不递归处理子章节，仅处理顶层章节；设置为大于0的值表示递归处理指定层数的子章节。"
+    "recursionDepthDescription": "仅适用于PDF文件。设置为0表示不递归处理子章节，仅处理顶层章节；设置为大于0的值表示递归处理指定层数的子章节。",
+    "outputLanguage": "输出语言",
+    "selectOutputLanguage": "选择输出语言",
+    "outputLanguageAuto": "自动（跟随界面语言）",
+    "outputLanguageEn": "英文",
+    "outputLanguageZh": "中文",
+    "outputLanguageDescription": "控制AI生成内容的语言。自动模式将跟随当前界面语言。"
   },
   "download": {
     "title": "下载思维导图",

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { SupportedLanguage } from '../services/prompts/utils'
 
 // AI配置接口
 interface AIConfig {
@@ -17,6 +18,7 @@ interface ProcessingOptions {
   useSmartDetection: boolean
   skipNonEssentialChapters: boolean
   maxSubChapterDepth: number
+  outputLanguage: SupportedLanguage
 }
 
 // 配置store状态接口
@@ -36,6 +38,7 @@ interface ConfigState {
   setUseSmartDetection: (enabled: boolean) => void
   setSkipNonEssentialChapters: (enabled: boolean) => void
   setMaxSubChapterDepth: (depth: number) => void
+  setOutputLanguage: (language: SupportedLanguage) => void
 }
 
 // 默认配置
@@ -52,7 +55,8 @@ const defaultProcessingOptions: ProcessingOptions = {
   bookType: 'non-fiction',
   useSmartDetection: false,
   skipNonEssentialChapters: true,
-  maxSubChapterDepth: 0
+  maxSubChapterDepth: 0,
+  outputLanguage: 'en'
 }
 
 // 创建配置store
@@ -93,6 +97,9 @@ export const useConfigStore = create<ConfigState>()(
       })),
       setMaxSubChapterDepth: (maxSubChapterDepth) => set((state) => ({
         processingOptions: { ...state.processingOptions, maxSubChapterDepth }
+      })),
+      setOutputLanguage: (outputLanguage) => set((state) => ({
+        processingOptions: { ...state.processingOptions, outputLanguage }
       }))
     }),
     {

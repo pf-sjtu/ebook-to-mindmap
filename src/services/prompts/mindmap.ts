@@ -1,5 +1,8 @@
-export const getChapterMindMapPrompt = ()=>`
-\`\`\`ts
+import { getLanguageInstruction, type SupportedLanguage } from './utils'
+
+export const getChapterMindMapPrompt = (language: SupportedLanguage = 'en')=> {
+  const systemPrompt = getLanguageInstruction(language)
+  const userPrompt = `\`\`\`ts
 export interface NodeObj {
   topic: string
   id: string
@@ -39,14 +42,17 @@ export interface Summary {
 - Summary 是总结多个同父节点的子节点的工具，会使用花括号把总结文本显示在指定子节点侧边，因为节点存在两侧分布的情况，禁止总结根节点
 - 适当添加 Summary，不要添加多余的 Summary
 - 最后添加一个金句节点记录几句本章金句
-- 使用中文输出
 - 适当添加表达该节点内涵的 emoji
 - 确保JSON格式正确，不要返回任何JSON以外的内容
 - 如果内容是致谢、目录、前言、序言、参考文献、出版社介绍、引用说明等的页面，请直接回复"{nodeData:null}"
 `
+  
+  return { systemPrompt, userPrompt }
+}
 
-export const getMindMapArrowPrompt = ()=>`
-你需要为已有的思维导图添加箭头连接，以显示不同节点之间的关联关系。
+export const getMindMapArrowPrompt = (language: SupportedLanguage = 'en') => {
+  const systemPrompt = getLanguageInstruction(language)
+  const userPrompt = `你需要为已有的思维导图添加箭头连接，以显示不同节点之间的关联关系。
 \`\`\`ts
 export interface NodeObj {
   topic: string
@@ -102,3 +108,6 @@ export interface Arrow {
 - 使用中文输出
 - 确保JSON格式正确，不要返回任何JSON以外的内容
 `
+  
+  return { systemPrompt, userPrompt }
+}

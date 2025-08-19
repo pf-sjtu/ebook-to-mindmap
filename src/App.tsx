@@ -422,7 +422,7 @@ function App() {
           let summary = cacheService.get(cacheKey)
 
           if (!summary) {
-            summary = await aiService.summarizeChapter(chapter.title, chapter.content, bookType)
+            summary = await aiService.summarizeChapter(chapter.title, chapter.content, bookType, processingOptions.outputLanguage)
             cacheService.set(cacheKey, summary)
           }
 
@@ -444,7 +444,7 @@ function App() {
           let mindMap: MindElixirData = cacheService.get(cacheKey)
 
           if (!mindMap) {
-            mindMap = await aiService.generateChapterMindMap(chapter.content)
+            mindMap = await aiService.generateChapterMindMap(chapter.content, processingOptions.outputLanguage)
             cacheService.set(cacheKey, mindMap)
           }
 
@@ -487,7 +487,7 @@ function App() {
         let connections = cacheService.get(connectionsCacheKey)
         if (!connections) {
           console.log('🔄 [DEBUG] 缓存未命中，开始分析章节关联')
-          connections = await aiService.analyzeConnections(processedChapters)
+          connections = await aiService.analyzeConnections(processedChapters, processingOptions.outputLanguage)
           cacheService.set(connectionsCacheKey, connections)
           console.log('💾 [DEBUG] 章节关联已缓存')
         } else {
@@ -509,7 +509,8 @@ function App() {
           overallSummary = await aiService.generateOverallSummary(
             bookData.title,
             processedChapters,
-            connections
+            connections,
+            processingOptions.outputLanguage
           )
           cacheService.set(overallSummaryCacheKey, overallSummary)
           console.log('💾 [DEBUG] 全书总结已缓存')
