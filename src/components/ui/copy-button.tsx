@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Copy } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 interface CopyButtonProps {
   content: string | undefined
@@ -13,16 +14,17 @@ interface CopyButtonProps {
 
 export function CopyButton({
   content,
-  successMessage = '已复制到剪贴板',
-  title = '复制内容',
+  successMessage,
+  title,
   disabled,
   variant = 'outline',
   size = 'sm'
 }: CopyButtonProps) {
+  const { t } = useTranslation()
   const handleCopy = () => {
     if (content) {
       navigator.clipboard.writeText(content)
-      toast.success(successMessage, {
+      toast.success(successMessage || t('common.copiedToClipboard'), {
         duration: 2000,
         position: 'top-center',
       })
@@ -35,7 +37,7 @@ export function CopyButton({
       size={size}
       onClick={handleCopy}
       disabled={disabled || !content}
-      title={title}
+      title={title || t('common.copyContent')}
     >
       <Copy className="h-4 w-4 " />
     </Button>

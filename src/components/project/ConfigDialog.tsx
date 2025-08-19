@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Settings } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useConfigStore, useAIConfig, useProcessingOptions } from '../../stores/configStore'
 
 interface ConfigDialogProps {
@@ -13,6 +14,7 @@ interface ConfigDialogProps {
 }
 
 export function ConfigDialog({ processing }: ConfigDialogProps) {
+  const { t } = useTranslation()
   // 使用zustand store管理配置
   const aiConfig = useAIConfig()
   const processingOptions = useProcessingOptions()
@@ -42,17 +44,17 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
           className="flex items-center gap-1"
         >
           <Settings className="h-3.5 w-3.5" />
-          配置
+{t('config.title')}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            AI 服务配置
+            {t('config.aiServiceConfig')}
           </DialogTitle>
           <DialogDescription>
-            配置 AI 服务和处理选项
+            {t('config.description')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -60,19 +62,19 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
             <div className="flex items-center gap-2 mb-3">
               <Settings className="h-4 w-4" />
-              <Label className="text-sm font-medium">AI 服务配置</Label>
+              <Label className="text-sm font-medium">{t('config.aiServiceConfig')}</Label>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="ai-provider">AI 提供商</Label>
+                <Label htmlFor="ai-provider">{t('config.aiProvider')}</Label>
                 <Select value={aiProvider} onValueChange={(value: 'gemini' | 'openai') => setAiProvider(value)} disabled={processing}>
                   <SelectTrigger>
-                    <SelectValue placeholder="选择 AI 提供商" />
+                    <SelectValue placeholder={t('config.selectAiProvider')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="gemini">Google Gemini</SelectItem>
-                    <SelectItem value="openai">OpenAI 兼容</SelectItem>
+                    <SelectItem value="openai">{t('config.openaiCompatible')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -84,7 +86,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                 <Input
                   id="apikey"
                   type="password"
-                  placeholder={aiProvider === 'gemini' ? '输入您的 Gemini API Key' : '输入您的 API Token'}
+                  placeholder={aiProvider === 'gemini' ? t('config.enterGeminiApiKey') : t('config.enterApiToken')}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   disabled={processing}
@@ -96,7 +98,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="api-url">API 地址</Label>
+                    <Label htmlFor="api-url">{t('config.apiUrl')}</Label>
                     <Input
                       id="api-url"
                       type="url"
@@ -108,11 +110,11 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="model">模型名称（可选）</Label>
+                    <Label htmlFor="model">{t('config.modelName')}</Label>
                     <Input
                       id="model"
                       type="text"
-                      placeholder="gpt-3.5-turbo, gpt-4 等"
+                      placeholder={t('config.modelPlaceholder')}
                       value={model}
                       onChange={(e) => setModel(e.target.value)}
                       disabled={processing}
@@ -120,7 +122,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="openai-temperature">Temperature（可选）</Label>
+                  <Label htmlFor="openai-temperature">{t('config.temperature')}</Label>
                   <Input
                     id="openai-temperature"
                     type="number"
@@ -133,7 +135,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                     disabled={processing}
                   />
                   <p className="text-xs text-gray-600">
-                    控制AI回答的随机性，范围0-2，值越高越随机，建议0.7
+                    {t('config.temperatureDescription')}
                   </p>
                 </div>
               </>
@@ -142,18 +144,18 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
             {aiProvider === 'gemini' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="gemini-model">模型名称（可选）</Label>
+                  <Label htmlFor="gemini-model">{t('config.modelName')}</Label>
                   <Input
                     id="gemini-model"
                     type="text"
-                    placeholder="gemini-1.5-flash, gemini-1.5-pro 等"
+                    placeholder={t('config.geminiModelPlaceholder')}
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                     disabled={processing}
                   />
                 </div>
                 <div className="space-y-2">
-                   <Label htmlFor="gemini-temperature">Temperature（可选）</Label>
+                   <Label htmlFor="gemini-temperature">{t('config.temperature')}</Label>
                    <Input
                      id="gemini-temperature"
                      type="number"
@@ -166,7 +168,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                      disabled={processing}
                    />
                    <p className="text-xs text-gray-600">
-                     控制AI回答的随机性，范围0-2，值越高越随机，建议0.7
+                     {t('config.temperatureDescription')}
                    </p>
                  </div>
               </div>
@@ -177,38 +179,38 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="processing-mode" className="text-sm font-medium">
-                  处理模式
+                  {t('config.processingMode')}
                 </Label>
                 <Select value={processingMode} onValueChange={(value: 'summary' | 'mindmap' | 'combined-mindmap') => setProcessingMode(value)} disabled={processing}>
                   <SelectTrigger>
-                    <SelectValue placeholder="选择处理模式" />
+                    <SelectValue placeholder={t('config.selectProcessingMode')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="summary">文字总结模式</SelectItem>
-                    <SelectItem value="mindmap">章节思维导图模式</SelectItem>
-                    <SelectItem value="combined-mindmap">整书思维导图模式</SelectItem>
+                    <SelectItem value="summary">{t('config.summaryMode')}</SelectItem>
+                    <SelectItem value="mindmap">{t('config.mindmapMode')}</SelectItem>
+                    <SelectItem value="combined-mindmap">{t('config.combinedMindmapMode')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-600">
-                  文字总结模式生成章节文字总结和关联分析；章节思维导图模式为每章生成独立思维导图；整书思维导图模式将全书内容整合为一个完整的思维导图。
+                  {t('config.processingModeDescription')}
                 </p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="book-type" className="text-sm font-medium">
-                  书籍类型
+                  {t('config.bookType')}
                 </Label>
                 <Select value={bookType} onValueChange={(value: 'fiction' | 'non-fiction') => setBookType(value)} disabled={processing}>
                   <SelectTrigger>
-                    <SelectValue placeholder="选择书籍类型" />
+                    <SelectValue placeholder={t('config.selectBookType')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="non-fiction">社科类</SelectItem>
-                    <SelectItem value="fiction">小说类</SelectItem>
+                    <SelectItem value="non-fiction">{t('config.socialType')}</SelectItem>
+                    <SelectItem value="fiction">{t('config.novelType')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-600">
-                  选择书籍类型以获得更准确的章节{processingMode === 'summary' ? '总结' : '思维导图'}。社科类适用于学术、商业、自助等非虚构类书籍；小说类适用于文学作品。
+                  {t('config.bookTypeDescription', { type: processingMode === 'summary' ? t('config.summary') : t('config.mindmap') })}
                 </p>
               </div>
             </div>
@@ -217,10 +219,10 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
           <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
             <div className="space-y-1">
               <Label htmlFor="smart-detection" className="text-sm font-medium">
-                启用智能章节检测
+                {t('config.smartChapterDetection')}
               </Label>
               <p className="text-xs text-gray-600">
-                当文档没有目录时，尝试智能识别章节标题（如"第X章"、"Chapter X"等）
+                {t('config.smartChapterDetectionDescription')}
               </p>
             </div>
             <Switch
@@ -234,10 +236,10 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
           <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border">
             <div className="space-y-1">
               <Label htmlFor="skip-non-essential" className="text-sm font-medium">
-                跳过无关键内容章节
+                {t('config.skipIrrelevantChapters')}
               </Label>
               <p className="text-xs text-gray-600">
-                自动跳过致谢、推荐阅读、作者简介等非核心内容章节
+                {t('config.skipIrrelevantChaptersDescription')}
               </p>
             </div>
             <Switch
@@ -251,7 +253,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
           <div className="p-3 bg-amber-50 rounded-lg border">
             <div className="space-y-2">
               <Label htmlFor="max-sub-chapter-depth" className="text-sm font-medium">
-                递归处理子章节层数
+                {t('config.recursionDepth')}
               </Label>
               <Select
                 value={processingOptions.maxSubChapterDepth?.toString()}
@@ -259,19 +261,19 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                 disabled={processing}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="选择递归层数" />
+                  <SelectValue placeholder={t('config.selectRecursionDepth')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">不递归处理子章节</SelectItem>
-                  <SelectItem value="1">递归1层子章节</SelectItem>
-                  <SelectItem value="2">递归2层子章节</SelectItem>
-                  <SelectItem value="3">递归3层子章节</SelectItem>
-                  <SelectItem value="4">递归4层子章节</SelectItem>
-                  <SelectItem value="5">递归5层子章节</SelectItem>
+                  <SelectItem value="0">{t('config.noRecursion')}</SelectItem>
+                  <SelectItem value="1">{t('config.recursion1Layer')}</SelectItem>
+                  <SelectItem value="2">{t('config.recursion2Layers')}</SelectItem>
+                  <SelectItem value="3">{t('config.recursion3Layers')}</SelectItem>
+                  <SelectItem value="4">{t('config.recursion4Layers')}</SelectItem>
+                  <SelectItem value="5">{t('config.recursion5Layers')}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-600">
-                仅适用于PDF文件。设置为0表示不递归处理子章节，仅处理顶层章节；设置为大于0的值表示递归处理指定层数的子章节。
+                {t('config.recursionDepthDescription')}
               </p>
             </div>
           </div>

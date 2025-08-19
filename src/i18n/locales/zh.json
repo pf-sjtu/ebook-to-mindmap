@@ -1,0 +1,153 @@
+{
+  "app": {
+    "title": "电子书转思维导图",
+    "description": "使用 AI 技术按章节解析 EPUB 和 PDF 电子书并生成智能总结"
+  },
+  "upload": {
+    "title": "文件上传与配置",
+    "description": "选择 EPUB 或 PDF 文件并配置 AI 服务",
+    "selectFile": "选择 EPUB 或 PDF 文件",
+    "selectedFile": "已选择",
+    "noFileSelected": "未选择文件",
+    "clearCache": "清除缓存",
+    "extractChapters": "获取章节",
+    "extractingChapters": "提取章节中...",
+    "invalidFile": "请选择有效的 EPUB 或 PDF 文件",
+    "pleaseSelectFile": "请选择文件"
+  },
+  "chapters": {
+    "title": "章节选择",
+    "selectAll": "全选",
+    "totalChapters": "共 {{count}} 章",
+    "selectedChapters": "已选择 {{count}} 章",
+    "startProcessing": "开始解析",
+    "processing": "处理中...",
+    "apiKeyRequired": "请先在配置中填写 API Key",
+    "selectAtLeastOne": "请至少选择一个章节进行处理",
+    "extractAndApiKey": "请先提取章节并输入 API Key"
+  },
+  "progress": {
+    "extractingEpub": "正在解析 EPUB 文件...",
+    "extractingPdf": "正在解析 PDF 文件...",
+    "extractingChapters": "正在提取章节内容...",
+    "processingChapter": "正在处理第 {{current}}/{{total}} 章: {{title}}",
+    "analyzingConnections": "正在分析章节关联...",
+    "generatingOverallSummary": "正在生成全书总结...",
+    "mergingMindMaps": "正在合并章节思维导图...",
+    "generatingCombinedMindMap": "正在生成整书思维导图...",
+    "completed": "处理完成！",
+    "chaptersExtracted": "章节提取完成！共提取到 {{count}} 个章节",
+    "successfullyExtracted": "成功提取 {{count}} 个章节",
+    "processingError": "处理过程中发生错误",
+    "extractionError": "章节提取过程中发生错误"
+  },
+  "results": {
+    "summaryTitle": "《{{title}}》解析结果",
+    "chapterMindMapTitle": "《{{title}}》章节思维导图",
+    "wholeMindMapTitle": "《{{title}}》整书思维导图",
+    "author": "作者: {{author}}",
+    "chapterCount": "共 {{count}} 章",
+    "tabs": {
+      "chapterSummary": "章节总结",
+      "connections": "章节关联",
+      "overallSummary": "全书总结",
+      "chapterMindMaps": "章节思维导图",
+      "combinedMindMap": "整书思维导图"
+    },
+    "actions": {
+      "copyChapterSummary": "复制章节总结",
+      "copyChapterContent": "复制章节内容",
+      "copiedToClipboard": "已复制章节总结到剪贴板",
+      "contentCopiedToClipboard": "已复制章节内容到剪贴板",
+      "openInMindElixir": "在 Mind Elixir Desktop 中打开",
+      "downloadMindMap": "下载思维导图",
+      "viewContent": "查看内容",
+      "clearChapterCache": "清除章节缓存"
+    }
+  },
+  "cache": {
+    "cleared": "已清除缓存，下次处理将重新生成内容",
+    "bookCacheCleared": "已清除{{count}}项{{mode}}缓存，下次处理将重新生成内容",
+    "noCacheFound": "没有找到可清除的{{mode}}缓存",
+    "modes": {
+      "summary": "文字总结",
+      "mindmap": "章节思维导图",
+      "combined-mindmap": "整书思维导图"
+    }
+  },
+  "common": {
+    "copy": "复制",
+    "delete": "删除",
+    "viewContent": "查看内容",
+    "backToTop": "回到顶部",
+    "openInMindElixir": "在 Mind Elixir Desktop 中打开",
+    "clearCache": "清除缓存",
+    "copiedToClipboard": "已复制到剪贴板",
+    "copyChapterSummary": "复制章节总结",
+    "copyChapterContent": "复制章节内容",
+    "copyContent": "复制内容",
+    "error": "未知错误"
+  },
+  "config": {
+    "title": "配置",
+    "aiServiceConfig": "AI 服务配置",
+    "description": "配置 AI 服务和处理选项",
+    "aiProvider": "AI 提供商",
+    "selectAiProvider": "选择 AI 提供商",
+    "openaiCompatible": "OpenAI 兼容",
+    "enterGeminiApiKey": "输入您的 Gemini API Key",
+    "enterApiToken": "输入您的 API Token",
+    "apiUrl": "API 地址",
+    "modelName": "模型名称（可选）",
+    "modelPlaceholder": "gpt-3.5-turbo, gpt-4 等",
+    "geminiModelPlaceholder": "gemini-1.5-flash, gemini-1.5-pro 等",
+    "temperature": "Temperature（可选）",
+    "temperatureDescription": "控制AI回答的随机性，范围0-2，值越高越随机，建议0.7",
+    "processingMode": "处理模式",
+    "selectProcessingMode": "选择处理模式",
+    "summaryMode": "文字总结模式",
+    "mindmapMode": "章节思维导图模式",
+    "combinedMindmapMode": "整书思维导图模式",
+    "processingModeDescription": "文字总结模式生成章节文字总结和关联分析；章节思维导图模式为每章生成独立思维导图；整书思维导图模式将全书内容整合为一个完整的思维导图。",
+    "bookType": "书籍类型",
+    "selectBookType": "选择书籍类型",
+    "socialType": "社科类",
+    "novelType": "小说类",
+    "summary": "总结",
+    "mindmap": "思维导图",
+    "bookTypeDescription": "选择书籍类型以获得更准确的章节{{type}}。社科类适用于学术、商业、自助等非虚构类书籍；小说类适用于文学作品。",
+    "smartChapterDetection": "启用智能章节检测",
+    "smartChapterDetectionDescription": "当文档没有目录时，尝试智能识别章节标题（如\"第X章\"、\"Chapter X\"等）",
+    "skipIrrelevantChapters": "跳过无关键内容章节",
+    "skipIrrelevantChaptersDescription": "自动跳过致谢、推荐阅读、作者简介等非核心内容章节",
+    "recursionDepth": "递归处理子章节层数",
+    "selectRecursionDepth": "选择递归层数",
+    "noRecursion": "不递归处理子章节",
+    "recursion1Layer": "递归1层子章节",
+    "recursion2Layers": "递归2层子章节",
+    "recursion3Layers": "递归3层子章节",
+    "recursion4Layers": "递归4层子章节",
+    "recursion5Layers": "递归5层子章节",
+    "recursionDepthDescription": "仅适用于PDF文件。设置为0表示不递归处理子章节，仅处理顶层章节；设置为大于0的值表示递归处理指定层数的子章节。"
+  },
+  "download": {
+    "title": "下载思维导图",
+    "formats": {
+      "png": "下载为 PNG",
+      "jpeg": "下载为 JPEG",
+      "svg": "下载为 SVG",
+      "pdf": "下载为 PDF",
+      "xmind": "下载为 XMind",
+      "json": "下载为 JSON"
+    }
+  },
+  "viewContent": {
+    "originalText": "原文内容",
+    "chapterContent": "第 {{chapter}} 章的完整原文内容"
+  },
+  "mindElixir": {
+    "launchSuccess": "已成功发送到 Mind Elixir Desktop",
+    "launchError": "启动 Mind Elixir Desktop 失败",
+    "exportError": "导出思维导图失败"
+  }
+}

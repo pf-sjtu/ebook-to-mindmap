@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -22,6 +23,7 @@ import type { MindElixirData } from 'mind-elixir'
 import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
 import type { MindElixirReactRef } from './components/project/MindElixirReact'
 import { DownloadMindMapButton } from './components/DownloadMindMapButton'
+import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { launchMindElixir } from '@mind-elixir/open-desktop'
@@ -58,6 +60,7 @@ interface BookMindMap {
 import { useAIConfig, useProcessingOptions, useConfigStore } from './stores/configStore'
 
 function App() {
+  const { t } = useTranslation()
   const [file, setFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
   const [extractingChapters, setExtractingChapters] = useState(false)
@@ -115,7 +118,7 @@ function App() {
       })
     } catch (error) {
       console.error('启动 Mind Elixir 失败:', error)
-      toast.error('启动 Mind Elixir Desktop 失败，请确保已安装 Mind Elixir Desktop 应用', {
+      toast.error(t('mindElixir.launchError'), {
         duration: 5000,
         position: 'top-center',
       })
@@ -140,7 +143,7 @@ function App() {
       })
     } catch (error) {
       console.error('导出思维导图失败:', error)
-      toast.error(`导出 ${format} 格式失败: ${error instanceof Error ? error.message : '未知错误'}`, {
+      toast.error(t('mindElixir.exportError', { format, error: error instanceof Error ? error.message : t('common.error') }), {
         duration: 5000,
         position: 'top-center',
       })
@@ -158,7 +161,7 @@ function App() {
       setBookSummary(null)
       setBookMindMap(null)
     } else {
-      toast.error('请选择有效的 EPUB 或 PDF 文件', {
+      toast.error(t('upload.invalidFile'), {
         duration: 3000,
         position: 'top-center',
       })
@@ -276,7 +279,7 @@ function App() {
   // 提取章节的函数
   const extractChapters = useCallback(async () => {
     if (!file) {
-      toast.error('请选择文件', {
+      toast.error(t('upload.pleaseSelectFile'), {
         duration: 3000,
         position: 'top-center',
       })
@@ -335,7 +338,7 @@ function App() {
         position: 'top-center',
       })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '章节提取过程中发生错误', {
+      toast.error(err instanceof Error ? err.message : t('progress.extractionError'), {
         duration: 5000,
         position: 'top-center',
       })
@@ -346,7 +349,7 @@ function App() {
 
   const processEbook = useCallback(async () => {
     if (!extractedChapters || !bookData || !apiKey) {
-      toast.error('请先提取章节并输入 API Key', {
+      toast.error(t('chapters.extractAndApiKey'), {
         duration: 3000,
         position: 'top-center',
       })
@@ -355,7 +358,7 @@ function App() {
     if (!file) return
 
     if (selectedChapters.size === 0) {
-      toast.error('请至少选择一个章节进行处理', {
+      toast.error(t('chapters.selectAtLeastOne'), {
         duration: 3000,
         position: 'top-center',
       })
@@ -590,7 +593,7 @@ function App() {
       setProgress(100)
       setCurrentStep('处理完成！')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '处理过程中发生错误', {
+      toast.error(err instanceof Error ? err.message : t('progress.processingError'), {
         duration: 5000,
         position: 'top-center',
       })
@@ -606,9 +609,12 @@ function App() {
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold text-gray-900 flex items-center justify-center gap-2">
             <BookOpen className="h-8 w-8 text-blue-600" />
-            电子书转思维导图
+            {t('app.title')}
           </h1>
-          <p className="text-gray-600">使用 AI 技术按章节解析 EPUB 和 PDF 电子书并生成智能总结</p>
+          <p className="text-gray-600">{t('app.description')}</p>
+          <div className="flex justify-center mt-4">
+            <LanguageSwitcher />
+          </div>
         </div>
 
         {/* 文件上传和配置 */}
@@ -616,15 +622,15 @@ function App() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5" />
-              文件上传与配置
+              {t('upload.title')}
             </CardTitle>
             <CardDescription>
-              选择 EPUB 或 PDF 文件并配置 AI 服务
+              {t('upload.description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="file">选择 EPUB 或 PDF 文件</Label>
+              <Label htmlFor="file">{t('upload.selectFile')}</Label>
               <Input
                 id="file"
                 type="file"
@@ -637,7 +643,7 @@ function App() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <FileText className="h-4 w-4" />
-                已选择: {file?.name || '未选择文件'}
+                {t('upload.selectedFile')}: {file?.name || t('upload.noFileSelected')}
               </div>
               <div className="flex items-center gap-2">
                 <ConfigDialog processing={processing} file={file} />
@@ -649,7 +655,7 @@ function App() {
                   className="flex items-center gap-1 text-red-500 hover:text-red-700 hover:bg-red-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  清除缓存
+                  {t('upload.clearCache')}
                 </Button>
               </div>
             </div>
@@ -662,12 +668,12 @@ function App() {
                 {extractingChapters ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    提取章节中...
+                    {t('upload.extractingChapters')}
                   </>
                 ) : (
                   <>
                     <List className="mr-2 h-4 w-4" />
-                    获取章节
+                    {t('upload.extractChapters')}
                   </>
                 )}
               </Button>
@@ -685,10 +691,10 @@ function App() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <List className="h-5 w-5" />
-                章节选择
+                {t('chapters.title')}
               </CardTitle>
               <CardDescription>
-                《{bookData.title}》- {bookData.author} | 共 {extractedChapters.length} 章，已选择 {selectedChapters.size} 章
+                《{bookData.title}》- {bookData.author} | {t('chapters.totalChapters', { count: extractedChapters.length })}，{t('chapters.selectedChapters', { count: selectedChapters.size })}
               </CardDescription>
               <div className="flex items-center gap-2 mt-2">
                 <Checkbox
@@ -697,7 +703,7 @@ function App() {
                   onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
                 />
                 <Label htmlFor="select-all" className="text-sm font-medium">
-                  全选
+                  {t('chapters.selectAll')}
                 </Label>
               </div>
             </CardHeader>
@@ -726,7 +732,7 @@ function App() {
               <Button
                 onClick={() => {
                   if (!apiKey) {
-                    toast.error('请先在配置中填写 API Key', {
+                    toast.error(t('chapters.apiKeyRequired'), {
                       duration: 3000,
                       position: 'top-center',
                     })
@@ -740,19 +746,19 @@ function App() {
                 {processing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    处理中...
+                    {t('chapters.processing')}
                   </>
                 ) : (
                   <>
                     <Brain className="mr-2 h-4 w-4" />
-                    开始解析
+                    {t('chapters.startProcessing')}
                   </>
                 )}
               </Button>
             </CardContent>
           </Card>
         )}
-        {/* 处理进度 */}
+        {/* {t('progress.title')} */}
         {(processing || extractingChapters) && (
           <Card>
             <CardContent>
@@ -774,24 +780,24 @@ function App() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 {processingMode === 'summary' ? (
-                  <><BookOpen className="h-5 w-5" />《{bookSummary?.title}》解析结果</>
+                  <><BookOpen className="h-5 w-5" />{t('results.summaryTitle', { title: bookSummary?.title })}</>
                 ) : processingMode === 'mindmap' ? (
-                  <><Network className="h-5 w-5" />《{bookMindMap?.title}》章节思维导图</>
+                  <><Network className="h-5 w-5" />{t('results.chapterMindMapTitle', { title: bookMindMap?.title })}</>
                 ) : (
-                  <><Network className="h-5 w-5" />《{bookMindMap?.title}》整书思维导图</>
+                  <><Network className="h-5 w-5" />{t('results.wholeMindMapTitle', { title: bookMindMap?.title })}</>
                 )}
               </CardTitle>
               <CardDescription>
-                作者: {bookSummary?.author || bookMindMap?.author} | 共 {bookSummary?.chapters.length || bookMindMap?.chapters.length} 章
+                {t('results.author', { author: bookSummary?.author || bookMindMap?.author })} | {t('results.chapterCount', { count: bookSummary?.chapters.length || bookMindMap?.chapters.length })}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {processingMode === 'summary' && bookSummary ? (
                 <Tabs defaultValue="chapters" className="w-full">
                   <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="chapters">章节总结</TabsTrigger>
-                    <TabsTrigger value="connections">章节关联</TabsTrigger>
-                    <TabsTrigger value="overall">全书总结</TabsTrigger>
+                    <TabsTrigger value="chapters">{t('results.tabs.chapterSummary')}</TabsTrigger>
+                    <TabsTrigger value="connections">{t('results.tabs.connections')}</TabsTrigger>
+                    <TabsTrigger value="overall">{t('results.tabs.overallSummary')}</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="chapters" className="grid grid-cols-1 gap-4">
@@ -806,13 +812,14 @@ function App() {
                             <div className="flex items-center gap-2">
                               <CopyButton
                                 content={chapter.summary}
-                                successMessage="已复制章节总结到剪贴板"
-                                title="复制章节总结"
+                                successMessage={t('common.copiedToClipboard')}
+                                title={t('common.copyChapterSummary')}
                               />
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => clearChapterCache(chapter.id)}
+                                title={t('common.clearCache')}
                               >
                                 <Trash2 className="h-4 w-4 " />
                               </Button>
@@ -862,8 +869,8 @@ function App() {
               ) : processingMode === 'mindmap' && bookMindMap ? (
                 <Tabs defaultValue="chapters" className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="chapters">章节思维导图</TabsTrigger>
-                    <TabsTrigger value="combined">整书思维导图</TabsTrigger>
+                    <TabsTrigger value="chapters">{t('results.tabs.chapterMindMaps')}</TabsTrigger>
+                    <TabsTrigger value="combined">{t('results.tabs.combinedMindMap')}</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="chapters" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -881,7 +888,7 @@ function App() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => openInMindElixir(chapter.mindMap!, chapter.title)}
-                                    title="在 Mind Elixir Desktop 中打开"
+                                    title={t('common.openInMindElixir')}
                                   >
                                     <ExternalLink className="h-4 w-4 mr-1" />
                                   </Button>
@@ -894,13 +901,14 @@ function App() {
                               )}
                               <CopyButton
                                 content={chapter.content}
-                                successMessage="已复制章节内容到剪贴板"
-                                title="复制章节内容"
+                                successMessage={t('common.copiedToClipboard')}
+                                title={t('common.copyChapterContent')}
                               />
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => clearChapterCache(chapter.id)}
+                                title={t('common.clearCache')}
                               >
                                 <Trash2 className="h-4 w-4 " />
                               </Button>
@@ -942,7 +950,7 @@ function App() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => openInMindElixir(bookMindMap.combinedMindMap!, `《${bookMindMap.title}》整书思维导图`)}
-                                title="在 Mind Elixir Desktop 中打开"
+                                title={t('common.openInMindElixir')}
                               >
                                 <ExternalLink className="h-4 w-4 mr-1" />
                               </Button>
@@ -968,7 +976,7 @@ function App() {
                           </div>
                         ) : (
                           <div className="text-center text-gray-500 py-8">
-                            正在生成整书思维导图...
+                            {t('results.generatingMindMap')}
                           </div>
                         )}
                       </CardContent>
@@ -986,7 +994,7 @@ function App() {
                             variant="outline"
                             size="sm"
                             onClick={() => openInMindElixir(bookMindMap.combinedMindMap!, `《${bookMindMap.title}》整书思维导图`)}
-                            title="在 Mind Elixir Desktop 中打开"
+                            title={t('common.openInMindElixir')}
                           >
                             <ExternalLink className="h-4 w-4 mr-1" />
                           </Button>
@@ -1012,7 +1020,7 @@ function App() {
                       </div>
                     ) : (
                       <div className="text-center text-gray-500 py-8">
-                        正在生成整书思维导图...
+                        {t('results.generatingMindMap')}
                       </div>
                     )}
                   </CardContent>
@@ -1029,7 +1037,7 @@ function App() {
           onClick={scrollToTop}
           className="fixed bottom-6 right-6 z-50 rounded-full w-12 h-12 shadow-lg hover:shadow-xl transition-all duration-300 bg-blue-600 hover:bg-blue-700"
           size="icon"
-          aria-label="回到顶部"
+          aria-label={t('common.backToTop')}
         >
           <ChevronUp className="h-6 w-6" />
         </Button>

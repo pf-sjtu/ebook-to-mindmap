@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "./ui/button"
 import { ScrollArea } from "./ui/scroll-area"
 import { Eye } from "lucide-react"
+import { useTranslation } from 'react-i18next'
 
 interface ViewContentDialogProps {
   title: string
@@ -10,6 +11,8 @@ interface ViewContentDialogProps {
 }
 
 export function ViewContentDialog({ title, content, chapterIndex }: ViewContentDialogProps) {
+  const { t } = useTranslation()
+  
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -22,9 +25,9 @@ export function ViewContentDialog({ title, content, chapterIndex }: ViewContentD
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle>{title} - 原文内容</DialogTitle>
+          <DialogTitle>{title} - {t('viewContent.originalText')}</DialogTitle>
           <DialogDescription>
-            第 {chapterIndex + 1} 章的完整原文内容
+            {t('viewContent.chapterContent', { chapter: chapterIndex + 1 })}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] w-full rounded-md border p-4">

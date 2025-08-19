@@ -1,5 +1,6 @@
 import React from 'react'
 import { Download, ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from './ui/button'
 import {
   DropdownMenu,
@@ -15,20 +16,23 @@ interface DownloadMindMapButtonProps {
   downloadMindMap: (instance: any, title: string, format: string) => void
 }
 
-const EXPORT_FORMATS = [
-  { key: 'PNG', label: '下载为 PNG' },
-  { key: 'JPEG', label: '下载为 JPEG' },
-  { key: 'WEBP', label: '下载为 WEBP' },
-  { key: 'HTML', label: '下载为 HTML' },
-  { key: 'JSON', label: '下载为 JSON' },
-  { key: 'Markdown', label: '下载为 Markdown' },
-]
+
 
 export const DownloadMindMapButton: React.FC<DownloadMindMapButtonProps> = ({
   mindElixirRef,
   title,
   downloadMindMap,
 }) => {
+  const { t } = useTranslation()
+  
+  const EXPORT_FORMATS = [
+    { key: 'PNG', label: t('download.formats.png') },
+    { key: 'JPEG', label: t('download.formats.jpeg') },
+    { key: 'WEBP', label: t('download.formats.webp') },
+    { key: 'HTML', label: t('download.formats.html') },
+    { key: 'JSON', label: t('download.formats.json') },
+    { key: 'Markdown', label: t('download.formats.markdown') },
+  ]
   const handleDownload = (format: string) => {
     let instance
     if (typeof mindElixirRef === 'function') {
@@ -48,7 +52,7 @@ export const DownloadMindMapButton: React.FC<DownloadMindMapButtonProps> = ({
         <Button
           variant="outline"
           size="sm"
-          title="下载思维导图"
+          title={t('download.title')}
         >
           <Download className="h-4 w-4 mr-1" />
           <ChevronDown className="h-3 w-3" />
