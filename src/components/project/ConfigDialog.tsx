@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useConfigStore, useAIConfig, useProcessingOptions } from '../../stores/configStore'
@@ -49,7 +50,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
 {t('config.title')}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
@@ -59,7 +60,8 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
             {t('config.description')}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <ScrollArea className="max-h-[60vh] pr-4">
+          <div className="space-y-4">
           {/* AI 服务配置 */}
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
             <div className="flex items-center gap-2 mb-3">
@@ -305,7 +307,8 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               </p>
             </div>
           </div>
-        </div>
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   )
