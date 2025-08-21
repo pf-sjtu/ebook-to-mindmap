@@ -1,7 +1,6 @@
-import { getLanguageInstruction, type SupportedLanguage } from './utils'
+import { type SupportedLanguage } from './utils'
 
 export const getChapterMindMapPrompt = (language: SupportedLanguage = 'en')=> {
-  const systemPrompt = getLanguageInstruction(language)
   const userPrompt = `\`\`\`ts
 export interface NodeObj {
   topic: string
@@ -47,11 +46,10 @@ export interface Summary {
 - 如果内容是致谢、目录、前言、序言、参考文献、出版社介绍、引用说明等的页面，请直接回复"{nodeData:null}"
 `
   
-  return { systemPrompt, userPrompt }
+  return userPrompt
 }
 
 export const getMindMapArrowPrompt = (language: SupportedLanguage = 'en') => {
-  const systemPrompt = getLanguageInstruction(language)
   const userPrompt = `你需要为已有的思维导图添加箭头连接，以显示不同节点之间的关联关系。
 \`\`\`ts
 export interface NodeObj {
@@ -105,9 +103,8 @@ export interface Arrow {
 - Arrow 可以添加连接任意节点的箭头，label 间接说明两个节点的联系，delta 的默认值为 50,50。**直接的父子关系不需要链接**
 - **直接的父子关系不需要使用 Arrow 链接**
 - 只能添加 6 条以下 Arrow，请对最关键的节点关系进行链接
-- 使用中文输出
 - 确保JSON格式正确，不要返回任何JSON以外的内容
 `
   
-  return { systemPrompt, userPrompt }
+  return userPrompt
 }

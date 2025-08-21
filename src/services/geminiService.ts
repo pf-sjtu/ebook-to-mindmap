@@ -57,11 +57,11 @@ export class AIService {
 
   async summarizeChapter(title: string, content: string, bookType: 'fiction' | 'non-fiction' = 'non-fiction', outputLanguage: SupportedLanguage = 'en'): Promise<string> {
     try {
-      const promptData = bookType === 'fiction' 
+      const prompt = bookType === 'fiction' 
         ? getFictionChapterSummaryPrompt(title, content, outputLanguage)
         : getNonFictionChapterSummaryPrompt(title, content, outputLanguage)
 
-      const summary = await this.generateContent(promptData.userPrompt, outputLanguage)
+      const summary = await this.generateContent(prompt, outputLanguage)
 
       if (!summary || summary.trim().length === 0) {
         throw new Error('AI返回了空的总结')
@@ -80,9 +80,9 @@ export class AIService {
         `${chapter.title}:\n${chapter.summary || '无总结'}`
       ).join('\n\n')
 
-      const promptData = getChapterConnectionsAnalysisPrompt(chapterSummaries, outputLanguage)
+      const prompt = getChapterConnectionsAnalysisPrompt(chapterSummaries, outputLanguage)
 
-      const connections = await this.generateContent(promptData.userPrompt, outputLanguage)
+      const connections = await this.generateContent(prompt, outputLanguage)
 
       if (!connections || connections.trim().length === 0) {
         throw new Error('AI返回了空的关联分析')
@@ -106,9 +106,9 @@ export class AIService {
         `第${index + 1}章：${chapter.title}，内容：${chapter.summary || '无总结'}`
       ).join('\n')
 
-      const promptData = getOverallSummaryPrompt(bookTitle, chapterInfo, connections, outputLanguage)
+      const prompt = getOverallSummaryPrompt(bookTitle, chapterInfo, connections, outputLanguage)
 
-      const summary = await this.generateContent(promptData.userPrompt, outputLanguage)
+      const summary = await this.generateContent(prompt, outputLanguage)
 
       if (!summary || summary.trim().length === 0) {
         throw new Error('AI返回了空的全书总结')
@@ -122,8 +122,8 @@ export class AIService {
 
   async generateChapterMindMap(content: string, outputLanguage: SupportedLanguage = 'en'): Promise<MindElixirData> {
     try {
-      const promptData = getChapterMindMapPrompt(outputLanguage)
-      const prompt = promptData.userPrompt + `章节内容：\n${content}`
+      const basePrompt = getChapterMindMapPrompt(outputLanguage)
+      const prompt = basePrompt + `章节内容：\n${content}`
 
       const mindMapJson = await this.generateContent(prompt, outputLanguage)
 
@@ -153,8 +153,8 @@ export class AIService {
 
   async generateMindMapArrows(combinedMindMapData: any, outputLanguage: SupportedLanguage = 'en'): Promise<any> {
     try {
-      const promptData = getMindMapArrowPrompt(outputLanguage)
-      const prompt = promptData.userPrompt + `\n\n当前思维导图数据：\n${JSON.stringify(combinedMindMapData, null, 2)}`
+      const basePrompt = getMindMapArrowPrompt(outputLanguage)
+      const prompt = basePrompt + `\n\n当前思维导图数据：\n${JSON.stringify(combinedMindMapData, null, 2)}`
 
       const arrowsJson = await this.generateContent(prompt, outputLanguage)
 
@@ -184,10 +184,10 @@ export class AIService {
 
   async generateCombinedMindMap(bookTitle: string, chapters: Chapter[]): Promise<MindElixirData> {
     try {
-      const promptData = getChapterMindMapPrompt()
+      const basePrompt = getChapterMindMapPrompt()
       const chaptersContent = chapters.map(item=>item.content).join('\n\n ------------- \n\n')
       const mindMapJson = await this.generateContent(
-        `${promptData.userPrompt}
+        `${basePrompt}
         请为整本书《${bookTitle}》生成一个完整的思维导图，将所有章节的内容整合在一起。
         章节内容：\n${chaptersContent}`,
         'en'
@@ -225,7 +225,7 @@ export class AIService {
     
     if (config.provider === 'gemini') {
       // Gemini API 不直接支持系统提示，将系统提示合并到用户提示前面
-      const finalPrompt = `${systemPrompt}\n\n${prompt}`
+      const finalPrompt = `${prompt}\n\n**${systemPrompt}**`
       const result = await this.model.generateContent(finalPrompt, {
         generationConfig: {
           temperature: config.temperature || 0.7
@@ -236,12 +236,8 @@ export class AIService {
     } else if (config.provider === 'openai') {
       const messages: Array<{role: 'system' | 'user', content: string}> = [
         {
-          role: 'system',
-          content: systemPrompt
-        },
-        {
           role: 'user',
-          content: prompt
+          content: prompt + '\n\n' + systemPrompt
         }
       ]
       

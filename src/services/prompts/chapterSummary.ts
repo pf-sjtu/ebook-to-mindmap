@@ -1,8 +1,7 @@
 // 章节总结相关的prompt模板
-import { getLanguageInstruction, type SupportedLanguage } from './utils'
+import { type SupportedLanguage } from './utils'
 
 export const getFictionChapterSummaryPrompt = (title: string, content: string, language: SupportedLanguage = 'en') => {
-  const systemPrompt = getLanguageInstruction(language)
   const userPrompt = `请为以下章节内容生成一个详细总结：
 
 章节标题：${title}
@@ -14,11 +13,10 @@ ${content}
 
 注意：如果内容是致谢、目录、前言、序言等无实质故事内容的页面，请直接回复"无需总结"。`
   
-  return { systemPrompt, userPrompt }
+  return userPrompt
 }
 
 export const getNonFictionChapterSummaryPrompt = (title: string, content: string, language: SupportedLanguage = 'en') => {
-  const systemPrompt = getLanguageInstruction(language)
   const userPrompt = `请为以下社科类书籍章节内容生成一个详细总结：
 
 章节标题：${title}
@@ -35,5 +33,5 @@ ${content}
 
 注意：如果内容是致谢、目录、前言、序言、参考文献等无实质学术内容的页面，请直接回复"无需总结"。`
   
-  return { systemPrompt, userPrompt }
+  return userPrompt
 }
