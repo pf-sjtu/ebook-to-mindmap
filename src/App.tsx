@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Textarea } from '@/components/ui/textarea'
 import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp, ExternalLink } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -71,6 +72,7 @@ function App() {
   const [extractedChapters, setExtractedChapters] = useState<any[] | null>(null)
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set())
   const [bookData, setBookData] = useState<{ title: string; author: string } | null>(null)
+  const [customPrompt, setCustomPrompt] = useState('')
   // error状态已移除，改用toast通知
   const [cacheService] = useState(new CacheService())
   const [showBackToTop, setShowBackToTop] = useState(false)
@@ -422,7 +424,7 @@ function App() {
           let summary = cacheService.get(cacheKey)
 
           if (!summary) {
-            summary = await aiService.summarizeChapter(chapter.title, chapter.content, bookType, processingOptions.outputLanguage)
+            summary = await aiService.summarizeChapter(chapter.title, chapter.content, bookType, processingOptions.outputLanguage, customPrompt)
             cacheService.set(cacheKey, summary)
           }
 
@@ -444,7 +446,7 @@ function App() {
           let mindMap: MindElixirData = cacheService.get(cacheKey)
 
           if (!mindMap) {
-            mindMap = await aiService.generateChapterMindMap(chapter.content, processingOptions.outputLanguage)
+            mindMap = await aiService.generateChapterMindMap(chapter.content, processingOptions.outputLanguage, customPrompt)
             cacheService.set(cacheKey, mindMap)
           }
 
@@ -577,7 +579,7 @@ function App() {
         let combinedMindMap = cacheService.get(combinedMindMapCacheKey)
         if (!combinedMindMap) {
           console.log('🔄 [DEBUG] 缓存未命中，开始生成整书思维导图')
-          combinedMindMap = await aiService.generateCombinedMindMap(bookData.title, processedChapters)
+          combinedMindMap = await aiService.generateCombinedMindMap(bookData.title, processedChapters, customPrompt)
           cacheService.set(combinedMindMapCacheKey, combinedMindMap)
           console.log('💾 [DEBUG] 整书思维导图已缓存')
         } else {
@@ -601,7 +603,7 @@ function App() {
     } finally {
       setProcessing(false)
     }
-  }, [extractedChapters, bookData, apiKey, file, selectedChapters, aiProvider, apiUrl, model, processingMode, bookType, cacheService])
+  }, [extractedChapters, bookData, apiKey, file, selectedChapters, aiProvider, apiUrl, model, processingMode, bookType, cacheService, customPrompt, processingOptions.outputLanguage, t])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -730,6 +732,25 @@ function App() {
                   </div>
                 ))}
               </div>
+
+              {/* 自定义提示词输入框 */}
+              <div className="space-y-2">
+                <Label htmlFor="custom-prompt" className="text-sm font-medium">
+                  {t('chapters.customPrompt')}
+                </Label>
+                <Textarea
+                  id="custom-prompt"
+                  placeholder={t('chapters.customPromptPlaceholder')}
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  className="min-h-20 resize-none"
+                  disabled={processing || extractingChapters}
+                />
+                <p className="text-xs text-gray-500">
+                  {t('chapters.customPromptDescription')}
+                </p>
+              </div>
+
               <Button
                 onClick={() => {
                   if (!apiKey) {
@@ -759,7 +780,6 @@ function App() {
             </CardContent>
           </Card>
         )}
-        {/* {t('progress.title')} */}
         {(processing || extractingChapters) && (
           <Card>
             <CardContent>

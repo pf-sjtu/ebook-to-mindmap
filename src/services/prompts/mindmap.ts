@@ -1,6 +1,6 @@
-import { type SupportedLanguage } from './utils'
 
-export const getChapterMindMapPrompt = (language: SupportedLanguage = 'en')=> {
+
+export const getChapterMindMapPrompt = ()=> {
   const userPrompt = `\`\`\`ts
 export interface NodeObj {
   topic: string
@@ -49,7 +49,7 @@ export interface Summary {
   return userPrompt
 }
 
-export const getMindMapArrowPrompt = (language: SupportedLanguage = 'en') => {
+export const getMindMapArrowPrompt = () => {
   const userPrompt = `你需要为已有的思维导图添加箭头连接，以显示不同节点之间的关联关系。
 \`\`\`ts
 export interface NodeObj {

@@ -1,7 +1,6 @@
 // 章节总结相关的prompt模板
-import { type SupportedLanguage } from './utils'
 
-export const getFictionChapterSummaryPrompt = (title: string, content: string, language: SupportedLanguage = 'en') => {
+export const getFictionChapterSummaryPrompt = (title: string, content: string) => {
   const userPrompt = `请为以下章节内容生成一个详细总结：
 
 章节标题：${title}
@@ -16,7 +15,7 @@ ${content}
   return userPrompt
 }
 
-export const getNonFictionChapterSummaryPrompt = (title: string, content: string, language: SupportedLanguage = 'en') => {
+export const getNonFictionChapterSummaryPrompt = (title: string, content: string) => {
   const userPrompt = `请为以下社科类书籍章节内容生成一个详细总结：
 
 章节标题：${title}

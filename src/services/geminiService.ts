@@ -55,11 +55,16 @@ export class AIService {
     return typeof this.config === 'function' ? this.config() : this.config
   }
 
-  async summarizeChapter(title: string, content: string, bookType: 'fiction' | 'non-fiction' = 'non-fiction', outputLanguage: SupportedLanguage = 'en'): Promise<string> {
+  async summarizeChapter(title: string, content: string, bookType: 'fiction' | 'non-fiction' = 'non-fiction', outputLanguage: SupportedLanguage = 'en', customPrompt?: string): Promise<string> {
     try {
-      const prompt = bookType === 'fiction' 
-        ? getFictionChapterSummaryPrompt(title, content, outputLanguage)
-        : getNonFictionChapterSummaryPrompt(title, content, outputLanguage)
+      let prompt = bookType === 'fiction'
+        ? getFictionChapterSummaryPrompt(title, content)
+        : getNonFictionChapterSummaryPrompt(title, content)
+
+      // 如果有自定义提示词，则拼接到原始prompt后面
+      if (customPrompt && customPrompt.trim()) {
+        prompt += `\n\n补充要求：${customPrompt.trim()}`
+      }
 
       const summary = await this.generateContent(prompt, outputLanguage)
 
@@ -80,7 +85,7 @@ export class AIService {
         `${chapter.title}:\n${chapter.summary || '无总结'}`
       ).join('\n\n')
 
-      const prompt = getChapterConnectionsAnalysisPrompt(chapterSummaries, outputLanguage)
+      const prompt = getChapterConnectionsAnalysisPrompt(chapterSummaries)
 
       const connections = await this.generateContent(prompt, outputLanguage)
 
@@ -106,7 +111,7 @@ export class AIService {
         `第${index + 1}章：${chapter.title}，内容：${chapter.summary || '无总结'}`
       ).join('\n')
 
-      const prompt = getOverallSummaryPrompt(bookTitle, chapterInfo, connections, outputLanguage)
+      const prompt = getOverallSummaryPrompt(bookTitle, chapterInfo, connections)
 
       const summary = await this.generateContent(prompt, outputLanguage)
 
@@ -120,10 +125,15 @@ export class AIService {
     }
   }
 
-  async generateChapterMindMap(content: string, outputLanguage: SupportedLanguage = 'en'): Promise<MindElixirData> {
+  async generateChapterMindMap(content: string, outputLanguage: SupportedLanguage = 'en', customPrompt?: string): Promise<MindElixirData> {
     try {
-      const basePrompt = getChapterMindMapPrompt(outputLanguage)
-      const prompt = basePrompt + `章节内容：\n${content}`
+      const basePrompt = getChapterMindMapPrompt()
+      let prompt = basePrompt + `章节内容：\n${content}`
+
+      // 如果有自定义提示词，则拼接到原始prompt后面
+      if (customPrompt && customPrompt.trim()) {
+        prompt += `\n\n补充要求：${customPrompt.trim()}`
+      }
 
       const mindMapJson = await this.generateContent(prompt, outputLanguage)
 
@@ -153,7 +163,7 @@ export class AIService {
 
   async generateMindMapArrows(combinedMindMapData: any, outputLanguage: SupportedLanguage = 'en'): Promise<any> {
     try {
-      const basePrompt = getMindMapArrowPrompt(outputLanguage)
+      const basePrompt = getMindMapArrowPrompt()
       const prompt = basePrompt + `\n\n当前思维导图数据：\n${JSON.stringify(combinedMindMapData, null, 2)}`
 
       const arrowsJson = await this.generateContent(prompt, outputLanguage)
@@ -182,16 +192,20 @@ export class AIService {
     }
   }
 
-  async generateCombinedMindMap(bookTitle: string, chapters: Chapter[]): Promise<MindElixirData> {
+  async generateCombinedMindMap(bookTitle: string, chapters: Chapter[], customPrompt?: string): Promise<MindElixirData> {
     try {
       const basePrompt = getChapterMindMapPrompt()
       const chaptersContent = chapters.map(item=>item.content).join('\n\n ------------- \n\n')
-      const mindMapJson = await this.generateContent(
-        `${basePrompt}
+      let prompt = `${basePrompt}
         请为整本书《${bookTitle}》生成一个完整的思维导图，将所有章节的内容整合在一起。
-        章节内容：\n${chaptersContent}`,
-        'en'
-      )
+        章节内容：\n${chaptersContent}`
+
+      // 如果有自定义提示词，则拼接到原始prompt后面
+      if (customPrompt && customPrompt.trim()) {
+        prompt += `\n\n补充要求：${customPrompt.trim()}`
+      }
+
+      const mindMapJson = await this.generateContent(prompt, 'en')
 
       if (!mindMapJson || mindMapJson.trim().length === 0) {
         throw new Error('AI返回了空的思维导图数据')

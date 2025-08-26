@@ -1,7 +1,6 @@
 // 章节关联分析相关的prompt模板
-import { type SupportedLanguage } from './utils'
 
-export const getChapterConnectionsAnalysisPrompt = (chapterSummaries: string, language: SupportedLanguage = 'en') => {
+export const getChapterConnectionsAnalysisPrompt = (chapterSummaries: string) => {
   const userPrompt = `请帮我分析这本书各章节之间的关系，并总结全书的核心内容：
 
 ${chapterSummaries}

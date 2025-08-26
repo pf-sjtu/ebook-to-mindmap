@@ -1,7 +1,6 @@
 // 全书总结相关的prompt模板
-import { type SupportedLanguage } from './utils'
 
-export const getOverallSummaryPrompt = (bookTitle: string, chapterInfo: string, connections: string, language: SupportedLanguage = 'en') => {
+export const getOverallSummaryPrompt = (bookTitle: string, chapterInfo: string, connections: string) => {
   const userPrompt = `书籍章节结构：
 ${chapterInfo}
 
