@@ -120,57 +120,40 @@ function App() {
   }, [t])
 
   // 清除章节缓存的函数
-  const clearChapterCache = useCallback((chapterId: string) => {
+  const clearChapterCache = (chapterId: string) => {
     if (!file) return
 
-    // 根据处理模式确定缓存键
-    const cacheKey = processingMode === 'summary'
-      ? `${file.name}_${chapterId}_summary`
-      : processingMode === 'mindmap'
-        ? `${file.name}_${chapterId}_mindmap`
-        : `${file.name}_${chapterId}_combined`
-
-    // 删除缓存
-    if (cacheService.delete(cacheKey)) {
-      // 使用toast显示提示信息
+    const type = processingMode === 'summary' ? 'summary' : 'mindmap'
+    if (cacheService.clearChapterCache(file.name, chapterId, type)) {
       toast.success('已清除缓存，下次处理将重新生成内容', {
         duration: 3000,
         position: 'top-center',
       })
     }
-  }, [file, processingMode])
+  }
 
-  // 清除特定类型缓存的函数（用于connections和overall）
-  const clearSpecificCache = useCallback((cacheType: string) => {
+  // 清除特定类型缓存的函数
+  const clearSpecificCache = (cacheType: 'connections' | 'overall_summary' | 'combined_mindmap') => {
     if (!file) return
 
-    let cacheKey: string
-    let displayName: string
-
-    if (cacheType === 'connections') {
-      cacheKey = CacheService.generateKey(file.name, 'connections', 'v1')
-      displayName = '章节关联'
-    } else if (cacheType === 'overall') {
-      cacheKey = CacheService.generateKey(file.name, 'overall-summary', 'v1')
-      displayName = '全书总结'
-    } else {
-      return
+    const displayNames = {
+      connections: '章节关联',
+      overall_summary: '全书总结',
+      combined_mindmap: '整书思维导图'
     }
 
-    // 删除缓存
-    if (cacheService.delete(cacheKey)) {
-      // 使用toast显示提示信息
-      toast.success(`已清除${displayName}缓存，下次处理将重新生成内容`, {
+    if (cacheService.clearSpecificCache(file.name, cacheType)) {
+      toast.success(`已清除${displayNames[cacheType]}缓存，下次处理将重新生成内容`, {
         duration: 3000,
         position: 'top-center',
       })
     } else {
-      toast.info(`没有找到可清除的${displayName}缓存`, {
+      toast.info(`没有找到可清除的${displayNames[cacheType]}缓存`, {
         duration: 3000,
         position: 'top-center',
       })
     }
-  }, [file])
+  }
 
   // 章节选择处理函数
   const handleChapterSelect = useCallback((chapterId: string, checked: boolean) => {
@@ -197,49 +180,12 @@ function App() {
   }, [extractedChapters])
 
   // 清除整本书缓存的函数
-  const clearBookCache = useCallback(() => {
+  const clearBookCache = () => {
     if (!file) return
 
-    // 计数器，记录删除的缓存项数量
-    let deletedCount = 0
+    const mode = processingMode === 'combined-mindmap' ? 'combined_mindmap' : processingMode as 'summary' | 'mindmap'
+    const deletedCount = cacheService.clearBookCache(file.name, mode)
 
-    // 根据当前处理模式确定要清除的缓存类型
-    let cacheTypes: string[] = []
-    let chapterCacheSuffix = ''
-
-    if (processingMode === 'summary') {
-      // 文字总结模式：清除章节总结、章节关联、全书总结相关缓存
-      cacheTypes = ['connections', 'overall-summary']
-      chapterCacheSuffix = '_summary'
-    } else if (processingMode === 'mindmap') {
-      // 章节思维导图模式：清除章节思维导图、思维导图箭头相关缓存
-      cacheTypes = ['mindmap-arrows']
-      chapterCacheSuffix = '_mindmap'
-    } else if (processingMode === 'combined-mindmap') {
-      // 整书思维导图模式：清除整书思维导图相关缓存
-      cacheTypes = ['combined-mindmap']
-      chapterCacheSuffix = '_combined'
-    }
-
-    // 删除使用CacheService.generateKey生成的缓存
-    cacheTypes.forEach(type => {
-      const cacheKey = CacheService.generateKey(file.name, type, 'v1')
-      if (cacheService.delete(cacheKey)) {
-        deletedCount++
-      }
-    })
-
-    // 删除章节级别的缓存（使用旧的命名方式）
-    const stats = cacheService.getStats()
-    const bookPrefix = `${file.name}_`
-    stats.keys.forEach(key => {
-      if (key.startsWith(bookPrefix) && key.endsWith(chapterCacheSuffix)) {
-        cacheService.delete(key)
-        deletedCount++
-      }
-    })
-
-    // 使用toast显示提示信息
     const modeNames = {
       'summary': '文字总结',
       'mindmap': '章节思维导图',
@@ -257,7 +203,7 @@ function App() {
         position: 'top-center',
       })
     }
-  }, [file, processingMode])
+  }
 
   // 提取章节的函数
   const extractChapters = useCallback(async () => {
@@ -394,12 +340,11 @@ function App() {
 
         if (processingMode === 'summary') {
           // 文字总结模式
-          const cacheKey = `${file.name}_${chapter.id}_summary`
-          let summary = cacheService.get(cacheKey)
+          let summary = cacheService.getString(file.name, 'summary', chapter.id)
 
           if (!summary) {
             summary = await aiService.summarizeChapter(chapter.title, chapter.content, bookType, processingOptions.outputLanguage, customPrompt)
-            cacheService.set(cacheKey, summary)
+            cacheService.setCache(file.name, 'summary', summary, chapter.id)
           }
 
           processedChapter = {
@@ -416,12 +361,11 @@ function App() {
           }))
         } else if (processingMode === 'mindmap') {
           // 章节思维导图模式
-          const cacheKey = `${file.name}_${chapter.id}_mindmap`
-          let mindMap: MindElixirData = cacheService.get(cacheKey)
+          let mindMap = cacheService.getMindMap(file.name, 'mindmap', chapter.id)
 
           if (!mindMap) {
             mindMap = await aiService.generateChapterMindMap(chapter.content, processingOptions.outputLanguage, customPrompt)
-            cacheService.set(cacheKey, mindMap)
+            cacheService.setCache(file.name, 'mindmap', mindMap, chapter.id)
           }
 
           if (!mindMap.nodeData) continue // 无需总结的章节
@@ -459,12 +403,11 @@ function App() {
         // 文字总结模式的后续步骤
         // 步骤4: 分析章节关联
         setCurrentStep('正在分析章节关联...')
-        const connectionsCacheKey = CacheService.generateKey(file.name, 'connections', 'v1')
-        let connections = cacheService.get(connectionsCacheKey)
+        let connections = cacheService.getString(file.name, 'connections')
         if (!connections) {
           console.log('🔄 [DEBUG] 缓存未命中，开始分析章节关联')
           connections = await aiService.analyzeConnections(processedChapters, processingOptions.outputLanguage)
-          cacheService.set(connectionsCacheKey, connections)
+          cacheService.setCache(file.name, 'connections', connections)
           console.log('💾 [DEBUG] 章节关联已缓存')
         } else {
           console.log('✅ [DEBUG] 使用缓存的章节关联')
@@ -478,17 +421,16 @@ function App() {
 
         // 步骤5: 生成全书总结
         setCurrentStep('正在生成全书总结...')
-        const overallSummaryCacheKey = CacheService.generateKey(file.name, 'overall-summary', 'v1')
-        let overallSummary = cacheService.get(overallSummaryCacheKey)
+        let overallSummary = cacheService.getString(file.name, 'overall_summary')
         if (!overallSummary) {
           console.log('🔄 [DEBUG] 缓存未命中，开始生成全书总结')
           overallSummary = await aiService.generateOverallSummary(
             bookData.title,
             processedChapters,
-            connections,
+            connections!,
             processingOptions.outputLanguage
           )
-          cacheService.set(overallSummaryCacheKey, overallSummary)
+          cacheService.setCache(file.name, 'overall_summary', overallSummary)
           console.log('💾 [DEBUG] 全书总结已缓存')
         } else {
           console.log('✅ [DEBUG] 使用缓存的全书总结')
@@ -549,12 +491,11 @@ function App() {
         // 整书思维导图模式的后续步骤
         // 步骤4: 生成整书思维导图
         setCurrentStep('正在生成整书思维导图...')
-        const combinedMindMapCacheKey = CacheService.generateKey(file.name, 'combined-mindmap', 'v1')
-        let combinedMindMap = cacheService.get(combinedMindMapCacheKey)
+        let combinedMindMap = cacheService.getMindMap(file.name, 'combined_mindmap')
         if (!combinedMindMap) {
           console.log('🔄 [DEBUG] 缓存未命中，开始生成整书思维导图')
           combinedMindMap = await aiService.generateCombinedMindMap(bookData.title, processedChapters, customPrompt)
-          cacheService.set(combinedMindMapCacheKey, combinedMindMap)
+          cacheService.setCache(file.name, 'combined_mindmap', combinedMindMap)
           console.log('💾 [DEBUG] 整书思维导图已缓存')
         } else {
           console.log('✅ [DEBUG] 使用缓存的整书思维导图')
@@ -833,7 +774,7 @@ function App() {
                       showClearCache={true}
                       showViewContent={false}
                       showCopyButton={true}
-                      onClearCache={() => clearSpecificCache('overall')}
+                      onClearCache={() => clearSpecificCache('overall_summary')}
                     />
                   </TabsContent>
                 </Tabs>
