@@ -5,30 +5,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp, ExternalLink } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { EpubProcessor } from './services/epubProcessor'
+import { EpubProcessor, type ChapterData } from './services/epubProcessor'
 import { PdfProcessor } from './services/pdfProcessor'
 import { AIService } from './services/geminiService'
 import { CacheService } from './services/cacheService'
 import MindElixirReact from './components/project/MindElixirReact'
 import { ConfigDialog } from './components/project/ConfigDialog'
-import { ViewContentDialog } from './components/ViewContentDialog'
-import { CopyButton } from './components/ui/copy-button'
+
 import type { MindElixirData } from 'mind-elixir'
 import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
 import type { MindElixirReactRef } from './components/project/MindElixirReact'
 import { DownloadMindMapButton } from './components/DownloadMindMapButton'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
+import { MarkdownCard } from './components/MarkdownCard'
+import { MindMapCard } from './components/MindMapCard'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
-import { launchMindElixir } from '@mind-elixir/open-desktop'
-import { downloadMethodList } from '@mind-elixir/export-mindmap'
+import { scrollToTop, openInMindElixir, downloadMindMap } from './utils'
 
 
 const options = { direction: 1, alignment: 'nodes' } as const
@@ -59,6 +58,7 @@ interface BookMindMap {
 
 // 导入配置store
 import { useAIConfig, useProcessingOptions, useConfigStore } from './stores/configStore'
+const cacheService = new CacheService()
 
 function App() {
   const { t } = useTranslation()
@@ -69,16 +69,13 @@ function App() {
   const [currentStep, setCurrentStep] = useState('')
   const [bookSummary, setBookSummary] = useState<BookSummary | null>(null)
   const [bookMindMap, setBookMindMap] = useState<BookMindMap | null>(null)
-  const [extractedChapters, setExtractedChapters] = useState<any[] | null>(null)
+  const [extractedChapters, setExtractedChapters] = useState<ChapterData[] | null>(null)
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set())
   const [bookData, setBookData] = useState<{ title: string; author: string } | null>(null)
   const [customPrompt, setCustomPrompt] = useState('')
-  // error状态已移除，改用toast通知
-  const [cacheService] = useState(new CacheService())
   const [showBackToTop, setShowBackToTop] = useState(false)
 
   // MindElixir 实例引用
-  const chapterMindElixirRefs = useRef<{ [key: string]: MindElixirReactRef | null }>({})
   const combinedMindElixirRef = useRef<MindElixirReactRef | null>(null)
   const wholeMindElixirRef = useRef<MindElixirReactRef | null>(null)
 
@@ -87,7 +84,7 @@ function App() {
   const processingOptions = useProcessingOptions()
 
   // 从store中解构状态值
-  const { provider: aiProvider, apiKey, apiUrl, model } = aiConfig
+  const { apiKey } = aiConfig
   const { processingMode, bookType, useSmartDetection, skipNonEssentialChapters } = processingOptions
 
   // zustand的persist中间件会自动处理配置的加载和保存
@@ -102,55 +99,7 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // 回到顶部函数
-  const scrollToTop = useCallback(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    })
-  }, [])
 
-  // 在MindElixir中打开思维导图
-  const openInMindElixir = useCallback(async (mindmapData: MindElixirData, title: string) => {
-    try {
-      await launchMindElixir(mindmapData)
-      toast.success(`已成功发送"${title}"到 Mind Elixir Desktop`, {
-        duration: 3000,
-        position: 'top-center',
-      })
-    } catch (error) {
-      console.error('启动 Mind Elixir 失败:', error)
-      toast.error(t('mindElixir.launchError'), {
-        duration: 5000,
-        position: 'top-center',
-      })
-    }
-  }, [])
-
-  // 下载思维导图函数
-  const downloadMindMap = useCallback(async (mindElixirInstance: any, title: string, format: string) => {
-    try {
-      // 查找对应的下载方法
-      const method = downloadMethodList.find(item => item.type === format)
-      if (!method) {
-        throw new Error(`不支持的格式: ${format}`)
-      }
-
-      // 执行下载
-      await method.download(mindElixirInstance)
-
-      toast.success(`${title} 已成功导出为 ${format} 格式`, {
-        duration: 3000,
-        position: 'top-center',
-      })
-    } catch (error) {
-      console.error('导出思维导图失败:', error)
-      toast.error(t('mindElixir.exportError', { format, error: error instanceof Error ? error.message : t('common.error') }), {
-        duration: 5000,
-        position: 'top-center',
-      })
-    }
-  }, [])
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0]
@@ -168,7 +117,7 @@ function App() {
         position: 'top-center',
       })
     }
-  }, [])
+  }, [t])
 
   // 清除章节缓存的函数
   const clearChapterCache = useCallback((chapterId: string) => {
@@ -189,7 +138,39 @@ function App() {
         position: 'top-center',
       })
     }
-  }, [file, processingMode, cacheService])
+  }, [file, processingMode])
+
+  // 清除特定类型缓存的函数（用于connections和overall）
+  const clearSpecificCache = useCallback((cacheType: string) => {
+    if (!file) return
+
+    let cacheKey: string
+    let displayName: string
+
+    if (cacheType === 'connections') {
+      cacheKey = CacheService.generateKey(file.name, 'connections', 'v1')
+      displayName = '章节关联'
+    } else if (cacheType === 'overall') {
+      cacheKey = CacheService.generateKey(file.name, 'overall-summary', 'v1')
+      displayName = '全书总结'
+    } else {
+      return
+    }
+
+    // 删除缓存
+    if (cacheService.delete(cacheKey)) {
+      // 使用toast显示提示信息
+      toast.success(`已清除${displayName}缓存，下次处理将重新生成内容`, {
+        duration: 3000,
+        position: 'top-center',
+      })
+    } else {
+      toast.info(`没有找到可清除的${displayName}缓存`, {
+        duration: 3000,
+        position: 'top-center',
+      })
+    }
+  }, [file])
 
   // 章节选择处理函数
   const handleChapterSelect = useCallback((chapterId: string, checked: boolean) => {
@@ -276,7 +257,7 @@ function App() {
         position: 'top-center',
       })
     }
-  }, [file, cacheService, processingMode])
+  }, [file, processingMode])
 
   // 提取章节的函数
   const extractChapters = useCallback(async () => {
@@ -294,40 +275,33 @@ function App() {
 
     try {
       let extractedBookData: { title: string; author: string }
-      let chapters: any[]
+      let chapters: ChapterData[]
 
       const isEpub = file.name.endsWith('.epub')
       const isPdf = file.name.endsWith('.pdf')
 
       if (isEpub) {
-        const epubProcessor = new EpubProcessor()
-
-        // 步骤1: 解析EPUB文件
+        const processor = new EpubProcessor()
         setCurrentStep('正在解析 EPUB 文件...')
-        const epubData = await epubProcessor.parseEpub(file)
-        extractedBookData = { title: epubData.title, author: epubData.author }
+        const bookData = await processor.parseEpub(file)
+        extractedBookData = { title: bookData.title, author: bookData.author }
         setProgress(50)
 
-        // 步骤2: 提取章节
         setCurrentStep('正在提取章节内容...')
-        chapters = await epubProcessor.extractChapters(epubData.book, useSmartDetection, skipNonEssentialChapters, processingOptions.maxSubChapterDepth)
-        setProgress(100)
+        chapters = await processor.extractChapters(bookData.book, useSmartDetection, skipNonEssentialChapters, processingOptions.maxSubChapterDepth)
       } else if (isPdf) {
-        const pdfProcessor = new PdfProcessor()
-
-        // 步骤1: 解析PDF文件
+        const processor = new PdfProcessor()
         setCurrentStep('正在解析 PDF 文件...')
-        const pdfData = await pdfProcessor.parsePdf(file)
-        extractedBookData = { title: pdfData.title, author: pdfData.author }
+        const bookData = await processor.parsePdf(file)
+        extractedBookData = { title: bookData.title, author: bookData.author }
         setProgress(50)
 
-        // 步骤2: 提取章节
         setCurrentStep('正在提取章节内容...')
-        chapters = await pdfProcessor.extractChapters(file, useSmartDetection, skipNonEssentialChapters, processingOptions.maxSubChapterDepth)
-        setProgress(100)
+        chapters = await processor.extractChapters(file, useSmartDetection, skipNonEssentialChapters, processingOptions.maxSubChapterDepth)
       } else {
         throw new Error('不支持的文件格式')
       }
+      setProgress(100)
 
       setBookData(extractedBookData)
       setExtractedChapters(chapters)
@@ -347,7 +321,7 @@ function App() {
     } finally {
       setExtractingChapters(false)
     }
-  }, [file, useSmartDetection, skipNonEssentialChapters, processingOptions.maxSubChapterDepth])
+  }, [file, useSmartDetection, skipNonEssentialChapters, processingOptions.maxSubChapterDepth, t])
 
   const processEbook = useCallback(async () => {
     if (!extractedChapters || !bookData || !apiKey) {
@@ -540,7 +514,7 @@ function App() {
           }))
         }
 
-        let combinedMindMap: MindElixirData = {
+        const combinedMindMap: MindElixirData = {
           nodeData: rootNode,
           arrows: [],
           summaries: processedChapters.reduce((acc, chapter) => acc.concat(chapter.mindMap?.summaries || []), [] as Summary[])
@@ -603,7 +577,7 @@ function App() {
     } finally {
       setProcessing(false)
     }
-  }, [extractedChapters, bookData, apiKey, file, selectedChapters, aiProvider, apiUrl, model, processingMode, bookType, cacheService, customPrompt, processingOptions.outputLanguage, t])
+  }, [extractedChapters, bookData, apiKey, file, selectedChapters, processingMode, bookType, customPrompt, processingOptions.outputLanguage, t])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -823,68 +797,44 @@ function App() {
 
                   <TabsContent value="chapters" className="grid grid-cols-1 gap-4">
                     {bookSummary.chapters.map((chapter, index) => (
-                      <Card key={chapter.id} className='gap-0'>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline"># {index + 1}</Badge>
-                              {chapter.title}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <CopyButton
-                                content={chapter.summary}
-                                successMessage={t('common.copiedToClipboard')}
-                                title={t('common.copyChapterSummary')}
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => clearChapterCache(chapter.id)}
-                                title={t('common.clearCache')}
-                              >
-                                <Trash2 className="h-4 w-4 " />
-                              </Button>
-                              <ViewContentDialog
-                                title={chapter.title}
-                                content={chapter.content}
-                                chapterIndex={index}
-                              />
-                            </div>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {chapter.summary || ''}
-                            </ReactMarkdown>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <MarkdownCard
+                        key={chapter.id}
+                        id={chapter.id}
+                        title={chapter.title}
+                        content={chapter.content}
+                        markdownContent={chapter.summary || ''}
+                        index={index}
+                        onClearCache={clearChapterCache}
+                      />
                     ))}
                   </TabsContent>
 
                   <TabsContent value="connections">
-                    <Card>
-                      <CardContent>
-                        <div className="prose max-w-none text-gray-700 leading-relaxed">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {bookSummary.connections}
-                          </ReactMarkdown>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <MarkdownCard
+                      id="connections"
+                      title={t('results.tabs.connections')}
+                      content={bookSummary.connections}
+                      markdownContent={bookSummary.connections}
+                      index={0}
+                      showClearCache={true}
+                      showViewContent={false}
+                      showCopyButton={true}
+                      onClearCache={() => clearSpecificCache('connections')}
+                    />
                   </TabsContent>
 
                   <TabsContent value="overall">
-                    <Card>
-                      <CardContent>
-                        <div className="prose max-w-none text-gray-700 leading-relaxed">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {bookSummary.overallSummary}
-                          </ReactMarkdown>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <MarkdownCard
+                      id="overall"
+                      title={t('results.tabs.overallSummary')}
+                      content={bookSummary.overallSummary}
+                      markdownContent={bookSummary.overallSummary}
+                      index={0}
+                      showClearCache={true}
+                      showViewContent={false}
+                      showCopyButton={true}
+                      onClearCache={() => clearSpecificCache('overall')}
+                    />
                   </TabsContent>
                 </Tabs>
               ) : processingMode === 'mindmap' && bookMindMap ? (
@@ -896,67 +846,21 @@ function App() {
 
                   <TabsContent value="chapters" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {bookMindMap.chapters.map((chapter, index) => (
-                      <Card key={chapter.id} className='gap-2'>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg w-full overflow-hidden">
-                            <div className="truncate w-full">
-                              {chapter.title}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {chapter.mindMap && (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => openInMindElixir(chapter.mindMap!, chapter.title)}
-                                    title={t('common.openInMindElixir')}
-                                  >
-                                    <ExternalLink className="h-4 w-4 mr-1" />
-                                  </Button>
-                                  <DownloadMindMapButton
-                                    mindElixirRef={() => chapterMindElixirRefs.current[chapter.id]}
-                                    title={chapter.title}
-                                    downloadMindMap={downloadMindMap}
-                                  />
-                                </>
-                              )}
-                              <CopyButton
-                                content={chapter.content}
-                                successMessage={t('common.copiedToClipboard')}
-                                title={t('common.copyChapterContent')}
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => clearChapterCache(chapter.id)}
-                                title={t('common.clearCache')}
-                              >
-                                <Trash2 className="h-4 w-4 " />
-                              </Button>
-                              <ViewContentDialog
-                                title={chapter.title}
-                                content={chapter.content}
-                                chapterIndex={index}
-                              />
-                            </div>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          {chapter.mindMap && (
-                            <div className="border rounded-lg">
-                              <MindElixirReact
-                                ref={(ref) => {
-                                  chapterMindElixirRefs.current[chapter.id] = ref
-                                }}
-                                data={chapter.mindMap}
-                                fitPage={false}
-                                options={options}
-                                className="aspect-square w-full max-w-[500px] mx-auto"
-                              />
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
+                      chapter.mindMap && (
+                        <MindMapCard
+                          key={chapter.id}
+                          id={chapter.id}
+                          title={chapter.title}
+                          content={chapter.content}
+                          mindMapData={chapter.mindMap}
+                          index={index}
+
+                          onClearCache={clearChapterCache}
+                          onOpenInMindElixir={openInMindElixir}
+                          onDownloadMindMap={downloadMindMap}
+                          mindElixirOptions={options}
+                        />
+                      )
                     ))}
                   </TabsContent>
 
