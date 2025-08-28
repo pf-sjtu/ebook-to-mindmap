@@ -8,7 +8,8 @@ export type CacheKeyType =
   // 书籍级缓存
   | 'connections'      // 章节关联分析
   | 'overall_summary'  // 全书总结
-  | 'combined_mindmap' // 整书思维导图
+  | 'combined_mindmap' // 整书思维导图（直接从整书内容生成）
+  | 'merged_mindmap'   // 合并思维导图（从章节思维导图合并生成）
   | 'mindmap_arrows'   // 思维导图箭头
 
 // 定义缓存值的类型
@@ -145,7 +146,7 @@ export class CacheService {
   }
 
   // 清除特定类型缓存
-  clearSpecificCache(fileName: string, cacheType: 'connections' | 'overall_summary' | 'combined_mindmap'): boolean {
+  clearSpecificCache(fileName: string, cacheType: 'connections' | 'overall_summary' | 'combined_mindmap' | 'merged_mindmap'): boolean {
     const type: CacheKeyType = cacheType
     return this.deleteCache(fileName, type)
   }
@@ -170,8 +171,9 @@ export class CacheService {
       })
 
     } else if (processingMode === 'mindmap') {
-      // 章节思维导图模式：清除章节思维导图、思维导图箭头相关缓存
+      // 章节思维导图模式：清除章节思维导图、思维导图箭头、合并思维导图相关缓存
       if (this.deleteCache(fileName, 'mindmap_arrows')) deletedCount++
+      if (this.deleteCache(fileName, 'merged_mindmap')) deletedCount++
 
       // 清除所有章节的思维导图缓存
       const stats = this.getStats()

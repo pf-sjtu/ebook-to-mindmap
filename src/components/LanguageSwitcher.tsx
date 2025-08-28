@@ -25,7 +25,7 @@ export function LanguageSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
+        <Button variant="outline" size="sm" className="flex items-center gap-2 absolute right-0 top-0">
           <Languages className="h-4 w-4" />
           <span className="hidden sm:inline">{currentLanguage.flag} {currentLanguage.name}</span>
           <span className="sm:hidden">{currentLanguage.flag}</span>

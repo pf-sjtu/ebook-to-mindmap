@@ -48,7 +48,7 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
 
   return (
     <Card className={`gap-0 ${className}`}>
-      <CardHeader className="pb-3">
+      <CardHeader>
         <CardTitle className="text-lg flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Badge variant="outline"># {index + 1}</Badge>

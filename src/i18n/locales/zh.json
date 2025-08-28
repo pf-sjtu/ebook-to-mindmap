@@ -48,6 +48,7 @@
     "summaryTitle": "《{{title}}》解析结果",
     "chapterMindMapTitle": "《{{title}}》章节思维导图",
     "wholeMindMapTitle": "《{{title}}》整书思维导图",
+    "combinedMindMapTitle": "《{{title}}》章节思维导图整合",
     "author": "作者: {{author}}",
     "chapterCount": "共 {{count}} 章",
     "tabs": {
@@ -55,8 +56,9 @@
       "connections": "章节关联",
       "overallSummary": "全书总结",
       "chapterMindMaps": "章节思维导图",
-      "combinedMindMap": "整书思维导图"
+      "combinedMindMap": "章节思维导图整合"
     },
+    "generatingMindMap": "正在生成思维导图...",
     "actions": {
       "copyChapterSummary": "复制章节总结",
       "copyChapterContent": "复制章节内容",

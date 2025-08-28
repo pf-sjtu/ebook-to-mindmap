@@ -70,12 +70,12 @@ export const MindMapCard: React.FC<MindMapCardProps> = ({
 
   return (
     <Card className={`gap-2 ${className}`}>
-      <CardHeader className="pb-3">
+      <CardHeader>
         <CardTitle className="text-lg w-full overflow-hidden">
           <div className="truncate w-full">
             {title}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mt-2">
             {showOpenInMindElixir && onOpenInMindElixir && (
               <Button
                 variant="outline"

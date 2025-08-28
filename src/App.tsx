@@ -1,27 +1,21 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
-import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp, ExternalLink } from 'lucide-react'
+import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp } from 'lucide-react'
 import { EpubProcessor, type ChapterData } from './services/epubProcessor'
 import { PdfProcessor } from './services/pdfProcessor'
 import { AIService } from './services/geminiService'
 import { CacheService } from './services/cacheService'
-import MindElixirReact from './components/project/MindElixirReact'
 import { ConfigDialog } from './components/project/ConfigDialog'
-
 import type { MindElixirData } from 'mind-elixir'
 import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
-import type { MindElixirReactRef } from './components/project/MindElixirReact'
-import { DownloadMindMapButton } from './components/DownloadMindMapButton'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { MarkdownCard } from './components/MarkdownCard'
 import { MindMapCard } from './components/MindMapCard'
@@ -75,9 +69,7 @@ function App() {
   const [customPrompt, setCustomPrompt] = useState('')
   const [showBackToTop, setShowBackToTop] = useState(false)
 
-  // MindElixir 实例引用
-  const combinedMindElixirRef = useRef<MindElixirReactRef | null>(null)
-  const wholeMindElixirRef = useRef<MindElixirReactRef | null>(null)
+
 
   // 使用zustand store管理配置
   const aiConfig = useAIConfig()
@@ -133,13 +125,14 @@ function App() {
   }
 
   // 清除特定类型缓存的函数
-  const clearSpecificCache = (cacheType: 'connections' | 'overall_summary' | 'combined_mindmap') => {
+  const clearSpecificCache = (cacheType: 'connections' | 'overall_summary' | 'combined_mindmap' | 'merged_mindmap') => {
     if (!file) return
 
     const displayNames = {
       connections: '章节关联',
       overall_summary: '全书总结',
-      combined_mindmap: '整书思维导图'
+      combined_mindmap: '整书思维导图',
+      merged_mindmap: '章节思维导图整合'
     }
 
     if (cacheService.clearSpecificCache(file.name, cacheType)) {
@@ -444,44 +437,34 @@ function App() {
         // 章节思维导图模式的后续步骤
         // 步骤4: 合并章节思维导图
         setCurrentStep('正在合并章节思维导图...')
-        // 创建根节点
-        const rootNode = {
-          topic: bookData.title,
-          id: '0',
-          tags: ['全书'],
-          children: processedChapters.map((chapter, index) => ({
-            topic: chapter.title,
-            id: `chapter_${index + 1}`,
-            children: chapter.mindMap?.nodeData?.children || []
-          }))
-        }
+        let combinedMindMap = cacheService.getMindMap(file.name, 'merged_mindmap')
+        if (!combinedMindMap) {
+          console.log('🔄 [DEBUG] 缓存未命中，开始合并章节思维导图')
+          // 创建根节点
+          const rootNode = {
+            topic: bookData.title,
+            id: '0',
+            tags: ['全书'],
+            children: processedChapters.map((chapter, index) => ({
+              topic: chapter.title,
+              id: `chapter_${index + 1}`,
+              children: chapter.mindMap?.nodeData?.children || []
+            }))
+          }
 
-        const combinedMindMap: MindElixirData = {
-          nodeData: rootNode,
-          arrows: [],
-          summaries: processedChapters.reduce((acc, chapter) => acc.concat(chapter.mindMap?.summaries || []), [] as Summary[])
+          combinedMindMap = {
+            nodeData: rootNode,
+            arrows: [],
+            summaries: processedChapters.reduce((acc, chapter) => acc.concat(chapter.mindMap?.summaries || []), [] as Summary[])
+          }
+
+          cacheService.setCache(file.name, 'merged_mindmap', combinedMindMap)
+          console.log('💾 [DEBUG] 合并思维导图已缓存')
+        } else {
+          console.log('✅ [DEBUG] 使用缓存的合并思维导图')
         }
 
         setProgress(85)
-
-        // 步骤5: 生成思维导图箭头和全书总结节点
-        // setCurrentStep('正在生成思维导图连接和总结...')
-        // const arrowsCacheKey = CacheService.generateKey(file.name, 'mindmap-arrows', 'v1')
-        // let arrowsData = cacheService.get(arrowsCacheKey)
-
-        // if (!arrowsData) {
-        //   console.log('🔄 [DEBUG] 缓存未命中，开始生成箭头')
-        //   arrowsData = await aiService.generateMindMapArrows(combinedMindMap)
-        //   cacheService.set(arrowsCacheKey, arrowsData)
-        //   console.log('💾 [DEBUG] 思维导图箭头已缓存', arrowsData)
-        // } else {
-        //   console.log('✅ [DEBUG] 使用缓存的思维导图箭头', arrowsData)
-        // }
-
-        // // 合并箭头数据
-        // if (arrowsData?.arrows) {
-        //   combinedMindMap.arrows = arrowsData.arrows
-        // }
 
         setBookMindMap(prevMindMap => ({
           ...prevMindMap!,
@@ -524,15 +507,13 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Toaster />
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-2 relative">
           <h1 className="text-4xl font-bold text-gray-900 flex items-center justify-center gap-2">
             <BookOpen className="h-8 w-8 text-blue-600" />
             {t('app.title')}
           </h1>
           <p className="text-gray-600">{t('app.description')}</p>
-          <div className="flex justify-center mt-4">
-            <LanguageSwitcher />
-          </div>
+          <LanguageSwitcher />
         </div>
 
         {/* 文件上传和配置 */}
@@ -595,8 +576,6 @@ function App() {
                   </>
                 )}
               </Button>
-
-
             </div>
           </CardContent>
         </Card>
@@ -612,7 +591,7 @@ function App() {
                 {t('chapters.title')}
               </CardTitle>
               <CardDescription>
-                《{bookData.title}》- {bookData.author} | {t('chapters.totalChapters', { count: extractedChapters.length })}，{t('chapters.selectedChapters', { count: selectedChapters.size })}
+                {bookData.title} - {bookData.author} | {t('chapters.totalChapters', { count: extractedChapters.length })}，{t('chapters.selectedChapters', { count: selectedChapters.size })}
               </CardDescription>
               <div className="flex items-center gap-2 mt-2">
                 <Checkbox
@@ -627,16 +606,13 @@ function App() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                {extractedChapters.map((chapter, index) => (
+                {extractedChapters.map((chapter) => (
                   <div key={chapter.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <Checkbox
                       id={`chapter-${chapter.id}`}
                       checked={selectedChapters.has(chapter.id)}
                       onCheckedChange={(checked) => handleChapterSelect(chapter.id, checked as boolean)}
                     />
-                    <Badge variant="outline" className="text-xs">
-                      {index + 1}
-                    </Badge>
                     <Label
                       htmlFor={`chapter-${chapter.id}`}
                       className="text-sm truncate cursor-pointer flex-1"
@@ -795,7 +771,7 @@ function App() {
                           content={chapter.content}
                           mindMapData={chapter.mindMap}
                           index={index}
-
+                          showCopyButton={false}
                           onClearCache={clearChapterCache}
                           onOpenInMindElixir={openInMindElixir}
                           onDownloadMindMap={downloadMindMap}
@@ -806,91 +782,59 @@ function App() {
                   </TabsContent>
 
                   <TabsContent value="combined">
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">整书思维导图</CardTitle>
-                          {bookMindMap.combinedMindMap && (
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openInMindElixir(bookMindMap.combinedMindMap!, `《${bookMindMap.title}》整书思维导图`)}
-                                title={t('common.openInMindElixir')}
-                              >
-                                <ExternalLink className="h-4 w-4 mr-1" />
-                              </Button>
-                              <DownloadMindMapButton
-                                mindElixirRef={combinedMindElixirRef}
-                                title={`《${bookMindMap.title}》整书思维导图`}
-                                downloadMindMap={downloadMindMap}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        {bookMindMap.combinedMindMap ? (
-                          <div className="border rounded-lg">
-                            <MindElixirReact
-                              ref={combinedMindElixirRef}
-                              data={bookMindMap.combinedMindMap}
-                              fitPage={false}
-                              options={options}
-                              className="aspect-square w-full h-[600px] mx-auto"
-                            />
-                          </div>
-                        ) : (
+                    {bookMindMap.combinedMindMap ? (
+                      <MindMapCard
+                        id="combined"
+                        title={t('results.tabs.combinedMindMap')}
+                        content=""
+                        mindMapData={bookMindMap.combinedMindMap}
+                        index={0}
+                        onOpenInMindElixir={(mindmapData) => openInMindElixir(mindmapData, t('results.combinedMindMapTitle', { title: bookMindMap.title }))}
+                        onDownloadMindMap={downloadMindMap}
+                        onClearCache={() => clearSpecificCache('merged_mindmap')}
+                        showClearCache={true}
+                        showViewContent={false}
+                        showCopyButton={false}
+                        mindMapClassName="w-full h-[600px] mx-auto"
+                        mindElixirOptions={options}
+                      />
+                    ) : (
+                      <Card>
+                        <CardContent>
                           <div className="text-center text-gray-500 py-8">
                             {t('results.generatingMindMap')}
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    )}
                   </TabsContent>
                 </Tabs>
               ) : processingMode === 'combined-mindmap' && bookMindMap ? (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">整书思维导图</CardTitle>
-                      {bookMindMap.combinedMindMap && (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openInMindElixir(bookMindMap.combinedMindMap!, `《${bookMindMap.title}》整书思维导图`)}
-                            title={t('common.openInMindElixir')}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                          </Button>
-                          <DownloadMindMapButton
-                            mindElixirRef={wholeMindElixirRef}
-                            title={`《${bookMindMap.title}》整书思维导图`}
-                            downloadMindMap={downloadMindMap}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {bookMindMap.combinedMindMap ? (
-                      <div className="border rounded-lg">
-                        <MindElixirReact
-                          ref={wholeMindElixirRef}
-                          data={bookMindMap.combinedMindMap}
-                          fitPage={false}
-                          options={options}
-                          className="w-full h-[600px] mx-auto"
-                        />
-                      </div>
-                    ) : (
+                bookMindMap.combinedMindMap ? (
+                  <MindMapCard
+                    id="whole-book"
+                    title={t('results.tabs.combinedMindMap')}
+                    content=""
+                    mindMapData={bookMindMap.combinedMindMap}
+                    index={0}
+                    onOpenInMindElixir={(mindmapData) => openInMindElixir(mindmapData, t('results.combinedMindMapTitle', { title: bookMindMap.title }))}
+                    onDownloadMindMap={downloadMindMap}
+                    onClearCache={() => clearSpecificCache('combined_mindmap')}
+                    showClearCache={true}
+                    showViewContent={false}
+                    showCopyButton={false}
+                    mindMapClassName="w-full h-[600px] mx-auto"
+                    mindElixirOptions={options}
+                  />
+                ) : (
+                  <Card>
+                    <CardContent>
                       <div className="text-center text-gray-500 py-8">
                         {t('results.generatingMindMap')}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )
               ) : null}
             </CardContent>
           </Card>

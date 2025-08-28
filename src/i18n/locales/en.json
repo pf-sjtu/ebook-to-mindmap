@@ -48,6 +48,7 @@
     "summaryTitle": "Analysis Results for \"{{title}}\"",
     "chapterMindMapTitle": "Chapter Mind Maps for \"{{title}}\"",
     "wholeMindMapTitle": "Complete Mind Map for \"{{title}}\"",
+    "combinedMindMapTitle": "Chapter Mind Map Integration for \"{{title}}\"",
     "author": "Author: {{author}}",
     "chapterCount": "{{count}} chapters total",
     "tabs": {
@@ -55,8 +56,9 @@
       "connections": "Chapter Connections",
       "overallSummary": "Overall Summary",
       "chapterMindMaps": "Chapter Mind Maps",
-      "combinedMindMap": "Combined Mind Map"
+      "combinedMindMap": "Chapter Mind Map Integration"
     },
+    "generatingMindMap": "Generating mind map...",
     "actions": {
       "copyChapterSummary": "Copy Chapter Summary",
       "copyChapterContent": "Copy Chapter Content",
