@@ -291,7 +291,7 @@ export class AIService {
 }
 
 // 保持向后兼容性
-export class GeminiService extends AIService {
+export class AiService extends AIService {
   constructor(apiKey: string) {
     super({ provider: 'gemini', apiKey })
   }
