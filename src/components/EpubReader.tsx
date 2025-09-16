@@ -45,7 +45,7 @@ export function EpubReader({ chapter, bookData, onClose, className }: EpubReader
 
   return (
     <div className={cn("w-full space-y-4", className)}>
-      {/* 阅读器头部 */}
+      {/* 主要阅读区域 */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -62,12 +62,8 @@ export function EpubReader({ chapter, bookData, onClose, className }: EpubReader
             </Button>
           </div>
         </CardHeader>
-      </Card>
-
-      {/* 主要阅读区域 */}
-      <Card>
         <CardContent className="pt-6">
-          <ScrollArea className="h-96">
+          <ScrollArea className="h-[70vh]">
             <div className="prose prose-sm max-w-none">
               {isLoadingHtml ? (
                 <div className="flex items-center justify-center py-8">

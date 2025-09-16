@@ -104,7 +104,7 @@ function App() {
       setExtractedChapters(null)
       setSelectedChapters(new Set())
       setBookData(null)
-    setFullBookData(null)
+      setFullBookData(null)
       setBookSummary(null)
       setBookMindMap(null)
       setCurrentReadingChapter(null)
@@ -510,7 +510,7 @@ function App() {
   }, [extractedChapters, bookData, apiKey, file, selectedChapters, processingMode, bookType, customPrompt, processingOptions.outputLanguage, t])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex gap-4">
       <Toaster />
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="text-center space-y-2 relative">
@@ -857,13 +857,12 @@ function App() {
       </div>
       {/* 阅读组件插入到这里 */}
       {currentReadingChapter && (
-        <div className="mt-8 w-[800px]">
-          <EpubReader 
-            chapter={currentReadingChapter}
-            bookData={fullBookData || undefined}
-            onClose={() => setCurrentReadingChapter(null)}
-          />
-        </div>
+        <EpubReader
+          className="mt-8 w-[800px] shrink-0"
+          chapter={currentReadingChapter}
+          bookData={fullBookData || undefined}
+          onClose={() => setCurrentReadingChapter(null)}
+        />
       )}
 
       {/* 回到顶部按钮 */}

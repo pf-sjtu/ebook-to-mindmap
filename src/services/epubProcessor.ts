@@ -51,7 +51,6 @@ export class EpubProcessor {
 
       try {
         const toc = book.navigation.toc.filter(item=>!item.href.includes('#'))
-        debugger
         if (toc && toc.length > 0) {
           // 获取章节信息
           const chapterInfos = await this.extractChaptersFromToc(book, toc, 0, maxSubChapterDepth)
@@ -287,7 +286,6 @@ export class EpubProcessor {
 
   // 新增方法：获取章节的HTML内容（不影响原有功能）
   async getSingleChapterHTML(book: Book, href: string): Promise<string> {
-    debugger
     try {
       let section = null
       const spineItems = book.spine.spineItems
