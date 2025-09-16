@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp } from 'lucide-react'
-import { EpubProcessor, type ChapterData } from './services/epubProcessor'
+import { EpubProcessor, type ChapterData, type BookData } from './services/epubProcessor'
 import { PdfProcessor } from './services/pdfProcessor'
 import { AIService } from './services/aiService'
 import { CacheService } from './services/cacheService'
@@ -19,6 +19,7 @@ import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { MarkdownCard } from './components/MarkdownCard'
 import { MindMapCard } from './components/MindMapCard'
+import { EpubReader } from './components/EpubReader'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { scrollToTop, openInMindElixir, downloadMindMap } from './utils'
@@ -66,8 +67,10 @@ function App() {
   const [extractedChapters, setExtractedChapters] = useState<ChapterData[] | null>(null)
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set())
   const [bookData, setBookData] = useState<{ title: string; author: string } | null>(null)
+  const [fullBookData, setFullBookData] = useState<BookData | null>(null)
   const [customPrompt, setCustomPrompt] = useState('')
   const [showBackToTop, setShowBackToTop] = useState(false)
+  const [currentReadingChapter, setCurrentReadingChapter] = useState<ChapterData | null>(null)
 
 
 
@@ -101,8 +104,10 @@ function App() {
       setExtractedChapters(null)
       setSelectedChapters(new Set())
       setBookData(null)
+    setFullBookData(null)
       setBookSummary(null)
       setBookMindMap(null)
+      setCurrentReadingChapter(null)
     } else {
       toast.error(t('upload.invalidFile'), {
         duration: 3000,
@@ -224,6 +229,7 @@ function App() {
         setCurrentStep('正在解析 EPUB 文件...')
         const bookData = await processor.parseEpub(file)
         extractedBookData = { title: bookData.title, author: bookData.author }
+        setFullBookData(bookData) // 保存完整的BookData对象
         setProgress(50)
 
         setCurrentStep('正在提取章节内容...')
@@ -504,7 +510,7 @@ function App() {
   }, [extractedChapters, bookData, apiKey, file, selectedChapters, processingMode, bookType, customPrompt, processingOptions.outputLanguage, t])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex">
       <Toaster />
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="text-center space-y-2 relative">
@@ -620,6 +626,15 @@ function App() {
                     >
                       {chapter.title}
                     </Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentReadingChapter(chapter)}
+                      className="ml-2"
+                    >
+                      <BookOpen className="h-3 w-3 mr-1" />
+                      阅读
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -840,6 +855,16 @@ function App() {
           </Card>
         )}
       </div>
+      {/* 阅读组件插入到这里 */}
+      {currentReadingChapter && (
+        <div className="mt-8 w-[800px]">
+          <EpubReader 
+            chapter={currentReadingChapter}
+            bookData={fullBookData || undefined}
+            onClose={() => setCurrentReadingChapter(null)}
+          />
+        </div>
+      )}
 
       {/* 回到顶部按钮 */}
       {showBackToTop && (
