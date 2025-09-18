@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,18 @@ export function EpubReader({ chapter, bookData, onClose, className }: EpubReader
   const [chapterHtmlContent, setChapterHtmlContent] = useState<string>('')
   const [isLoadingHtml, setIsLoadingHtml] = useState(false)
   const [epubProcessor] = useState(() => new EpubProcessor())
+  const shadowRef = useRef<HTMLDivElement>(null)
+
+  // 使用 Shadow DOM 来隔离 EPUB 内容样式
+  useEffect(() => {
+    if (!shadowRef.current) return
+    
+    const content = chapterHtmlContent || chapter.content
+    if (!content) return
+
+    const shadowRoot = shadowRef.current.shadowRoot || shadowRef.current.attachShadow({ mode: 'open' })
+    shadowRoot.innerHTML = `<div>${content}</div>`
+  }, [chapterHtmlContent, chapter.content])
 
   // 加载章节的HTML内容
   useEffect(() => {
@@ -71,15 +83,7 @@ export function EpubReader({ chapter, bookData, onClose, className }: EpubReader
                   <span>正在加载章节内容...</span>
                 </div>
               ) : (
-                <div 
-                  className="leading-relaxed text-gray-800 dark:text-gray-200 epub-content"
-                  dangerouslySetInnerHTML={{ __html: chapterHtmlContent || chapter.content }}
-                  style={{
-                    fontSize: '16px',
-                    lineHeight: '1.6',
-                    fontFamily: 'system-ui, -apple-system, sans-serif'
-                  }}
-                />
+                <div ref={shadowRef} className="w-full min-h-[200px]" />
               )}
             </div>
           </ScrollArea>

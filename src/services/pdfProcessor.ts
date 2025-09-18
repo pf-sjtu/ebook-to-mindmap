@@ -1,6 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker?worker&url'
 import { SKIP_CHAPTER_KEYWORDS } from './constants'
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 // 设置 PDF.js worker - 使用本地文件
 if (typeof window !== 'undefined') {
@@ -346,7 +347,7 @@ export class PdfProcessor {
   }
 
   // 新增方法：获取PDF页面的渲染内容（用于阅读器显示）
-  async getPageContent(pdfDocument: any, pageNumber: number): Promise<{ textContent: string; canvas?: HTMLCanvasElement }> {
+  async getPageContent(pdfDocument: PDFDocumentProxy, pageNumber: number): Promise<{ textContent: string; canvas?: HTMLCanvasElement }> {
     try {
       const page = await pdfDocument.getPage(pageNumber)
       

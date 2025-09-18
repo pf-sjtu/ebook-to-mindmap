@@ -867,14 +867,14 @@ function App() {
       {currentReadingChapter && file && (
         file.name.endsWith('.epub') ? (
           <EpubReader
-            className="w-[800px] shrink-0 sticky top-0"
+            className="w-[800px] shrink-0"
             chapter={currentReadingChapter}
             bookData={fullBookData || undefined}
             onClose={() => setCurrentReadingChapter(null)}
           />
         ) : file.name.endsWith('.pdf') ? (
           <PdfReader
-            className="w-[800px] shrink-0 sticky top-0"
+            className="w-[800px] shrink-0"
             chapter={currentReadingChapter}
             bookData={fullBookData || undefined}
             onClose={() => setCurrentReadingChapter(null)}
