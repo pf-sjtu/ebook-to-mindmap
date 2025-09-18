@@ -11,12 +11,18 @@ export interface ChapterData {
   id: string
   title: string
   content: string
+  // PDF特有的页面信息
+  startPage?: number
+  endPage?: number
+  pageIndex?: number
 }
 
 export interface BookData {
   title: string
   author: string
   totalPages: number
+  // 保存PDF文档实例用于后续页面渲染
+  pdfDocument?: any
 }
 
 export class PdfProcessor {
@@ -44,7 +50,8 @@ export class PdfProcessor {
       return {
         title,
         author,
-        totalPages: pdf.numPages
+        totalPages: pdf.numPages,
+        pdfDocument: pdf
       }
     } catch (error) {
       throw new Error(`解析PDF文件失败: ${error instanceof Error ? error.message : '未知错误'}`)
@@ -92,7 +99,10 @@ export class PdfProcessor {
                 chapters.push({
                   id: `chapter-${chapters.length + 1}`,
                   title: chapterInfo.title,
-                  content: chapterContent
+                  content: chapterContent,
+                  startPage: startPage,
+                  endPage: endPage,
+                  pageIndex: chapterInfo.pageIndex
                 })
               }
             }
@@ -153,7 +163,9 @@ export class PdfProcessor {
               chapters.push({
                 id: `chapter-${Math.floor(i / pagesPerChapter) + 1}`,
                 title: `第 ${Math.floor(i / pagesPerChapter) + 1} 部分 (第${i + 1}-${endPage}页)`,
-                content: chapterContent
+                content: chapterContent,
+                startPage: i + 1,
+                endPage: endPage
               })
             }
           }
@@ -282,7 +294,8 @@ export class PdfProcessor {
           chapters.push({
             id: `chapter-${chapterCount}`,
             title: currentChapter.title,
-            content: currentChapter.content.trim()
+            content: currentChapter.content.trim(),
+            startPage: currentChapter.startPage
           })
         }
 
@@ -314,7 +327,8 @@ export class PdfProcessor {
       chapters.push({
         id: `chapter-${chapterCount}`,
         title: currentChapter.title,
-        content: currentChapter.content.trim()
+        content: currentChapter.content.trim(),
+        startPage: currentChapter.startPage
       })
     }
 
@@ -329,5 +343,59 @@ export class PdfProcessor {
     return SKIP_CHAPTER_KEYWORDS.some(keyword =>
       normalizedTitle.includes(keyword.toLowerCase())
     )
+  }
+
+  // 新增方法：获取PDF页面的渲染内容（用于阅读器显示）
+  async getPageContent(pdfDocument: any, pageNumber: number): Promise<{ textContent: string; canvas?: HTMLCanvasElement }> {
+    try {
+      const page = await pdfDocument.getPage(pageNumber)
+      
+      // 获取文本内容
+      const textContent = await page.getTextContent()
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ')
+        .trim()
+
+      // 创建canvas用于渲染PDF页面
+      const viewport = page.getViewport({ scale: 1.5 })
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      
+      canvas.height = viewport.height
+      canvas.width = viewport.width
+
+      if (context) {
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        }
+        await page.render(renderContext).promise
+      }
+
+      return {
+        textContent: pageText,
+        canvas: canvas
+      }
+    } catch (error) {
+      console.warn(`❌ [DEBUG] 获取页面内容失败 (页面 ${pageNumber}):`, error)
+      return { textContent: '' }
+    }
+  }
+
+  // 新增方法：获取章节的所有页面内容（用于阅读器显示）
+  async getChapterPages(pdfDocument: any, chapter: ChapterData): Promise<{ textContent: string; canvas?: HTMLCanvasElement }[]> {
+    const pages: { textContent: string; canvas?: HTMLCanvasElement }[] = []
+    
+    if (!chapter.startPage || !chapter.endPage) {
+      return pages
+    }
+
+    for (let pageNum = chapter.startPage; pageNum <= chapter.endPage; pageNum++) {
+      const pageContent = await this.getPageContent(pdfDocument, pageNum)
+      pages.push(pageContent)
+    }
+
+    return pages
   }
 }

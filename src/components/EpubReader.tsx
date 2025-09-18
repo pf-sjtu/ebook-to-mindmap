@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 
 interface EpubReaderProps {
   chapter: ChapterData
-  bookData?: BookData
+  bookData?: BookData | any // 支持不同类型的BookData
   onClose: () => void
   className?: string
 }
