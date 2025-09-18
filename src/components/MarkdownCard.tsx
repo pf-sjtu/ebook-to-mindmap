@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Trash2, BookOpen } from 'lucide-react'
+import { Trash2, BookOpen, ChevronDown, ChevronUp } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { CopyButton } from '@/components/ui/copy-button'
@@ -34,6 +34,8 @@ interface MarkdownCardProps {
   showReadButton?: boolean
   /** 自定义类名 */
   className?: string
+  /** 是否默认折叠 */
+  defaultCollapsed?: boolean
 }
 
 export const MarkdownCard: React.FC<MarkdownCardProps> = ({
@@ -48,9 +50,11 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
   showViewContent = true,
   showCopyButton = true,
   showReadButton = true,
-  className = ''
+  className = '',
+  defaultCollapsed = false
 }) => {
   const { t } = useTranslation()
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
 
   return (
     <Card className={`gap-0 ${className}`}>
@@ -94,16 +98,26 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
                 chapterIndex={index}
               />
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              title={isCollapsed ? t('common.expand') : t('common.collapse')}
+            >
+              {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </Button>
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {markdownContent || ''}
-          </ReactMarkdown>
-        </div>
-      </CardContent>
+      {!isCollapsed && (
+        <CardContent>
+          <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {markdownContent || ''}
+            </ReactMarkdown>
+          </div>
+        </CardContent>
+      )}
     </Card>
   )
 }

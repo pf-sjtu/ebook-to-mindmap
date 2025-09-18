@@ -130,7 +130,9 @@
     "copiedToClipboard": "Copied to clipboard",
     "copyChapterSummary": "Copy Chapter Summary",
     "copyChapterContent": "Copy Chapter Content",
-    "copyContent": "Copy Content"
+    "copyContent": "Copy Content",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "config": {
     "title": "Configuration",

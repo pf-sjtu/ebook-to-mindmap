@@ -757,6 +757,7 @@ function App() {
                             content={chapter.content}
                             markdownContent={chapter.summary || ''}
                             index={index}
+                            defaultCollapsed={index > 0}
                             onClearCache={clearChapterCache}
                             onReadChapter={() => {
                               // 根据章节ID找到对应的ChapterData

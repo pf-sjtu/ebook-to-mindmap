@@ -92,6 +92,8 @@
     "copyChapterSummary": "复制章节总结",
     "copyChapterContent": "复制章节内容",
     "copyContent": "复制内容",
+    "expand": "展开",
+    "collapse": "折叠",
     "error": "未知错误"
   },
   "config": {
