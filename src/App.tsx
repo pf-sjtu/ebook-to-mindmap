@@ -87,12 +87,15 @@ function App() {
 
   // 监听滚动事件，控制回到顶部按钮显示
   useEffect(() => {
+    const scrollContainer = document.querySelector('.scroll-container')
+    if (!scrollContainer) return
+
     const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 300)
+      setShowBackToTop(scrollContainer.scrollTop > 300)
     }
 
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    scrollContainer.addEventListener('scroll', handleScroll)
+    return () => scrollContainer.removeEventListener('scroll', handleScroll)
   }, [])
 
 
@@ -512,7 +515,7 @@ function App() {
   }, [extractedChapters, bookData, apiKey, file, selectedChapters, processingMode, bookType, customPrompt, processingOptions.outputLanguage, t])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex justify-center gap-4 h-screen overflow-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex justify-center gap-4 h-screen overflow-auto scroll-container">
       <Toaster />
       <div className="max-w-6xl space-y-6 w-[800px] shrink-0">
         <div className="text-center space-y-2 relative">
