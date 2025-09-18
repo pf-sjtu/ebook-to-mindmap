@@ -85,6 +85,7 @@
     "delete": "删除",
     "viewContent": "查看内容",
     "backToTop": "回到顶部",
+    "backToConfig": "返回配置",
     "openInMindElixir": "在 Mind Elixir Desktop 中打开",
     "clearCache": "清除缓存",
     "copiedToClipboard": "已复制到剪贴板",

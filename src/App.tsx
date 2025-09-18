@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
-import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp } from 'lucide-react'
+import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp, ArrowLeft } from 'lucide-react'
 import { EpubProcessor, type ChapterData, type BookData as EpubBookData } from './services/epubProcessor'
 import { PdfProcessor, type BookData as PdfBookData } from './services/pdfProcessor'
 import { AIService } from './services/aiService'
@@ -58,6 +58,7 @@ const cacheService = new CacheService()
 
 function App() {
   const { t } = useTranslation()
+  const [currentStepIndex, setCurrentStepIndex] = useState(1) // 1: 配置步骤, 2: 处理步骤
   const [file, setFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
   const [extractingChapters, setExtractingChapters] = useState(false)
@@ -257,9 +258,9 @@ function App() {
       setExtractedChapters(chapters)
       // 默认选中所有章节
       setSelectedChapters(new Set(chapters.map(chapter => chapter.id)))
-      setCurrentStep(`章节提取完成！共提取到 ${chapters.length} 个章节`)
+      setCurrentStep(t('progress.chaptersExtracted', { count: chapters.length }))
 
-      toast.success(`成功提取 ${chapters.length} 个章节`, {
+      toast.success(t('progress.successfullyExtracted', { count: chapters.length }), {
         duration: 3000,
         position: 'top-center',
       })
@@ -291,7 +292,8 @@ function App() {
       return
     }
 
-    // 开始新任务时清空上次显示的内容
+    // 跳转到步骤2并开始处理
+    setCurrentStepIndex(2)
     setBookSummary(null)
     setBookMindMap(null)
     setProcessing(true)
@@ -527,8 +529,10 @@ function App() {
           <LanguageSwitcher />
         </div>
 
-        {/* 文件上传和配置 */}
-        <Card>
+        {currentStepIndex === 1 ? (
+          <>
+            {/* 步骤1: 文件上传和配置 */}
+            <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5" />
@@ -590,234 +594,275 @@ function App() {
             </div>
           </CardContent>
         </Card>
-
-
-
-        {/* 章节信息 */}
-        {extractedChapters && bookData && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <List className="h-5 w-5" />
-                {t('chapters.title')}
-              </CardTitle>
-              <CardDescription>
-                {bookData.title} - {bookData.author} | {t('chapters.totalChapters', { count: extractedChapters.length })}，{t('chapters.selectedChapters', { count: selectedChapters.size })}
-              </CardDescription>
-              <div className="flex items-center gap-2 mt-2">
-                <Checkbox
-                  id="select-all"
-                  checked={selectedChapters.size === extractedChapters.length}
-                  onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                />
-                <Label htmlFor="select-all" className="text-sm font-medium">
-                  {t('chapters.selectAll')}
-                </Label>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                {extractedChapters.map((chapter) => (
-                  <div key={chapter.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            {/* 章节信息 */}
+            {extractedChapters && bookData && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <List className="h-5 w-5" />
+                    {t('chapters.title')}
+                  </CardTitle>
+                  <CardDescription>
+                    {bookData.title} - {bookData.author} | {t('chapters.totalChapters', { count: extractedChapters.length })}，{t('chapters.selectedChapters', { count: selectedChapters.size })}
+                  </CardDescription>
+                  <div className="flex items-center gap-2 mt-2">
                     <Checkbox
-                      id={`chapter-${chapter.id}`}
-                      checked={selectedChapters.has(chapter.id)}
-                      onCheckedChange={(checked) => handleChapterSelect(chapter.id, checked as boolean)}
+                      id="select-all"
+                      checked={selectedChapters.size === extractedChapters.length}
+                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
                     />
-                    <Label
-                      htmlFor={`chapter-${chapter.id}`}
-                      className="text-sm truncate cursor-pointer flex-1"
-                      title={chapter.title}
-                    >
-                      {chapter.title}
+                    <Label htmlFor="select-all" className="text-sm font-medium">
+                      {t('chapters.selectAll')}
                     </Label>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentReadingChapter(chapter)}
-                      className="ml-2"
-                    >
-                      <BookOpen className="h-3 w-3 mr-1" />
-                    </Button>
                   </div>
-                ))}
-              </div>
-
-              {/* 自定义提示词输入框 */}
-              <div className="space-y-2">
-                <Label htmlFor="custom-prompt" className="text-sm font-medium">
-                  {t('chapters.customPrompt')}
-                </Label>
-                <Textarea
-                  id="custom-prompt"
-                  placeholder={t('chapters.customPromptPlaceholder')}
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  className="min-h-20 resize-none"
-                  disabled={processing || extractingChapters}
-                />
-                <p className="text-xs text-gray-500">
-                  {t('chapters.customPromptDescription')}
-                </p>
-              </div>
-
-              <Button
-                onClick={() => {
-                  if (!apiKey) {
-                    toast.error(t('chapters.apiKeyRequired'), {
-                      duration: 3000,
-                      position: 'top-center',
-                    })
-                    return
-                  }
-                  processEbook()
-                }}
-                disabled={!extractedChapters || processing || extractingChapters || selectedChapters.size === 0}
-                className="w-full"
-              >
-                {processing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t('chapters.processing')}
-                  </>
-                ) : (
-                  <>
-                    <Brain className="mr-2 h-4 w-4" />
-                    {t('chapters.startProcessing')}
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-        {(processing || extractingChapters) && (
-          <Card>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{currentStep}</span>
-                  <span>{Math.round(progress)}%</span>
-                </div>
-                <Progress value={progress} className="w-full" />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-
-        {/* 结果展示 */}
-        {(bookSummary || bookMindMap) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {processingMode === 'summary' ? (
-                  <><BookOpen className="h-5 w-5" />{t('results.summaryTitle', { title: bookSummary?.title })}</>
-                ) : processingMode === 'mindmap' ? (
-                  <><Network className="h-5 w-5" />{t('results.chapterMindMapTitle', { title: bookMindMap?.title })}</>
-                ) : (
-                  <><Network className="h-5 w-5" />{t('results.wholeMindMapTitle', { title: bookMindMap?.title })}</>
-                )}
-              </CardTitle>
-              <CardDescription>
-                {t('results.author', { author: bookSummary?.author || bookMindMap?.author })} | {t('results.chapterCount', { count: bookSummary?.chapters.length || bookMindMap?.chapters.length })}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {processingMode === 'summary' && bookSummary ? (
-                <Tabs defaultValue="chapters" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="chapters">{t('results.tabs.chapterSummary')}</TabsTrigger>
-                    <TabsTrigger value="connections">{t('results.tabs.connections')}</TabsTrigger>
-                    <TabsTrigger value="overall">{t('results.tabs.overallSummary')}</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="chapters" className="grid grid-cols-1 gap-4">
-                    {bookSummary.chapters.map((chapter, index) => (
-                      <MarkdownCard
-                        key={chapter.id}
-                        id={chapter.id}
-                        title={chapter.title}
-                        content={chapter.content}
-                        markdownContent={chapter.summary || ''}
-                        index={index}
-                        onClearCache={clearChapterCache}
-                        onReadChapter={() => {
-                          // 根据章节ID找到对应的ChapterData
-                          const chapterData = extractedChapters?.find(ch => ch.id === chapter.id)
-                          if (chapterData) {
-                            setCurrentReadingChapter(chapterData)
-                          }
-                        }}
-                      />
-                    ))}
-                  </TabsContent>
-
-                  <TabsContent value="connections">
-                    <MarkdownCard
-                      id="connections"
-                      title={t('results.tabs.connections')}
-                      content={bookSummary.connections}
-                      markdownContent={bookSummary.connections}
-                      index={0}
-                      showClearCache={true}
-                      showViewContent={false}
-                      showCopyButton={true}
-                      onClearCache={() => clearSpecificCache('connections')}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="overall">
-                    <MarkdownCard
-                      id="overall"
-                      title={t('results.tabs.overallSummary')}
-                      content={bookSummary.overallSummary}
-                      markdownContent={bookSummary.overallSummary}
-                      index={0}
-                      showClearCache={true}
-                      showViewContent={false}
-                      showCopyButton={true}
-                      onClearCache={() => clearSpecificCache('overall_summary')}
-                    />
-                  </TabsContent>
-                </Tabs>
-              ) : processingMode === 'mindmap' && bookMindMap ? (
-                <Tabs defaultValue="chapters" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="chapters">{t('results.tabs.chapterMindMaps')}</TabsTrigger>
-                    <TabsTrigger value="combined">{t('results.tabs.combinedMindMap')}</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="chapters" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {bookMindMap.chapters.map((chapter, index) => (
-                      chapter.mindMap && (
-                        <MindMapCard
-                          key={chapter.id}
-                          id={chapter.id}
-                          title={chapter.title}
-                          content={chapter.content}
-                          mindMapData={chapter.mindMap}
-                          index={index}
-                          showCopyButton={false}
-                          onClearCache={clearChapterCache}
-                          onOpenInMindElixir={openInMindElixir}
-                          onDownloadMindMap={downloadMindMap}
-                          mindElixirOptions={options}
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {extractedChapters.map((chapter) => (
+                      <div key={chapter.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <Checkbox
+                          id={`chapter-${chapter.id}`}
+                          checked={selectedChapters.has(chapter.id)}
+                          onCheckedChange={(checked) => handleChapterSelect(chapter.id, checked as boolean)}
                         />
-                      )
+                        <Label
+                          htmlFor={`chapter-${chapter.id}`}
+                          className="text-sm truncate cursor-pointer flex-1"
+                          title={chapter.title}
+                        >
+                          {chapter.title}
+                        </Label>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentReadingChapter(chapter)}
+                        >
+                          <BookOpen className="h-3 w-3" />
+                        </Button>
+                      </div>
                     ))}
-                  </TabsContent>
+                  </div>
 
-                  <TabsContent value="combined">
-                    {bookMindMap.combinedMindMap ? (
+                  {/* 自定义提示词输入框 */}
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-prompt" className="text-sm font-medium">
+                      {t('chapters.customPrompt')}
+                    </Label>
+                    <Textarea
+                      id="custom-prompt"
+                      placeholder={t('chapters.customPromptPlaceholder')}
+                      value={customPrompt}
+                      onChange={(e) => setCustomPrompt(e.target.value)}
+                      className="min-h-20 resize-none"
+                      disabled={processing || extractingChapters}
+                    />
+                    <p className="text-xs text-gray-500">
+                      {t('chapters.customPromptDescription')}
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={() => {
+                      if (!apiKey) {
+                        toast.error(t('chapters.apiKeyRequired'), {
+                          duration: 3000,
+                          position: 'top-center',
+                        })
+                        return
+                      }
+                      processEbook()
+                    }}
+                    disabled={!extractedChapters || processing || extractingChapters || selectedChapters.size === 0}
+                    className="w-full"
+                  >
+                    {processing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t('chapters.processing')}
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="mr-2 h-4 w-4" />
+                        {t('chapters.startProcessing')}
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        ) : (
+          <>
+            {/* 步骤2: 处理过程和结果显示 */}
+            <div className="flex items-center gap-4 mb-4">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentStepIndex(1)}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {t('common.backToConfig')}
+              </Button>
+              <div className="text-lg font-medium text-gray-700">
+                {bookData ? `${bookData.title} - ${bookData.author}` : '处理中...'}
+              </div>
+            </div>
+            {/* 处理进度 */}
+            {(processing || extractingChapters) && (
+              <Card>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>{currentStep}</span>
+                      <span>{Math.round(progress)}%</span>
+                    </div>
+                    <Progress value={progress} className="w-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 结果展示 */}
+            {(bookSummary || bookMindMap) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    {processingMode === 'summary' ? (
+                      <><BookOpen className="h-5 w-5" />{t('results.summaryTitle', { title: bookSummary?.title })}</>
+                    ) : processingMode === 'mindmap' ? (
+                      <><Network className="h-5 w-5" />{t('results.chapterMindMapTitle', { title: bookMindMap?.title })}</>
+                    ) : (
+                      <><Network className="h-5 w-5" />{t('results.wholeMindMapTitle', { title: bookMindMap?.title })}</>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    {t('results.author', { author: bookSummary?.author || bookMindMap?.author })} | {t('results.chapterCount', { count: bookSummary?.chapters.length || bookMindMap?.chapters.length })}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {processingMode === 'summary' && bookSummary ? (
+                    <Tabs defaultValue="chapters" className="w-full">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="chapters">{t('results.tabs.chapterSummary')}</TabsTrigger>
+                        <TabsTrigger value="connections">{t('results.tabs.connections')}</TabsTrigger>
+                        <TabsTrigger value="overall">{t('results.tabs.overallSummary')}</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="chapters" className="grid grid-cols-1 gap-4">
+                        {bookSummary.chapters.map((chapter, index) => (
+                          <MarkdownCard
+                            key={chapter.id}
+                            id={chapter.id}
+                            title={chapter.title}
+                            content={chapter.content}
+                            markdownContent={chapter.summary || ''}
+                            index={index}
+                            onClearCache={clearChapterCache}
+                            onReadChapter={() => {
+                              // 根据章节ID找到对应的ChapterData
+                              const chapterData = extractedChapters?.find(ch => ch.id === chapter.id)
+                              if (chapterData) {
+                                setCurrentReadingChapter(chapterData)
+                              }
+                            }}
+                          />
+                        ))}
+                      </TabsContent>
+
+                      <TabsContent value="connections">
+                        <MarkdownCard
+                          id="connections"
+                          title={t('results.tabs.connections')}
+                          content={bookSummary.connections}
+                          markdownContent={bookSummary.connections}
+                          index={0}
+                          showClearCache={true}
+                          showViewContent={false}
+                          showCopyButton={true}
+                          onClearCache={() => clearSpecificCache('connections')}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="overall">
+                        <MarkdownCard
+                          id="overall"
+                          title={t('results.tabs.overallSummary')}
+                          content={bookSummary.overallSummary}
+                          markdownContent={bookSummary.overallSummary}
+                          index={0}
+                          showClearCache={true}
+                          showViewContent={false}
+                          showCopyButton={true}
+                          onClearCache={() => clearSpecificCache('overall_summary')}
+                        />
+                      </TabsContent>
+                    </Tabs>
+                  ) : processingMode === 'mindmap' && bookMindMap ? (
+                    <Tabs defaultValue="chapters" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="chapters">{t('results.tabs.chapterMindMaps')}</TabsTrigger>
+                        <TabsTrigger value="combined">{t('results.tabs.combinedMindMap')}</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="chapters" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {bookMindMap.chapters.map((chapter, index) => (
+                          chapter.mindMap && (
+                            <MindMapCard
+                              key={chapter.id}
+                              id={chapter.id}
+                              title={chapter.title}
+                              content={chapter.content}
+                              mindMapData={chapter.mindMap}
+                              index={index}
+                              showCopyButton={false}
+                              onClearCache={clearChapterCache}
+                              onOpenInMindElixir={openInMindElixir}
+                              onDownloadMindMap={downloadMindMap}
+                              mindElixirOptions={options}
+                            />
+                          )
+                        ))}
+                      </TabsContent>
+
+                      <TabsContent value="combined">
+                        {bookMindMap.combinedMindMap ? (
+                          <MindMapCard
+                            id="combined"
+                            title={t('results.tabs.combinedMindMap')}
+                            content=""
+                            mindMapData={bookMindMap.combinedMindMap}
+                            index={0}
+                            onOpenInMindElixir={(mindmapData) => openInMindElixir(mindmapData, t('results.combinedMindMapTitle', { title: bookMindMap.title }))}
+                            onDownloadMindMap={downloadMindMap}
+                            onClearCache={() => clearSpecificCache('merged_mindmap')}
+                            showClearCache={true}
+                            showViewContent={false}
+                            showCopyButton={false}
+                            mindMapClassName="w-full h-[600px] mx-auto"
+                            mindElixirOptions={options}
+                          />
+                        ) : (
+                          <Card>
+                            <CardContent>
+                              <div className="text-center text-gray-500 py-8">
+                                {t('results.generatingMindMap')}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                  ) : processingMode === 'combined-mindmap' && bookMindMap ? (
+                    bookMindMap.combinedMindMap ? (
                       <MindMapCard
-                        id="combined"
+                        id="whole-book"
                         title={t('results.tabs.combinedMindMap')}
                         content=""
                         mindMapData={bookMindMap.combinedMindMap}
                         index={0}
                         onOpenInMindElixir={(mindmapData) => openInMindElixir(mindmapData, t('results.combinedMindMapTitle', { title: bookMindMap.title }))}
                         onDownloadMindMap={downloadMindMap}
-                        onClearCache={() => clearSpecificCache('merged_mindmap')}
+                        onClearCache={() => clearSpecificCache('combined_mindmap')}
                         showClearCache={true}
                         showViewContent={false}
                         showCopyButton={false}
@@ -832,40 +877,15 @@ function App() {
                           </div>
                         </CardContent>
                       </Card>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              ) : processingMode === 'combined-mindmap' && bookMindMap ? (
-                bookMindMap.combinedMindMap ? (
-                  <MindMapCard
-                    id="whole-book"
-                    title={t('results.tabs.combinedMindMap')}
-                    content=""
-                    mindMapData={bookMindMap.combinedMindMap}
-                    index={0}
-                    onOpenInMindElixir={(mindmapData) => openInMindElixir(mindmapData, t('results.combinedMindMapTitle', { title: bookMindMap.title }))}
-                    onDownloadMindMap={downloadMindMap}
-                    onClearCache={() => clearSpecificCache('combined_mindmap')}
-                    showClearCache={true}
-                    showViewContent={false}
-                    showCopyButton={false}
-                    mindMapClassName="w-full h-[600px] mx-auto"
-                    mindElixirOptions={options}
-                  />
-                ) : (
-                  <Card>
-                    <CardContent>
-                      <div className="text-center text-gray-500 py-8">
-                        {t('results.generatingMindMap')}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              ) : null}
-            </CardContent>
-          </Card>
+                    )
+                  ) : null}
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
       </div>
+      
       {/* 阅读组件插入到这里 */}
       {currentReadingChapter && file && (
         file.name.endsWith('.epub') ? (
