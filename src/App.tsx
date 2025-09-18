@@ -512,9 +512,9 @@ function App() {
   }, [extractedChapters, bookData, apiKey, file, selectedChapters, processingMode, bookType, customPrompt, processingOptions.outputLanguage, t])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex justify-center gap-4 h-screen overflow-auto">
       <Toaster />
-      <div className="max-w-6xl space-y-6 w-[800px]">
+      <div className="max-w-6xl space-y-6 w-[800px] shrink-0">
         <div className="text-center space-y-2 relative">
           <h1 className="text-4xl font-bold text-gray-900 flex items-center justify-center gap-2">
             <BookOpen className="h-8 w-8 text-blue-600" />
@@ -867,14 +867,14 @@ function App() {
       {currentReadingChapter && file && (
         file.name.endsWith('.epub') ? (
           <EpubReader
-            className="w-[800px] shrink-0"
+            className="w-[800px] shrink-0 sticky top-0"
             chapter={currentReadingChapter}
             bookData={fullBookData || undefined}
             onClose={() => setCurrentReadingChapter(null)}
           />
         ) : file.name.endsWith('.pdf') ? (
           <PdfReader
-            className="w-[800px] shrink-0"
+            className="w-[800px] shrink-0 sticky top-0"
             chapter={currentReadingChapter}
             bookData={fullBookData || undefined}
             onClose={() => setCurrentReadingChapter(null)}

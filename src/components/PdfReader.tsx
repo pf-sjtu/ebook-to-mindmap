@@ -67,7 +67,6 @@ export function PdfReader({ chapter, bookData, onClose, className }: PdfReaderPr
     }
   }, [currentPageIndex, chapterPages])
 
-  const currentPage = chapterPages[currentPageIndex]
   const totalPages = chapterPages.length
 
   const goToPreviousPage = () => {
@@ -147,8 +146,8 @@ export function PdfReader({ chapter, bookData, onClose, className }: PdfReaderPr
           )}
         </CardHeader>
 
-        <CardContent className="pt-6">
-          <ScrollArea className="h-[70vh]">
+        <CardContent>
+          <ScrollArea className="h-[80vh]">
             {isLoadingPages ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />

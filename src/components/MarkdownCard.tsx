@@ -83,9 +83,8 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={onReadChapter}
-                className="ml-2"
               >
-                <BookOpen className="h-3 w-3 mr-1" />
+                <BookOpen className="h-3 w-3" />
               </Button>
             )}
             {showViewContent && (

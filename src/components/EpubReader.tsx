@@ -75,7 +75,7 @@ export function EpubReader({ chapter, bookData, onClose, className }: EpubReader
           </div>
         </CardHeader>
         <CardContent className="pt-6">
-          <ScrollArea className="h-[70vh]">
+          <ScrollArea className="h-[80vh]">
             <div className="prose prose-sm max-w-none">
               {isLoadingHtml ? (
                 <div className="flex items-center justify-center py-8">
