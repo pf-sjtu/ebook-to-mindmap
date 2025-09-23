@@ -19,7 +19,7 @@ interface Chapter {
 }
 
 interface AIConfig {
-  provider: 'gemini' | 'openai'
+  provider: 'gemini' | 'openai' | 'ollama'
   apiKey: string
   apiUrl?: string // 用于OpenAI兼容的API地址
   model?: string
@@ -47,6 +47,13 @@ export class AIService {
         apiUrl: currentConfig.apiUrl || 'https://api.openai.com/v1',
         apiKey: currentConfig.apiKey,
         model: currentConfig.model || 'gpt-3.5-turbo'
+      }
+    } else if (currentConfig.provider === 'ollama') {
+      // Ollama配置
+      this.model = {
+        apiUrl: currentConfig.apiUrl || 'http://localhost:11434',
+        apiKey: currentConfig.apiKey || '', // Ollama通常不需要API密钥
+        model: currentConfig.model || 'llama2'
       }
     }
   }
@@ -274,9 +281,50 @@ export class AIService {
 
       const data = await response.json()
       return data.choices[0]?.message?.content || ''
+    } else if (config.provider === 'ollama') {
+      // Ollama API 调用
+      const messages: Array<{role: 'system' | 'user', content: string}> = [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+      
+      const requestHeaders: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      // 如果提供了API密钥，则添加Authorization头
+      if (this.model.apiKey) {
+        requestHeaders['Authorization'] = `Bearer ${this.model.apiKey}`
+      }
+      
+      const response = await fetch(`${this.model.apiUrl}/api/chat`, {
+        method: 'POST',
+        headers: requestHeaders,
+        body: JSON.stringify({
+          model: this.model.model,
+          messages,
+          stream: false,
+          options: {
+            temperature: config.temperature || 0.7
+          }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Ollama API请求失败: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      return data.message?.content || ''
     }
     
-    throw new Error('不支持的AI提供商')
+    throw new Error(`不支持的AI提供商: ${config.provider}`)
   }
 
   // 辅助方法：检查API连接

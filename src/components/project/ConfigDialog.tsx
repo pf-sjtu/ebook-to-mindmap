@@ -72,25 +72,32 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="ai-provider">{t('config.aiProvider')}</Label>
-                  <Select value={aiProvider} onValueChange={(value: 'gemini' | 'openai') => setAiProvider(value)} disabled={processing}>
+                  <Select value={aiProvider} onValueChange={(value: 'gemini' | 'openai' | 'ollama') => setAiProvider(value)} disabled={processing}>
                     <SelectTrigger>
                       <SelectValue placeholder={t('config.selectAiProvider')} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="gemini">Google Gemini</SelectItem>
                       <SelectItem value="openai">{t('config.openaiCompatible')}</SelectItem>
+                      <SelectItem value="ollama">Ollama</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="apikey">
-                    {aiProvider === 'gemini' ? 'Gemini API Key' : 'API Token'}
+                    {aiProvider === 'gemini' ? 'Gemini API Key' : aiProvider === 'ollama' ? 'API Token (可选)' : 'API Token'}
                   </Label>
                   <Input
                     id="apikey"
                     type="password"
-                    placeholder={aiProvider === 'gemini' ? t('config.enterGeminiApiKey') : t('config.enterApiToken')}
+                    placeholder={
+                      aiProvider === 'gemini' 
+                        ? t('config.enterGeminiApiKey') 
+                        : aiProvider === 'ollama' 
+                        ? 'API Token (通常不需要)' 
+                        : t('config.enterApiToken')
+                    }
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     disabled={processing}
@@ -98,7 +105,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                 </div>
               </div>
 
-              {aiProvider === 'openai' && (
+              {(aiProvider === 'openai' || aiProvider === 'ollama') && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -106,7 +113,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                       <Input
                         id="api-url"
                         type="url"
-                        placeholder="https://api.openai.com/v1"
+                        placeholder={aiProvider === 'ollama' ? 'http://localhost:11434' : 'https://api.openai.com/v1'}
                         value={apiUrl}
                         onChange={(e) => setApiUrl(e.target.value)}
                         disabled={processing}
@@ -118,7 +125,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                       <Input
                         id="model"
                         type="text"
-                        placeholder={t('config.modelPlaceholder')}
+                        placeholder={aiProvider === 'ollama' ? 'llama2, mistral, codellama...' : t('config.modelPlaceholder')}
                         value={model}
                         onChange={(e) => setModel(e.target.value)}
                         disabled={processing}
