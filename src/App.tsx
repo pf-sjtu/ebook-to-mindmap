@@ -14,7 +14,7 @@ import { PdfProcessor, type BookData as PdfBookData } from './services/pdfProces
 import { AIService } from './services/aiService'
 import { CacheService } from './services/cacheService'
 import { ConfigDialog } from './components/project/ConfigDialog'
-import type { MindElixirData } from 'mind-elixir'
+import type { MindElixirData, Options } from 'mind-elixir'
 import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { MarkdownCard } from './components/MarkdownCard'
@@ -26,7 +26,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { scrollToTop, openInMindElixir, downloadMindMap } from './utils'
 
 
-const options = { direction: 1, alignment: 'nodes' } as const
+const options = { direction: 1, alignment: 'nodes' } as Options
 
 interface Chapter {
   id: string
@@ -860,7 +860,7 @@ function App() {
                         <TabsTrigger value="combined">{t('results.tabs.combinedMindMap')}</TabsTrigger>
                       </TabsList>
 
-                      <TabsContent value="chapters" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <TabsContent value="chapters" className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {bookMindMap.chapters.map((chapter, index) => (
                           chapter.mindMap && (
                             <MindMapCard
