@@ -92,11 +92,11 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                     id="apikey"
                     type="password"
                     placeholder={
-                      aiProvider === 'gemini' 
-                        ? t('config.enterGeminiApiKey') 
-                        : aiProvider === 'ollama' 
-                        ? 'API Token (通常不需要)' 
-                        : t('config.enterApiToken')
+                      aiProvider === 'gemini'
+                        ? t('config.enterGeminiApiKey')
+                        : aiProvider === 'ollama'
+                          ? 'API Token (通常不需要)'
+                          : t('config.enterApiToken')
                     }
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
@@ -186,6 +186,32 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               )}
             </div>
 
+            <div className="p-3 bg-indigo-50 rounded-lg border">
+              <div className="space-y-2">
+                <Label htmlFor="output-language" className="text-sm font-medium">
+                  {t('config.outputLanguage')}
+                </Label>
+                <Select value={outputLanguage} onValueChange={(value: SupportedLanguage) => setOutputLanguage(value)} disabled={processing}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('config.selectOutputLanguage')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">{t('config.outputLanguageAuto')}</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="zh">中文</SelectItem>
+                    <SelectItem value="ja">日本語</SelectItem>
+                    <SelectItem value="fr">Français</SelectItem>
+                    <SelectItem value="de">Deutsch</SelectItem>
+                    <SelectItem value="es">Español</SelectItem>
+                    <SelectItem value="ru">Русский</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-600">
+                  {t('config.outputLanguageDescription')}
+                </p>
+              </div>
+            </div>
+
             <div className="p-3 bg-purple-50 rounded-lg border">
               <div className="space-y-3">
                 <div className="space-y-2">
@@ -227,22 +253,6 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
-              <div className="space-y-1">
-                <Label htmlFor="smart-detection" className="text-sm font-medium">
-                  {t('config.smartChapterDetection')}
-                </Label>
-                <p className="text-xs text-gray-600">
-                  {t('config.smartChapterDetectionDescription')}
-                </p>
-              </div>
-              <Switch
-                id="smart-detection"
-                checked={useSmartDetection}
-                onCheckedChange={setUseSmartDetection}
-                disabled={processing}
-              />
-            </div>
 
             <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border">
               <div className="space-y-1">
@@ -289,31 +299,23 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               </div>
             </div>
 
-            <div className="p-3 bg-indigo-50 rounded-lg border">
-              <div className="space-y-2">
-                <Label htmlFor="output-language" className="text-sm font-medium">
-                  {t('config.outputLanguage')}
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
+              <div className="space-y-1">
+                <Label htmlFor="smart-detection" className="text-sm font-medium">
+                  {t('config.smartChapterDetection')}
                 </Label>
-                <Select value={outputLanguage} onValueChange={(value: SupportedLanguage) => setOutputLanguage(value)} disabled={processing}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('config.selectOutputLanguage')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">{t('config.outputLanguageAuto')}</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="zh">中文</SelectItem>
-                    <SelectItem value="ja">日本語</SelectItem>
-                    <SelectItem value="fr">Français</SelectItem>
-                    <SelectItem value="de">Deutsch</SelectItem>
-                    <SelectItem value="es">Español</SelectItem>
-                    <SelectItem value="ru">Русский</SelectItem>
-                  </SelectContent>
-                </Select>
                 <p className="text-xs text-gray-600">
-                  {t('config.outputLanguageDescription')}
+                  {t('config.smartChapterDetectionDescription')}
                 </p>
               </div>
+              <Switch
+                id="smart-detection"
+                checked={useSmartDetection}
+                onCheckedChange={setUseSmartDetection}
+                disabled={processing}
+              />
             </div>
+
           </div>
         </ScrollArea>
       </DialogContent>
