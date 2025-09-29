@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
-import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp, ArrowLeft } from 'lucide-react'
+import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp, ArrowLeft, Download } from 'lucide-react'
 import { EpubProcessor, type ChapterData, type BookData as EpubBookData } from './services/epubProcessor'
 import { PdfProcessor, type BookData as PdfBookData } from './services/pdfProcessor'
 import { AIService } from './services/aiService'
@@ -156,6 +156,48 @@ function App() {
         position: 'top-center',
       })
     }
+  }
+
+  // 下载整合的所有markdown文本
+  const downloadAllMarkdown = () => {
+    if (!bookSummary) return
+
+    let markdownContent = `# ${bookSummary.title}\n\n**${t('results.author', { author: bookSummary.author })}**\n\n---\n\n`
+
+    // 添加章节总结
+    markdownContent += `## ${t('results.tabs.chapterSummary')}\n\n`
+    bookSummary.chapters.forEach((chapter, index) => {
+      markdownContent += `### ${index + 1}. ${chapter.title}\n\n`
+      markdownContent += `${chapter.summary || ''}\n\n`
+    })
+
+    markdownContent += `---\n\n`
+
+    // 添加章节关联
+    if (bookSummary.connections) {
+      markdownContent += `## ${t('results.tabs.connections')}\n\n${bookSummary.connections}\n\n---\n\n`
+    }
+
+    // 添加全书总结
+    if (bookSummary.overallSummary) {
+      markdownContent += `## ${t('results.tabs.overallSummary')}\n\n${bookSummary.overallSummary}\n\n`
+    }
+
+    // 创建下载链接
+    const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${bookSummary.title}_${t('results.tabs.overallSummary')}.md`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    toast.success(t('download.markdownDownloaded'), {
+      duration: 3000,
+      position: 'top-center',
+    })
   }
 
   // 章节选择处理函数
@@ -726,13 +768,26 @@ function App() {
             {(bookSummary || bookMindMap) && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    {processingMode === 'summary' ? (
-                      <><BookOpen className="h-5 w-5" />{t('results.summaryTitle', { title: bookSummary?.title })}</>
-                    ) : processingMode === 'mindmap' ? (
-                      <><Network className="h-5 w-5" />{t('results.chapterMindMapTitle', { title: bookMindMap?.title })}</>
-                    ) : (
-                      <><Network className="h-5 w-5" />{t('results.wholeMindMapTitle', { title: bookMindMap?.title })}</>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {processingMode === 'summary' ? (
+                        <><BookOpen className="h-5 w-5" />{t('results.summaryTitle', { title: bookSummary?.title })}</>
+                      ) : processingMode === 'mindmap' ? (
+                        <><Network className="h-5 w-5" />{t('results.chapterMindMapTitle', { title: bookMindMap?.title })}</>
+                      ) : (
+                        <><Network className="h-5 w-5" />{t('results.wholeMindMapTitle', { title: bookMindMap?.title })}</>
+                      )}
+                    </div>
+                    {processingMode === 'summary' && bookSummary && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={downloadAllMarkdown}
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        {t('download.downloadAllMarkdown')}
+                      </Button>
                     )}
                   </CardTitle>
                   <CardDescription>

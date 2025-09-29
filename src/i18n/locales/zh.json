@@ -146,6 +146,8 @@
   },
   "download": {
     "title": "下载思维导图",
+    "downloadAllMarkdown": "下载完整Markdown",
+    "markdownDownloaded": "Markdown文件已下载",
     "formats": {
       "png": "下载为 PNG",
       "jpeg": "下载为 JPEG",

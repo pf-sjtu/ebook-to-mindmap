@@ -184,6 +184,8 @@
   },
   "download": {
     "title": "Download Mind Map",
+    "downloadAllMarkdown": "Download Complete Markdown",
+    "markdownDownloaded": "Markdown file downloaded",
     "formats": {
       "png": "Download as PNG",
       "jpeg": "Download as JPEG",
