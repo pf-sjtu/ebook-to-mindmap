@@ -561,7 +561,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex justify-center gap-4 h-screen overflow-auto scroll-container">
       <Toaster />
-      <div className="max-w-6xl space-y-6 w-[800px] shrink-0">
+      <div className="max-w-6xl space-y-4 w-[800px] shrink-0">
         <div className="text-center space-y-2 relative">
           <h1 className="text-4xl font-bold text-gray-900 flex items-center justify-center gap-2">
             <BookOpen className="h-8 w-8 text-blue-600" />
@@ -575,67 +575,67 @@ function App() {
           <>
             {/* 步骤1: 文件上传和配置 */}
             <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              {t('upload.title')}
-            </CardTitle>
-            <CardDescription>
-              {t('upload.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="file">{t('upload.selectFile')}</Label>
-              <Input
-                id="file"
-                type="file"
-                accept=".epub,.pdf"
-                onChange={handleFileChange}
-                disabled={processing}
-              />
-            </div>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  {t('upload.title')}
+                </CardTitle>
+                <CardDescription>
+                  {t('upload.description')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="file">{t('upload.selectFile')}</Label>
+                  <Input
+                    id="file"
+                    type="file"
+                    accept=".epub,.pdf"
+                    onChange={handleFileChange}
+                    disabled={processing}
+                  />
+                </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <FileText className="h-4 w-4" />
-                {t('upload.selectedFile')}: {file?.name || t('upload.noFileSelected')}
-              </div>
-              <div className="flex items-center gap-2">
-                <ConfigDialog processing={processing} file={file} />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearBookCache}
-                  disabled={processing}
-                  className="flex items-center gap-1 text-red-500 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  {t('upload.clearCache')}
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Button
-                onClick={extractChapters}
-                disabled={!file || extractingChapters || processing}
-                className="w-full"
-              >
-                {extractingChapters ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t('upload.extractingChapters')}
-                  </>
-                ) : (
-                  <>
-                    <List className="mr-2 h-4 w-4" />
-                    {t('upload.extractChapters')}
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <FileText className="h-4 w-4" />
+                    {t('upload.selectedFile')}: {file?.name || t('upload.noFileSelected')}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ConfigDialog processing={processing} file={file} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearBookCache}
+                      disabled={processing}
+                      className="flex items-center gap-1 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {t('upload.clearCache')}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Button
+                    onClick={extractChapters}
+                    disabled={!file || extractingChapters || processing}
+                    className="w-full"
+                  >
+                    {extractingChapters ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t('upload.extractingChapters')}
+                      </>
+                    ) : (
+                      <>
+                        <List className="mr-2 h-4 w-4" />
+                        {t('upload.extractChapters')}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
             {/* 章节信息 */}
             {extractedChapters && bookData && (
               <Card>
@@ -745,7 +745,7 @@ function App() {
                 <ArrowLeft className="h-4 w-4" />
                 {t('common.backToConfig')}
               </Button>
-              <div className="text-lg font-medium text-gray-700">
+              <div className="text-lg font-medium text-gray-700 truncate">
                 {bookData ? `${bookData.title} - ${bookData.author}` : '处理中...'}
               </div>
             </div>
@@ -769,13 +769,13 @@ function App() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="truncate flex-1 w-1">
                       {processingMode === 'summary' ? (
-                        <><BookOpen className="h-5 w-5" />{t('results.summaryTitle', { title: bookSummary?.title })}</>
+                        <><BookOpen className="h-5 w-5 inline-block mr-2" />{t('results.summaryTitle', { title: bookSummary?.title })}</>
                       ) : processingMode === 'mindmap' ? (
-                        <><Network className="h-5 w-5" />{t('results.chapterMindMapTitle', { title: bookMindMap?.title })}</>
+                        <><Network className="h-5 w-5 inline-block mr-2" />{t('results.chapterMindMapTitle', { title: bookMindMap?.title })}</>
                       ) : (
-                        <><Network className="h-5 w-5" />{t('results.wholeMindMapTitle', { title: bookMindMap?.title })}</>
+                        <><Network className="h-5 w-5 inline-block mr-2" />{t('results.wholeMindMapTitle', { title: bookMindMap?.title })}</>
                       )}
                     </div>
                     {processingMode === 'summary' && bookSummary && (
@@ -941,7 +941,7 @@ function App() {
           </>
         )}
       </div>
-      
+
       {/* 阅读组件插入到这里 */}
       {currentReadingChapter && file && (
         file.name.endsWith('.epub') ? (

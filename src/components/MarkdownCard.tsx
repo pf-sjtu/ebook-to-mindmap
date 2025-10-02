@@ -51,7 +51,7 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
   showCopyButton = true,
   showReadButton = true,
   className = '',
-  defaultCollapsed = false
+  defaultCollapsed = false,
 }) => {
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
@@ -59,54 +59,52 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
   return (
     <Card className={`gap-0 ${className}`}>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline"># {index + 1}</Badge>
+        <CardTitle className="text-lg flex items-center justify-between gap-2">
+          <Badge variant="outline"># {index + 1}</Badge>
+          <div className="truncate flex-1 w-1" title={title}>
             {title}
           </div>
-          <div className="flex items-center gap-2">
-            {showCopyButton && (
-              <CopyButton
-                content={markdownContent}
-                successMessage={t('common.copiedToClipboard')}
-                title={t('common.copyChapterSummary')}
-              />
-            )}
-            {showClearCache && onClearCache && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onClearCache(id)}
-                title={t('common.clearCache')}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-            {showReadButton && onReadChapter && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onReadChapter}
-              >
-                <BookOpen className="h-3 w-3" />
-              </Button>
-            )}
-            {showViewContent && (
-              <ViewContentDialog
-                title={title}
-                content={content}
-                chapterIndex={index}
-              />
-            )}
+          {showCopyButton && (
+            <CopyButton
+              content={markdownContent}
+              successMessage={t('common.copiedToClipboard')}
+              title={t('common.copyChapterSummary')}
+            />
+          )}
+          {showClearCache && onClearCache && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              title={isCollapsed ? t('common.expand') : t('common.collapse')}
+              onClick={() => onClearCache(id)}
+              title={t('common.clearCache')}
             >
-              {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              <Trash2 className="h-4 w-4" />
             </Button>
-          </div>
+          )}
+          {showReadButton && onReadChapter && (
+            <Button variant="outline" size="sm" onClick={onReadChapter}>
+              <BookOpen className="h-3 w-3" />
+            </Button>
+          )}
+          {showViewContent && (
+            <ViewContentDialog
+              title={title}
+              content={content}
+              chapterIndex={index}
+            />
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            title={isCollapsed ? t('common.expand') : t('common.collapse')}
+          >
+            {isCollapsed ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronUp className="h-4 w-4" />
+            )}
+          </Button>
         </CardTitle>
       </CardHeader>
       {!isCollapsed && (
