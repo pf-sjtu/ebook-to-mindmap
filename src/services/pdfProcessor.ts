@@ -72,6 +72,7 @@ export class PdfProcessor {
       // 首先尝试使用PDF的outline（书签/目录）来获取章节
       try {
         const outline = await pdf.getOutline()
+        console.log(`📚 [DEBUG] 获取到PDF目录:`, outline)
         if (outline && outline.length > 0) {
           // 获取章节信息
           const chapterInfos = await this.extractChaptersFromOutline(pdf, outline, 0, maxSubChapterDepth)
@@ -195,12 +196,10 @@ export class PdfProcessor {
     for (const item of outline) {
       try {
         // 递归处理子章节
-        if (item.items && item.items.length > 0) {
-          // 只有当maxDepth大于0且当前深度小于最大深度时才递归处理子章节
-          if (maxDepth > 0 && currentDepth < maxDepth) {
-            const subChapters = await this.extractChaptersFromOutline(pdf, item.items, currentDepth + 1, maxDepth)
-            chapterInfos.push(...subChapters)
-          }
+        // 只有当maxDepth大于0且当前深度小于最大深度时才递归处理子章节
+        if (item.items && item.items.length > 0 && maxDepth > 0 && currentDepth < maxDepth) {
+          const subChapters = await this.extractChaptersFromOutline(pdf, item.items, currentDepth + 1, maxDepth)
+          chapterInfos.push(...subChapters)
         } else if (item.dest) {
           // 处理目标引用
           let destArray
@@ -350,7 +349,7 @@ export class PdfProcessor {
   async getPageContent(pdfDocument: PDFDocumentProxy, pageNumber: number): Promise<{ textContent: string; canvas?: HTMLCanvasElement }> {
     try {
       const page = await pdfDocument.getPage(pageNumber)
-      
+
       // 获取文本内容
       const textContent = await page.getTextContent()
       const pageText = textContent.items
@@ -362,7 +361,7 @@ export class PdfProcessor {
       const viewport = page.getViewport({ scale: 1.5 })
       const canvas = document.createElement('canvas')
       const context = canvas.getContext('2d')
-      
+
       canvas.height = viewport.height
       canvas.width = viewport.width
 
@@ -387,7 +386,7 @@ export class PdfProcessor {
   // 新增方法：获取章节的所有页面内容（用于阅读器显示）
   async getChapterPages(pdfDocument: any, chapter: ChapterData): Promise<{ textContent: string; canvas?: HTMLCanvasElement }[]> {
     const pages: { textContent: string; canvas?: HTMLCanvasElement }[] = []
-    
+
     if (!chapter.startPage || !chapter.endPage) {
       return pages
     }
