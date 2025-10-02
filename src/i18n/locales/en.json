@@ -198,5 +198,20 @@
   "viewContent": {
     "originalText": "Original Content",
     "chapterContent": "Complete original content of Chapter {{chapter}}"
+  },
+  "reader": {
+    "pdf": {
+      "page": "Page {{startPage}}-{{endPage}}",
+      "close": "Close",
+      "previousPage": "Previous",
+      "nextPage": "Next",
+      "pageInfo": "Page {{current}} of {{total}}",
+      "pdfPageInfo": "PDF Page {{page}}",
+      "loadingPages": "Loading PDF pages..."
+    },
+    "epub": {
+      "close": "Close",
+      "loadingContent": "Loading chapter content..."
+    }
   }
 }

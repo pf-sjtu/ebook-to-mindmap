@@ -7,6 +7,7 @@ import { FileText, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ChapterData, BookData } from '@/services/pdfProcessor'
 import { PdfProcessor } from '@/services/pdfProcessor'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface PdfReaderProps {
   chapter: ChapterData
@@ -20,6 +21,7 @@ interface PageContent {
 }
 
 export function PdfReader({ chapter, bookData, onClose, className }: PdfReaderProps) {
+  const { t } = useTranslation()
   const [chapterPages, setChapterPages] = useState<PageContent[]>([])
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
   const [isLoadingPages, setIsLoadingPages] = useState(false)
@@ -92,7 +94,7 @@ export function PdfReader({ chapter, bookData, onClose, className }: PdfReaderPr
               {chapter.title}
               {chapter.startPage && chapter.endPage && (
                 <Badge variant="secondary" className="ml-2">
-                  第{chapter.startPage}-{chapter.endPage}页
+                  {t('reader.pdf.page', { startPage: chapter.startPage, endPage: chapter.endPage })}
                 </Badge>
               )}
             </CardTitle>
@@ -102,7 +104,7 @@ export function PdfReader({ chapter, bookData, onClose, className }: PdfReaderPr
                 size="sm"
                 onClick={onClose}
               >
-                关闭
+                {t('reader.pdf.close')}
               </Button>
             </div>
           </div>
@@ -118,16 +120,16 @@ export function PdfReader({ chapter, bookData, onClose, className }: PdfReaderPr
                 className="flex items-center gap-1"
               >
                 <ChevronLeft className="h-4 w-4" />
-                上一页
+                {t('reader.pdf.previousPage')}
               </Button>
 
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
-                  第 {currentPageIndex + 1} 页，共 {totalPages} 页
+                  {t('reader.pdf.pageInfo', { current: currentPageIndex + 1, total: totalPages })}
                 </span>
                 {chapter.startPage && (
                   <Badge variant="outline" className="text-xs">
-                    PDF第{(chapter.startPage || 1) + currentPageIndex}页
+                    {t('reader.pdf.pdfPageInfo', { page: (chapter.startPage || 1) + currentPageIndex })}
                   </Badge>
                 )}
               </div>
@@ -139,7 +141,7 @@ export function PdfReader({ chapter, bookData, onClose, className }: PdfReaderPr
                 disabled={currentPageIndex === totalPages - 1}
                 className="flex items-center gap-1"
               >
-                下一页
+                {t('reader.pdf.nextPage')}
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -151,7 +153,7 @@ export function PdfReader({ chapter, bookData, onClose, className }: PdfReaderPr
             {isLoadingPages ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                <span>正在加载PDF页面...</span>
+                <span>{t('reader.pdf.loadingPages')}</span>
               </div>
             ) : (
               <div className="flex justify-center">

@@ -6,6 +6,7 @@ import { BookOpen, Loader2 } from 'lucide-react'
 import type { ChapterData, BookData } from '@/services/epubProcessor'
 import { EpubProcessor } from '@/services/epubProcessor'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface EpubReaderProps {
   chapter: ChapterData
@@ -15,6 +16,7 @@ interface EpubReaderProps {
 }
 
 export function EpubReader({ chapter, bookData, onClose, className }: EpubReaderProps) {
+  const { t } = useTranslation()
   const [chapterHtmlContent, setChapterHtmlContent] = useState<string>('')
   const [isLoadingHtml, setIsLoadingHtml] = useState(false)
   const [epubProcessor] = useState(() => new EpubProcessor())
@@ -70,7 +72,7 @@ export function EpubReader({ chapter, bookData, onClose, className }: EpubReader
               size="sm"
               onClick={onClose}
             >
-              关闭
+              {t('reader.epub.close')}
             </Button>
           </div>
         </CardHeader>
@@ -80,7 +82,7 @@ export function EpubReader({ chapter, bookData, onClose, className }: EpubReader
               {isLoadingHtml ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                  <span>正在加载章节内容...</span>
+                  <span>{t('reader.epub.loadingContent')}</span>
                 </div>
               ) : (
                 <div ref={shadowRef} className="w-full min-h-[200px]" />

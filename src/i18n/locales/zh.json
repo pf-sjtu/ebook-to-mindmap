@@ -161,6 +161,21 @@
     "originalText": "原文内容",
     "chapterContent": "第 {{chapter}} 章的完整原文内容"
   },
+  "reader": {
+    "pdf": {
+      "page": "第{{startPage}}-{{endPage}}页",
+      "close": "关闭",
+      "previousPage": "上一页",
+      "nextPage": "下一页",
+      "pageInfo": "第 {{current}} 页，共 {{total}} 页",
+      "pdfPageInfo": "PDF第{{page}}页",
+      "loadingPages": "正在加载PDF页面..."
+    },
+    "epub": {
+      "close": "关闭",
+      "loadingContent": "正在加载章节内容..."
+    }
+  },
   "mindElixir": {
     "launchSuccess": "已成功发送到 Mind Elixir Desktop",
     "launchError": "启动 Mind Elixir Desktop 失败",
