@@ -162,7 +162,13 @@ function App() {
   const downloadAllMarkdown = () => {
     if (!bookSummary) return
 
-    let markdownContent = `# ${bookSummary.title}\n\n**${t('results.author', { author: bookSummary.author })}**\n\n---\n\n`
+    let markdownContent = `# ${bookSummary.title}
+
+**${t('results.author', { author: bookSummary.author })}**
+
+---
+
+`
 
     // 添加章节总结
     markdownContent += `## ${t('results.tabs.chapterSummary')}\n\n`
@@ -175,12 +181,22 @@ function App() {
 
     // 添加章节关联
     if (bookSummary.connections) {
-      markdownContent += `## ${t('results.tabs.connections')}\n\n${bookSummary.connections}\n\n---\n\n`
+      markdownContent += `## ${t('results.tabs.connections')}
+
+${bookSummary.connections}
+
+---
+
+`
     }
 
     // 添加全书总结
     if (bookSummary.overallSummary) {
-      markdownContent += `## ${t('results.tabs.overallSummary')}\n\n${bookSummary.overallSummary}\n\n`
+      markdownContent += `## ${t('results.tabs.overallSummary')}
+
+${bookSummary.overallSummary}
+
+`
     }
 
     // 创建下载链接
@@ -754,8 +770,11 @@ function App() {
               <Card>
                 <CardContent>
                   <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>{currentStep}</span>
+                    <div className="flex justify-between items-center text-sm">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>{currentStep}</span>
+                      </div>
                       <span>{Math.round(progress)}%</span>
                     </div>
                     <Progress value={progress} className="w-full" />
