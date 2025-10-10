@@ -1,5 +1,6 @@
 import ePub, { Book, type NavItem } from '@ssshooter/epubjs'
 import { SKIP_CHAPTER_KEYWORDS } from './constants'
+import type Section from '@ssshooter/epubjs/types/section'
 
 
 export interface ChapterData {
@@ -52,9 +53,35 @@ export class EpubProcessor {
       try {
         const toc = book.navigation.toc.filter(item=>!item.href.includes('#'))
         if (toc && toc.length > 0) {
-          // 获取章节信息
-          const chapterInfos = await this.extractChaptersFromToc(book, toc, 0, maxSubChapterDepth)
+          // 获取章节信息（先按原始 TOC）
+          let chapterInfos = await this.extractChaptersFromToc(book, toc, 0, maxSubChapterDepth)
           console.log(`📚 [DEBUG] 找到 ${chapterInfos.length} 个章节信息`, chapterInfos)
+
+          // 回退：当 TOC 长度≤3 时，直接用 spineItems 生成章节信息
+          if (toc.length <= 3) {
+            const fallbackChapterInfos = book.spine.spineItems
+              .map((spineItem: Section, idx: number) => {
+                const navItem: NavItem = {
+                  id: spineItem.idref || `spine-${idx + 1}`,
+                  href: spineItem.href,
+                  label: spineItem.idref || `章节 ${idx + 1}`,
+                  subitems: []
+                }
+                return {
+                  title: navItem.label || `章节 ${idx + 1}`,
+                  href: navItem.href!,
+                  subitems: [],
+                  tocItem: navItem,
+                  depth: 0
+                }
+              })
+              .filter(item => !!item.href)
+            console.log('🔁 [DEBUG] TOC长度≤3，直接用 spineItems 生成章节信息，fallback 章节数:', fallbackChapterInfos.length)
+
+            if (fallbackChapterInfos.length >= chapterInfos.length) {
+              chapterInfos = fallbackChapterInfos
+            }
+          }
           if (chapterInfos.length > 0) {
             // 根据章节信息提取内容
             for (const chapterInfo of chapterInfos) {
