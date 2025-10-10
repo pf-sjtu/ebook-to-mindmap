@@ -1,6 +1,6 @@
 // 需要跳过的章节关键词
 export const SKIP_CHAPTER_KEYWORDS = [
-  'acknowledgments', 'acknowledgement', 'thanks', 'gratitude',
+  'acknowledgments','ack', 'acknowledgement', 'thanks', 'gratitude',
   'recommended reading', 'further reading', 'bibliography', 'references',
   'about the author', 'about author', 'author bio', 'biography',
   'praise for', 'reviews', 'testimonials', 'endorsements',
