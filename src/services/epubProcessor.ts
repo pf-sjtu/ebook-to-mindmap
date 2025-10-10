@@ -52,7 +52,6 @@ export class EpubProcessor {
 
       try {
         const toc = book.navigation.toc.filter(item=>!item.href.includes('#'))
-        if (toc && toc.length > 0) {
           // 获取章节信息（先按原始 TOC）
           let chapterInfos = await this.extractChaptersFromToc(book, toc, 0, maxSubChapterDepth)
           console.log(`📚 [DEBUG] 找到 ${chapterInfos.length} 个章节信息`, chapterInfos)
@@ -107,7 +106,6 @@ export class EpubProcessor {
               }
             }
           }
-        }
       } catch (tocError) {
         console.warn(`⚠️ [DEBUG] 无法获取EPUB目录:`, tocError)
       }
