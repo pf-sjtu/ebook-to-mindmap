@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Trash2, BookOpen, ChevronDown, ChevronUp } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkCjkFriendly from "remark-cjk-friendly";
 import { CopyButton } from '@/components/ui/copy-button'
 import { ViewContentDialog } from './ViewContentDialog'
 import { useTranslation } from 'react-i18next'
@@ -110,7 +111,7 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
       {!isCollapsed && (
         <CardContent>
           <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm,remarkCjkFriendly]}>
               {markdownContent || ''}
             </ReactMarkdown>
           </div>
