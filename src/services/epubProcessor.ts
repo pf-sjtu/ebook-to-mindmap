@@ -255,7 +255,7 @@ export class EpubProcessor {
 
       // 清理文本：移除多余的空白字符
       textContent = textContent
-        .replace(/\s+/g, ' ')
+        .replace(/\s+/g, '\n')
         .replace(/\n\s*\n/g, '\n')
         .trim()
 
