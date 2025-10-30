@@ -27,35 +27,6 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
   const [previewChapters, setPreviewChapters] = useState<{ title: string; preview: string }[]>([])
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
 
-  // 章节预览函数
-  const loadChapterPreview = async () => {
-    if (!file) {
-      setPreviewChapters([])
-      return
-    }
-
-    setIsPreviewLoading(true)
-    try {
-      const chapters = await chapterPreviewService.previewChapters(
-        file,
-        chapterDetectionMode,
-        epubTocDepth,
-        chapterNamingMode,
-        20 // 最多预览20个章节
-      )
-      setPreviewChapters(chapters)
-    } catch (error) {
-      console.error('加载章节预览失败:', error)
-      setPreviewChapters([])
-    } finally {
-      setIsPreviewLoading(false)
-    }
-  }
-
-  // 当章节识别模式或文件改变时，重新加载预览
-  useEffect(() => {
-    loadChapterPreview()
-  }, [file, chapterDetectionMode, epubTocDepth, chapterNamingMode])
   const {
     setAiProvider,
     setApiKey,
@@ -89,6 +60,36 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
     chapterDetectionMode,
     epubTocDepth
   } = processingOptions
+
+  // 章节预览函数
+  const loadChapterPreview = async () => {
+    if (!file) {
+      setPreviewChapters([])
+      return
+    }
+
+    setIsPreviewLoading(true)
+    try {
+      const chapters = await chapterPreviewService.previewChapters(
+        file,
+        chapterDetectionMode,
+        epubTocDepth,
+        chapterNamingMode,
+        20 // 最多预览20个章节
+      )
+      setPreviewChapters(chapters)
+    } catch (error) {
+      console.error('加载章节预览失败:', error)
+      setPreviewChapters([])
+    } finally {
+      setIsPreviewLoading(false)
+    }
+  }
+
+  // 当章节识别模式或文件改变时，重新加载预览
+  useEffect(() => {
+    loadChapterPreview()
+  }, [file, chapterDetectionMode, epubTocDepth, chapterNamingMode])
 
   const providerSettings = {
     gemini: {
