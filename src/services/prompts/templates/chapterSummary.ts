@@ -1,8 +1,9 @@
-// 章节总结相关的prompt模板
-import { usePromptConfig } from '../../stores/configStore'
+// 章节总结提示词模板
 
-export const getFictionChapterSummaryPrompt = (title: string, content: string, customPrompt?: string) => {
-  const template = customPrompt || `请为以下章节内容生成一个详细总结：
+export const CHAPTER_SUMMARY_TEMPLATES = {
+  fiction: {
+    name: '小说类章节总结',
+    template: `请为以下章节内容生成一个详细总结：
 
 章节标题：{{title}}
 
@@ -14,14 +15,10 @@ export const getFictionChapterSummaryPrompt = (title: string, content: string, c
 注意：如果内容是致谢、目录、前言、序言等无实质故事内容的页面，请直接回复"无需总结"。
 
 重要：请保持原文的段落结构和换行，不要删除或合并段落。`
-  
-  return template
-    .replace('{{title}}', title)
-    .replace('{{content}}', content)
-}
-
-export const getNonFictionChapterSummaryPrompt = (title: string, content: string, customPrompt?: string) => {
-  const template = customPrompt || `请为以下社科类书籍章节内容生成一个详细总结：
+  },
+  nonFiction: {
+    name: '社科类章节总结',
+    template: `请为以下社科类书籍章节内容生成一个详细总结：
 
 章节标题：{{title}}
 
@@ -36,8 +33,5 @@ export const getNonFictionChapterSummaryPrompt = (title: string, content: string
 - 给出指导实际生活的建议或应用（必须与此章节内容强关联）
 
 重要：请保持原文的段落结构和换行，不要删除或合并段落。`
-  
-  return template
-    .replace('{{title}}', title)
-    .replace('{{content}}', content)
-}
+  }
+} as const

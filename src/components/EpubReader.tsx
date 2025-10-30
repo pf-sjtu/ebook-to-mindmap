@@ -14,9 +14,10 @@ interface EpubReaderProps {
   bookData?: BookData
   onClose: () => void
   className?: string
+  showHeader?: boolean
 }
 
-export function EpubReader({ chapter, bookData, onClose, className }: EpubReaderProps) {
+export function EpubReader({ chapter, bookData, onClose, className, showHeader = true }: EpubReaderProps) {
   const { t } = useTranslation()
   const [chapterHtmlContent, setChapterHtmlContent] = useState<string>('')
   const [isLoadingHtml, setIsLoadingHtml] = useState(false)
@@ -70,23 +71,25 @@ export function EpubReader({ chapter, bookData, onClose, className }: EpubReader
     <div className={cn("w-full space-y-4", className)}>
       {/* 主要阅读区域 */}
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              {chapter.title}
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-            >
-              {t('reader.epub.close')}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <ScrollArea ref={scrollAreaRef} className="h-[80vh]">
+        {showHeader && (
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                {chapter.title}
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClose}
+              >
+                {t('reader.epub.close')}
+              </Button>
+            </div>
+          </CardHeader>
+        )}
+        <CardContent className={showHeader ? "pt-6" : "pt-3"}>
+          <ScrollArea ref={scrollAreaRef} className={showHeader ? "h-[80vh]" : "h-[60vh]"}>
             <div className="prose prose-sm max-w-none">
               {isLoadingHtml ? (
                 <div className="flex items-center justify-center py-8">

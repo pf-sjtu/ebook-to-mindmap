@@ -95,6 +95,99 @@ export class CacheService {
     return Array.isArray(value) ? value : null
   }
 
+  // 获取书籍总结缓存
+  getSummary(filename: string): any | null {
+    const stats = this.getStats()
+    const cleanFilename = filename.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+    
+    // 获取所有章节总结
+    const chapterKeys = stats.keys.filter(key =>
+      key.includes(`book_${cleanFilename}_chapter_`) &&
+      key.endsWith('_summary')
+    )
+    
+    const chapters = []
+    for (const key of chapterKeys) {
+      const value = this.cache.get(key)
+      if (typeof value === 'string') {
+        // 从key中提取chapterId
+        const match = key.match(/_chapter_(.+)_summary$/)
+        if (match) {
+          const chapterId = match[1]
+          chapters.push({
+            id: chapterId,
+            summary: value
+          })
+        }
+      }
+    }
+    
+    // 获取书籍级缓存
+    const connections = this.getString(filename, 'connections')
+    const overallSummary = this.getString(filename, 'overall_summary')
+    
+    if (chapters.length === 0 && !connections && !overallSummary) {
+      return null
+    }
+    
+    return {
+      chapters,
+      connections: connections || '',
+      overallSummary: overallSummary || ''
+    }
+  }
+
+  // 获取思维导图数据
+  getMindMapData(filename: string): any | null {
+    const stats = this.getStats()
+    const cleanFilename = filename.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
+    
+    // 获取所有章节思维导图
+    const chapterKeys = stats.keys.filter(key =>
+      key.includes(`book_${cleanFilename}_chapter_`) &&
+      key.endsWith('_mindmap')
+    )
+    
+    const chapters = []
+    for (const key of chapterKeys) {
+      const value = this.cache.get(key)
+      if (value && typeof value === 'object' && 'nodeData' in value) {
+        // 从key中提取chapterId
+        const match = key.match(/_chapter_(.+)_mindmap$/)
+        if (match) {
+          const chapterId = match[1]
+          chapters.push({
+            id: chapterId,
+            mindMap: value
+          })
+        }
+      }
+    }
+    
+    // 获取整书思维导图
+    const combinedMindMap = this.getMindMap(filename, 'combined_mindmap')
+    
+    if (chapters.length === 0 && !combinedMindMap) {
+      return null
+    }
+    
+    return {
+      chapters,
+      combinedMindMap
+    }
+  }
+
+  // 获取通用缓存
+  getCache(filename: string, type: CacheKeyType): any | null {
+    if (type === 'summary') {
+      return this.getSummary(filename)
+    } else if (type === 'mindmap') {
+      return this.getMindMapData(filename)
+    } else {
+      return this.getString(filename, type)
+    }
+  }
+
   // 设置缓存值
   setCache(filename: string, type: CacheKeyType, value: CacheValue, chapterId?: string): void {
     const key = CacheService.generateKey(filename, type, chapterId)

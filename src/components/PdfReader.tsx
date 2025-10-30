@@ -15,13 +15,14 @@ interface PdfReaderProps {
   bookData?: BookData
   onClose: () => void
   className?: string
+  showHeader?: boolean
 }
 
 interface PageContent {
   canvas?: HTMLCanvasElement
 }
 
-export function PdfReader({ chapter, bookData, onClose, className }: PdfReaderProps) {
+export function PdfReader({ chapter, bookData, onClose, className, showHeader = true }: PdfReaderProps) {
   const { t } = useTranslation()
   const [chapterPages, setChapterPages] = useState<PageContent[]>([])
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
@@ -88,69 +89,71 @@ export function PdfReader({ chapter, bookData, onClose, className }: PdfReaderPr
     <div className={cn("w-full", className)}>
       {/* 主要阅读区域 */}
       <Card className='gap-0'>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {chapter.title}
-              {chapter.startPage && chapter.endPage && (
-                <Badge variant="secondary" className="ml-2">
-                  {t('reader.pdf.page', { startPage: chapter.startPage, endPage: chapter.endPage })}
-                </Badge>
-              )}
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onClose}
-              >
-                {t('reader.pdf.close')}
-              </Button>
-            </div>
-          </div>
-
-          {/* 页面导航 */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToPreviousPage}
-                disabled={currentPageIndex === 0}
-                className="flex items-center gap-1"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                {t('reader.pdf.previousPage')}
-              </Button>
-
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {t('reader.pdf.pageInfo', { current: currentPageIndex + 1, total: totalPages })}
-                </span>
-                {chapter.startPage && (
-                  <Badge variant="outline" className="text-xs">
-                    {t('reader.pdf.pdfPageInfo', { page: (chapter.startPage || 1) + currentPageIndex })}
+        {showHeader && (
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                {chapter.title}
+                {chapter.startPage && chapter.endPage && (
+                  <Badge variant="secondary" className="ml-2">
+                    {t('reader.pdf.page', { startPage: chapter.startPage, endPage: chapter.endPage })}
                   </Badge>
                 )}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onClose}
+                >
+                  {t('reader.pdf.close')}
+                </Button>
               </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToNextPage}
-                disabled={currentPageIndex === totalPages - 1}
-                className="flex items-center gap-1"
-              >
-                {t('reader.pdf.nextPage')}
-                <ChevronRight className="h-4 w-4" />
-              </Button>
             </div>
-          )}
-        </CardHeader>
 
-        <CardContent>
-          <ScrollArea className="h-[80vh]">
+            {/* 页面导航 */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToPreviousPage}
+                  disabled={currentPageIndex === 0}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  {t('reader.pdf.previousPage')}
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {t('reader.pdf.pageInfo', { current: currentPageIndex + 1, total: totalPages })}
+                  </span>
+                  {chapter.startPage && (
+                    <Badge variant="outline" className="text-xs">
+                      {t('reader.pdf.pdfPageInfo', { page: (chapter.startPage || 1) + currentPageIndex })}
+                    </Badge>
+                  )}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToNextPage}
+                  disabled={currentPageIndex === totalPages - 1}
+                  className="flex items-center gap-1"
+                >
+                  {t('reader.pdf.nextPage')}
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </CardHeader>
+        )}
+
+        <CardContent className={showHeader ? "" : "pt-3"}>
+          <ScrollArea className={showHeader ? "h-[80vh]" : "h-[60vh]"}>
             {isLoadingPages ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />

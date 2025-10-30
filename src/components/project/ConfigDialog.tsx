@@ -6,7 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Settings, ExternalLink, Info } from 'lucide-react'
+import { PromptEditor } from './PromptEditor'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useConfigStore, useAIConfig, useProcessingOptions } from '../../stores/configStore'
@@ -147,13 +149,19 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-4">
-          <div className="space-y-4">
-            {/* AI 服务配置 */}
-            <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border dark:border-gray-700">
-              <div className="flex items-center gap-2 mb-3">
-                <Settings className="h-4 w-4" />
-                <Label className="text-sm font-medium">{t('config.aiServiceConfig')}</Label>
-              </div>
+          <Tabs defaultValue="ai-config" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="ai-config">{t('config.aiServiceConfig')}</TabsTrigger>
+              <TabsTrigger value="prompts">{t('promptEditor.title')}</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="ai-config" className="space-y-4 mt-4">
+              {/* AI 服务配置 */}
+              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border dark:border-gray-700">
+                <div className="flex items-center gap-2 mb-3">
+                  <Settings className="h-4 w-4" />
+                  <Label className="text-sm font-medium">{t('config.aiServiceConfig')}</Label>
+                </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -657,8 +665,12 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                 )}
               </div>
             )}
+            </TabsContent>
 
-          </div>
+            <TabsContent value="prompts" className="mt-4">
+              <PromptEditor />
+            </TabsContent>
+          </Tabs>
         </ScrollArea>
       </DialogContent>
     </Dialog>

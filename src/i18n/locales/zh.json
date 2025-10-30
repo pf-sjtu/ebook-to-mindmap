@@ -45,6 +45,7 @@
     "extractionError": "章节提取过程中发生错误"
   },
   "results": {
+    "title": "处理结果",
     "summaryTitle": "《{{title}}》解析结果",
     "chapterMindMapTitle": "《{{title}}》章节思维导图",
     "wholeMindMapTitle": "《{{title}}》整书思维导图",
@@ -58,6 +59,8 @@
       "chapterMindMaps": "章节思维导图",
       "combinedMindMap": "章节思维导图整合"
     },
+    "noResults": "暂无处理结果，请先选择文件并开始处理",
+    "noCombinedMindMap": "暂无整书思维导图",
     "generatingMindMap": "正在生成思维导图...",
     "actions": {
       "copyChapterSummary": "复制章节总结",
@@ -70,8 +73,11 @@
       "clearChapterCache": "清除章节缓存"
     }
   },
+  "chapterNavigation": {
+    "title": "章节导航",
+    "mindMapGenerated": "思维导图已生成"
+  },
   "cache": {
-    "cleared": "已清除缓存，下次处理将重新生成内容",
     "bookCacheCleared": "已清除{{count}}项{{mode}}缓存，下次处理将重新生成内容",
     "noCacheFound": "没有找到可清除的{{mode}}缓存",
     "modes": {
@@ -99,6 +105,40 @@
   "tabs": {
     "setup": "设置",
     "processing": "处理"
+  },
+  "promptEditor": {
+    "title": "提示词编辑器",
+    "description": "自定义AI处理的提示词模板，根据处理模式和书籍类型显示对应的提示词",
+    "fiction": "小说类",
+    "nonFiction": "社科类",
+    "summary": "总结模式",
+    "mindmap": "思维导图模式",
+    "combinedMindmap": "整书思维导图",
+    "chapterSummary": "章节总结",
+    "mindmap": "思维导图",
+    "connectionAnalysis": "章节关联分析",
+    "overallSummary": "全书总结",
+    "chapterSummaryPrompt": "章节总结提示词",
+    "mindmapPrompt": "思维导图提示词",
+    "connectionAnalysisPrompt": "章节关联分析提示词",
+    "overallSummaryPrompt": "全书总结提示词",
+    "placeholder": "请输入提示词内容...",
+    "editMode": "编辑模式",
+    "previewMode": "预览模式",
+    "resetToDefault": "重置为默认",
+    "save": "保存",
+    "copy": "复制",
+    "version": "版本",
+    "original": "原版",
+    "optimized": "优化版",
+    "preview": {
+      "title": "章节标题示例",
+      "content": "这里是章节内容的示例文本...",
+      "chapterSummaries": "这里是各章节总结的示例内容...",
+      "chapterInfo": "这里是书籍章节结构的示例信息...",
+      "connections": "这里是章节关联分析的示例内容...",
+      "bookTitle": "示例书籍标题"
+    }
   },
   "config": {
     "title": "配置",

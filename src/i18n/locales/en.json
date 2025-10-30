@@ -70,6 +70,10 @@
       "clearChapterCache": "Clear Chapter Cache"
     }
   },
+  "chapterNavigation": {
+    "title": "Chapter Navigation",
+    "mindMapGenerated": "Mind map generated"
+  },
   "cache": {
     "cleared": "Cache cleared, content will be regenerated on next processing",
     "bookCacheCleared": "Cleared {{count}} {{mode}} cache items, content will be regenerated on next processing",
@@ -137,6 +141,40 @@
   "tabs": {
     "setup": "Setup",
     "processing": "Processing"
+  },
+  "promptEditor": {
+    "title": "Prompt Editor",
+    "description": "Customize AI processing prompt templates, displaying corresponding prompts based on processing mode and book type",
+    "fiction": "Fiction",
+    "nonFiction": "Non-Fiction",
+    "summary": "Summary Mode",
+    "mindmap": "Mindmap Mode",
+    "combinedMindmap": "Book Mindmap",
+    "chapterSummary": "Chapter Summary",
+    "mindmap": "Mindmap",
+    "connectionAnalysis": "Connection Analysis",
+    "overallSummary": "Overall Summary",
+    "chapterSummaryPrompt": "Chapter Summary Prompt",
+    "mindmapPrompt": "Mindmap Prompt",
+    "connectionAnalysisPrompt": "Connection Analysis Prompt",
+    "overallSummaryPrompt": "Overall Summary Prompt",
+    "placeholder": "Enter prompt content...",
+    "editMode": "Edit Mode",
+    "previewMode": "Preview Mode",
+    "resetToDefault": "Reset to Default",
+    "save": "Save",
+    "copy": "Copy",
+    "version": "Version",
+    "original": "Original",
+    "optimized": "Optimized",
+    "preview": {
+      "title": "Sample Chapter Title",
+      "content": "This is sample chapter content...",
+      "chapterSummaries": "This is sample chapter summaries content...",
+      "chapterInfo": "This is sample book chapter structure information...",
+      "connections": "This is sample chapter connection analysis content...",
+      "bookTitle": "Sample Book Title"
+    }
   },
   "config": {
     "title": "Configuration",

@@ -10,6 +10,7 @@ import {
 } from './prompts'
 import type { MindElixirData } from 'mind-elixir'
 import { getLanguageInstruction, type SupportedLanguage } from './prompts/utils'
+import type { PromptConfig } from '../stores/configStore'
 
 // 代理fetch函数
 async function proxyFetch(url: string, options: RequestInit, proxyUrl?: string): Promise<Response> {
@@ -67,11 +68,25 @@ interface AIConfig {
 
 export class AIService {
   private config: AIConfig | (() => AIConfig)
+  private promptConfig: PromptConfig | (() => PromptConfig)
   private genAI?: GoogleGenerativeAI
   private model: any
 
-  constructor(config: AIConfig | (() => AIConfig)) {
+  constructor(config: AIConfig | (() => AIConfig), promptConfig?: PromptConfig | (() => PromptConfig)) {
     this.config = config
+    this.promptConfig = promptConfig || (() => ({
+      chapterSummary: {
+        fiction: '',
+        nonFiction: ''
+      },
+      mindmap: {
+        chapter: '',
+        arrow: '',
+        combined: ''
+      },
+      connectionAnalysis: '',
+      overallSummary: ''
+    }))
     
     const currentConfig = typeof config === 'function' ? config() : config
     
@@ -97,15 +112,22 @@ export class AIService {
     }
   }
 
+  private getCurrentPromptConfig(): PromptConfig {
+    return typeof this.promptConfig === 'function' ? this.promptConfig() : this.promptConfig
+  }
+
   private getCurrentConfig(): AIConfig {
     return typeof this.config === 'function' ? this.config() : this.config
   }
 
   async summarizeChapter(title: string, content: string, bookType: 'fiction' | 'non-fiction' = 'non-fiction', outputLanguage: SupportedLanguage = 'en', customPrompt?: string): Promise<string> {
     try {
+      const promptConfig = this.getCurrentPromptConfig()
+      const customChapterPrompt = customPrompt || (bookType === 'fiction' ? promptConfig.chapterSummary.fiction : promptConfig.chapterSummary.nonFiction)
+      
       let prompt = bookType === 'fiction'
-        ? getFictionChapterSummaryPrompt(title, content)
-        : getNonFictionChapterSummaryPrompt(title, content)
+        ? getFictionChapterSummaryPrompt(title, content, customChapterPrompt)
+        : getNonFictionChapterSummaryPrompt(title, content, customChapterPrompt)
 
       // 如果有自定义提示词，则拼接到原始prompt后面
       if (customPrompt && customPrompt.trim()) {
@@ -173,7 +195,10 @@ export class AIService {
 
   async generateChapterMindMap(content: string, outputLanguage: SupportedLanguage = 'en', customPrompt?: string): Promise<MindElixirData> {
     try {
-      const basePrompt = getChapterMindMapPrompt()
+      const promptConfig = this.getCurrentPromptConfig()
+      const customMindmapPrompt = customPrompt || promptConfig.mindmap.chapter
+      
+      const basePrompt = getChapterMindMapPrompt(customMindmapPrompt)
       let prompt = basePrompt + `章节内容：\n${content}`
 
       // 如果有自定义提示词，则拼接到原始prompt后面

@@ -37,6 +37,10 @@ interface MarkdownCardProps {
   className?: string
   /** 是否默认折叠 */
   defaultCollapsed?: boolean
+  /** 外部控制是否展开 */
+  isExpanded?: boolean
+  /** 章节展开状态变化的回调 */
+  onExpandChange?: (expanded: boolean) => void
 }
 
 export const MarkdownCard: React.FC<MarkdownCardProps> = ({
@@ -53,12 +57,27 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
   showReadButton = true,
   className = '',
   defaultCollapsed = false,
+  isExpanded,
+  onExpandChange,
 }) => {
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
 
+  // 使用外部控制的展开状态
+  const actualIsCollapsed = isExpanded !== undefined ? !isExpanded : isCollapsed
+
+  const handleToggleCollapse = () => {
+    if (isExpanded !== undefined) {
+      // 外部控制模式
+      onExpandChange?.(!isExpanded)
+    } else {
+      // 内部控制模式
+      setIsCollapsed(!isCollapsed)
+    }
+  }
+
   return (
-    <Card className={`gap-0 ${className}`}>
+    <Card id={`chapter-summary-${id}`} className={`gap-0 ${className}`}>
       <CardHeader>
         <CardTitle className="text-lg flex items-center justify-between gap-2">
           <Badge variant="outline"># {index + 1}</Badge>
@@ -97,10 +116,10 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            title={isCollapsed ? t('common.expand') : t('common.collapse')}
+            onClick={handleToggleCollapse}
+            title={actualIsCollapsed ? t('common.expand') : t('common.collapse')}
           >
-            {isCollapsed ? (
+            {actualIsCollapsed ? (
               <ChevronDown className="h-4 w-4" />
             ) : (
               <ChevronUp className="h-4 w-4" />
@@ -108,7 +127,7 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
           </Button>
         </CardTitle>
       </CardHeader>
-      {!isCollapsed && (
+      {!actualIsCollapsed && (
         <CardContent>
           <div className="text-gray-700 dark:text-gray-200 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-200 prose-li:text-gray-700 dark:prose-li:text-gray-200 prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:text-gray-800 dark:prose-code:text-gray-100 prose-pre:text-gray-200 dark:prose-pre:text-gray-200 prose-blockquote:text-gray-600 dark:prose-blockquote:text-gray-300 prose-hr:border-gray-300 dark:prose-hr:border-gray-600 w-full break-words">
             <ReactMarkdown remarkPlugins={[remarkGfm,remarkCjkFriendly]}>

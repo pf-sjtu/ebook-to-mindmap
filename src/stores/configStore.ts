@@ -1,6 +1,28 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { SupportedLanguage } from '../services/prompts/utils'
+import { DEFAULT_PROMPT_CONFIG, DEFAULT_PROMPT_CONFIG_V2 } from '../services/prompts/templates'
+
+// 提示词配置接口
+interface PromptConfig {
+  chapterSummary: {
+    fiction: string
+    nonFiction: string
+  }
+  mindmap: {
+    chapter: string
+    arrow: string
+    combined: string
+  }
+  connectionAnalysis: string
+  overallSummary: string
+}
+
+// 提示词版本配置接口
+interface PromptVersionConfig {
+  v1: PromptConfig
+  v2: PromptConfig
+}
 
 // AI配置接口
 interface AIConfig {
@@ -51,6 +73,18 @@ interface ConfigState {
   setEnableNotification: (enabled: boolean) => void
   setChapterDetectionMode: (mode: 'normal' | 'smart' | 'epub-toc') => void
   setEpubTocDepth: (depth: number) => void
+  
+  // 提示词配置
+  promptConfig: PromptConfig
+  promptVersionConfig: PromptVersionConfig
+  currentPromptVersion: 'v1' | 'v2'
+  setCurrentPromptVersion: (version: 'v1' | 'v2') => void
+  setChapterSummaryPrompt: (bookType: 'fiction' | 'non-fiction', prompt: string) => void
+  setMindmapPrompt: (mindmapType: 'chapter' | 'arrow' | 'combined', prompt: string) => void
+  setConnectionAnalysisPrompt: (prompt: string) => void
+  setOverallSummaryPrompt: (prompt: string) => void
+  resetPromptsToDefault: () => void
+  resetPromptsToDefaultForVersion: (version: 'v1' | 'v2') => void
 }
 
 // 默认配置
@@ -75,6 +109,12 @@ const defaultProcessingOptions: ProcessingOptions = {
   enableNotification: true,
   chapterDetectionMode: 'normal',
   epubTocDepth: 1
+}
+
+const defaultPromptConfig: PromptConfig = DEFAULT_PROMPT_CONFIG
+const defaultPromptVersionConfig: PromptVersionConfig = {
+  v1: DEFAULT_PROMPT_CONFIG,
+  v2: DEFAULT_PROMPT_CONFIG_V2
 }
 
 // 创建配置store
@@ -136,13 +176,110 @@ export const useConfigStore = create<ConfigState>()(
       })),
       setEpubTocDepth: (epubTocDepth) => set((state) => ({
         processingOptions: { ...state.processingOptions, epubTocDepth }
-      }))
+      })),
+      
+      // 提示词配置
+      promptConfig: defaultPromptConfig,
+      promptVersionConfig: defaultPromptVersionConfig,
+      currentPromptVersion: 'v1',
+      setCurrentPromptVersion: (version) => set((state) => {
+        const newPromptConfig = state.promptVersionConfig[version]
+        return {
+          currentPromptVersion: version,
+          promptConfig: newPromptConfig
+        }
+      }),
+      setChapterSummaryPrompt: (bookType, prompt) => set((state) => {
+        const updatedConfig = {
+          ...state.promptConfig,
+          chapterSummary: {
+            ...state.promptConfig.chapterSummary,
+            [bookType]: prompt
+          }
+        }
+        const updatedVersionConfig = {
+          ...state.promptVersionConfig,
+          [state.currentPromptVersion]: updatedConfig
+        }
+        return {
+          promptConfig: updatedConfig,
+          promptVersionConfig: updatedVersionConfig
+        }
+      }),
+      setMindmapPrompt: (mindmapType, prompt) => set((state) => {
+        const updatedConfig = {
+          ...state.promptConfig,
+          mindmap: {
+            ...state.promptConfig.mindmap,
+            [mindmapType]: prompt
+          }
+        }
+        const updatedVersionConfig = {
+          ...state.promptVersionConfig,
+          [state.currentPromptVersion]: updatedConfig
+        }
+        return {
+          promptConfig: updatedConfig,
+          promptVersionConfig: updatedVersionConfig
+        }
+      }),
+      setConnectionAnalysisPrompt: (prompt) => set((state) => {
+        const updatedConfig = {
+          ...state.promptConfig,
+          connectionAnalysis: prompt
+        }
+        const updatedVersionConfig = {
+          ...state.promptVersionConfig,
+          [state.currentPromptVersion]: updatedConfig
+        }
+        return {
+          promptConfig: updatedConfig,
+          promptVersionConfig: updatedVersionConfig
+        }
+      }),
+      setOverallSummaryPrompt: (prompt) => set((state) => {
+        const updatedConfig = {
+          ...state.promptConfig,
+          overallSummary: prompt
+        }
+        const updatedVersionConfig = {
+          ...state.promptVersionConfig,
+          [state.currentPromptVersion]: updatedConfig
+        }
+        return {
+          promptConfig: updatedConfig,
+          promptVersionConfig: updatedVersionConfig
+        }
+      }),
+      resetPromptsToDefault: () => set((state) => ({
+        promptConfig: state.currentPromptVersion === 'v1' ? DEFAULT_PROMPT_CONFIG : DEFAULT_PROMPT_CONFIG_V2,
+        promptVersionConfig: {
+          ...state.promptVersionConfig,
+          [state.currentPromptVersion]: state.currentPromptVersion === 'v1' ? DEFAULT_PROMPT_CONFIG : DEFAULT_PROMPT_CONFIG_V2
+        }
+      })),
+      resetPromptsToDefaultForVersion: (version) => set((state) => {
+        const defaultConfig = version === 'v1' ? DEFAULT_PROMPT_CONFIG : DEFAULT_PROMPT_CONFIG_V2
+        const updatedVersionConfig = {
+          ...state.promptVersionConfig,
+          [version]: defaultConfig
+        }
+        const newPromptConfig = state.currentPromptVersion === version ? defaultConfig : state.promptConfig
+        
+        return {
+          promptConfig: newPromptConfig,
+          promptVersionConfig: updatedVersionConfig
+        }
+      })
     }),
     {
       name: 'ebook-mindmap-config', // localStorage中的键名
       partialize: (state) => ({
         aiConfig: state.aiConfig,
-        processingOptions: state.processingOptions
+        processingOptions: state.processingOptions,
+        promptConfig: state.promptConfig,
+        promptVersionConfig: state.promptVersionConfig,
+        currentPromptVersion: state.currentPromptVersion
       })
     }
   )
@@ -151,3 +288,6 @@ export const useConfigStore = create<ConfigState>()(
 // 导出便捷的选择器
 export const useAIConfig = () => useConfigStore((state) => state.aiConfig)
 export const useProcessingOptions = () => useConfigStore((state) => state.processingOptions)
+export const usePromptConfig = () => useConfigStore((state) => state.promptConfig)
+export const usePromptVersionConfig = () => useConfigStore((state) => state.promptVersionConfig)
+export const useCurrentPromptVersion = () => useConfigStore((state) => state.currentPromptVersion)

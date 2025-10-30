@@ -64,10 +64,33 @@ export class EpubProcessor {
         let chapterInfos: { title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[] = []
 
         if (chapterDetectionMode === 'epub-toc') {
-          // EPUB目录模式：使用指定的目录深度
-          const toc = book.navigation.toc.filter(item => !item.href.includes('#'))
+          // EPUB目录模式：使用指定的目录深度，不过滤锚点链接
+          const toc = book.navigation.toc
           chapterInfos = await this.extractChaptersFromToc(book, toc, 0, epubTocDepth, chapterNamingMode)
           console.log(`📚 [DEBUG] EPUB目录模式 (深度${epubTocDepth}) 找到 ${chapterInfos.length} 个章节信息`, chapterInfos)
+          
+          // 回退：如果TOC为空或提取失败，使用spineItems
+          if (chapterInfos.length === 0) {
+            console.log('📚 [DEBUG] EPUB目录模式未找到章节，使用spineItems作为回退')
+            const fallbackChapterInfos = book.spine.spineItems
+              .map((spineItem: Section, idx: number) => {
+                const navItem: NavItem = {
+                  id: spineItem.idref || `spine-${idx + 1}`,
+                  href: spineItem.href,
+                  label: chapterNamingMode === 'numbered' ? `第${idx + 1}章` : (spineItem.idref || `章节 ${idx + 1}`),
+                  subitems: []
+                }
+                return {
+                  title: navItem.label || `第${idx + 1}章`,
+                  href: navItem.href!,
+                  subitems: [],
+                  tocItem: navItem,
+                  depth: 0
+                }
+              })
+            chapterInfos = fallbackChapterInfos
+            console.log(`📚 [DEBUG] 回退方案找到 ${chapterInfos.length} 个章节信息`)
+          }
         } else {
           // 普通模式和智能模式：使用原有逻辑
           const toc = book.navigation.toc.filter(item => !item.href.includes('#'))
@@ -150,10 +173,11 @@ export class EpubProcessor {
 
     for (const item of toc) {
       try {
-        if (item.subitems && item.subitems.length > 0 && maxDepth > 0 && currentDepth < maxDepth) {
-          const subChapters = await this.extractChaptersFromToc(book, item.subitems, currentDepth + 1, maxDepth, chapterNamingMode)
-          chapterInfos.push(...subChapters)
-        } else if (item.href) {
+        // 首先处理当前项目（如果它有有效的href）
+        if (item.href) {
+          // 移除锚点部分，获取基础文件路径
+          const baseHref = item.href.split('#')[0]
+          
           // 根据章节命名模式生成标题
           let chapterTitle: string
           if (chapterNamingMode === 'numbered') {
@@ -164,12 +188,18 @@ export class EpubProcessor {
           
           const chapterInfo: { title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number } = {
             title: chapterTitle,
-            href: item.href,
+            href: baseHref, // 使用去除锚点的href
             subitems: item.subitems,
             tocItem: item, // 保存原始TOC项目信息
             depth: currentDepth // 保存章节层级深度
           }
           chapterInfos.push(chapterInfo)
+        }
+        
+        // 然后递归处理子项目
+        if (item.subitems && item.subitems.length > 0 && maxDepth > 0 && currentDepth < maxDepth) {
+          const subChapters = await this.extractChaptersFromToc(book, item.subitems, currentDepth + 1, maxDepth, chapterNamingMode)
+          chapterInfos.push(...subChapters)
         }
       } catch (error) {
         console.warn(`⚠️ [DEBUG] 跳过章节 "${item.label}":`, error)

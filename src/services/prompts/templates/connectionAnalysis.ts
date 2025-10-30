@@ -1,7 +1,9 @@
-// 章节关联分析相关的prompt模板
+// 章节关联分析提示词模板
 
-export const getChapterConnectionsAnalysisPrompt = (chapterSummaries: string, customPrompt?: string) => {
-  const template = customPrompt || `请帮我分析这本书各章节之间的关系，并总结全书的核心内容：
+export const CONNECTION_ANALYSIS_TEMPLATES = {
+  standard: {
+    name: '标准章节关联分析',
+    template: `请帮我分析这本书各章节之间的关系，并总结全书的核心内容：
 
 {{chapterSummaries}}
 
@@ -28,6 +30,5 @@ export const getChapterConnectionsAnalysisPrompt = (chapterSummaries: string, cu
 - 阅读这本书的最大收获是什么
 
 请用通俗易懂的语言来分析，让普通读者也能轻松理解书籍的价值和意义。`
-  
-  return template.replace('{{chapterSummaries}}', chapterSummaries)
-}
+  }
+} as const

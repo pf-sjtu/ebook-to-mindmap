@@ -1,5 +1,9 @@
-export const getChapterMindMapPrompt = (customPrompt?: string) => {
-  const template = customPrompt || `\`\`\`ts
+// 思维导图提示词模板
+
+export const MINDMAP_TEMPLATES = {
+  chapter: {
+    name: '章节思维导图',
+    template: `\`\`\`ts
 export interface NodeObj {
   topic: string
   id: string
@@ -42,12 +46,10 @@ export interface Summary {
 - 适当添加表达该节点内涵的 emoji
 - 确保JSON格式正确，不要返回任何JSON以外的内容
 - 如果内容是致谢、目录、前言、序言、参考文献、出版社介绍、引用说明等的页面，请直接回复"{nodeData:null}"`
-  
-  return template
-}
-
-export const getMindMapArrowPrompt = (customPrompt?: string) => {
-  const template = customPrompt || `你需要为已有的思维导图添加箭头连接，以显示不同节点之间的关联关系。
+  },
+  arrow: {
+    name: '思维导图箭头连接',
+    template: `你需要为已有的思维导图添加箭头连接，以显示不同节点之间的关联关系。
 \`\`\`ts
 export interface NodeObj {
   topic: string
@@ -101,6 +103,52 @@ export interface Arrow {
 - **直接的父子关系不需要使用 Arrow 链接**
 - 只能添加 6 条以下 Arrow，请对最关键的节点关系进行链接
 - 确保JSON格式正确，不要返回任何JSON以外的内容`
-  
-  return template
+  },
+  combined: {
+    name: '整书思维导图',
+    template: `请将以下所有章节内容整合为一个完整的思维导图：
+
+\`\`\`ts
+export interface NodeObj {
+  topic: string
+  id: string
+  tags?: string[]
+  children?: NodeObj[]
 }
+// 总结父id的第start到end个节点的内容
+export interface Summary {
+  id: string
+  label: string
+  /**
+   * parent node id of the summary
+   */
+  parent: string
+  /**
+   * start index of the summary
+   */
+  start: number
+  /**
+   * end index of the summary
+   */
+  end: number
+}
+\`\`\`
+
+使用符合  {
+  nodeData: NodeObj
+  summaries?: Summary[]
+} 格式的 JSON 回复用户，这是一个表达**整书思维导图数据**的递归结构。
+
+**注意！！nodeData、summaries 在同一层级！！**
+
+**严格遵守**：
+- 以书籍主题作为根节点，各章节作为主要分支
+- 节点 ID 使用递增数字即可
+- 注意章节之间的逻辑关系和层次结构
+- 向节点插入 tags 可选：核心、案例、实践、金句
+- Summary 是总结多个同父节点的子节点的工具
+- 适当添加 Summary，不要添加多余的 Summary
+- 适当添加表达该节点内涵的 emoji
+- 确保JSON格式正确，不要返回任何JSON以外的内容`
+  }
+} as const
