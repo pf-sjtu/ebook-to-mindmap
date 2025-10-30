@@ -7,6 +7,7 @@ import type { ChapterData, BookData } from '@/services/epubProcessor'
 import { EpubProcessor } from '@/services/epubProcessor'
 import { cn } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
+import { useTheme } from './ThemeProvider'
 
 interface EpubReaderProps {
   chapter: ChapterData

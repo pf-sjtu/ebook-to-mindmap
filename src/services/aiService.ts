@@ -44,7 +44,7 @@ export class AIService {
     } else if (currentConfig.provider === 'openai' || currentConfig.provider === '302.ai') {
       // OpenAI兼容的配置
       this.model = {
-        apiUrl: currentConfig.apiUrl || 'https://api.openai.com/v1',
+        apiUrl: currentConfig.apiUrl || (currentConfig.provider === '302.ai' ? 'https://api.302.ai/v1' : 'https://api.openai.com/v1'),
         apiKey: currentConfig.apiKey,
         model: currentConfig.model || 'gpt-3.5-turbo'
       }

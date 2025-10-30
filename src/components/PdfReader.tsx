@@ -8,6 +8,7 @@ import type { ChapterData, BookData } from '@/services/pdfProcessor'
 import { PdfProcessor } from '@/services/pdfProcessor'
 import { cn } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
+import { useTheme } from './ThemeProvider'
 
 interface PdfReaderProps {
   chapter: ChapterData

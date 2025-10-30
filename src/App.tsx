@@ -17,6 +17,7 @@ import { ConfigDialog } from './components/project/ConfigDialog'
 import type { MindElixirData, Options } from 'mind-elixir'
 import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
+import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { MarkdownCard } from './components/MarkdownCard'
 import { MindMapCard } from './components/MindMapCard'
 import { EpubReader } from './components/EpubReader'
@@ -584,7 +585,10 @@ ${bookSummary.overallSummary}
             {t('app.title')}
           </h1>
           <p className="text-gray-600">{t('app.description')}</p>
-          <LanguageSwitcher />
+          <div className="flex items-center justify-center gap-4">
+            <LanguageSwitcher />
+            <ThemeSwitcher />
+          </div>
         </div>
 
         {currentStepIndex === 1 ? (
