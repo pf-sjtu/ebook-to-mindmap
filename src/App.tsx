@@ -25,6 +25,7 @@ import { PdfReader } from './components/PdfReader'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { scrollToTop, openInMindElixir, downloadMindMap } from './utils'
+import { notificationService } from './services/notificationService'
 
 
 const options = { direction: 1, alignment: 'nodes' } as Options
@@ -88,6 +89,17 @@ function App() {
 
   // zustand的persist中间件会自动处理配置的加载和保存
 
+  // 请求通知权限
+  useEffect(() => {
+    if (processingOptions.enableNotification) {
+      notificationService.requestPermission().then(hasPermission => {
+        if (!hasPermission) {
+          console.warn('浏览器通知权限被拒绝')
+        }
+      })
+    }
+  }, [processingOptions.enableNotification])
+
   // 监听滚动事件，控制回到顶部按钮显示
   useEffect(() => {
     const scrollContainer = document.querySelector('.scroll-container')
@@ -135,16 +147,32 @@ function App() {
 
     setExtractingChapters(true)
     try {
-      let bookData: EpubBookData | PdfBookData
+      let bookData: EpubBookData & { chapters: ChapterData[] } | PdfBookData & { chapters: ChapterData[] }
       let chapters: ChapterData[]
 
       if (file.name.endsWith('.epub')) {
         const epubProcessor = new EpubProcessor()
-        bookData = await epubProcessor.extractBookData(file)
+        bookData = await epubProcessor.extractBookData(
+          file, 
+          processingOptions.useSmartDetection, 
+          processingOptions.skipNonEssentialChapters, 
+          processingOptions.maxSubChapterDepth,
+          processingOptions.chapterNamingMode,
+          processingOptions.chapterDetectionMode,
+          processingOptions.epubTocDepth
+        )
         chapters = bookData.chapters
       } else if (file.name.endsWith('.pdf')) {
         const pdfProcessor = new PdfProcessor()
-        bookData = await pdfProcessor.extractBookData(file)
+        bookData = await pdfProcessor.extractBookData(
+          file, 
+          processingOptions.useSmartDetection, 
+          processingOptions.skipNonEssentialChapters, 
+          processingOptions.maxSubChapterDepth,
+          processingOptions.chapterNamingMode,
+          processingOptions.chapterDetectionMode,
+          processingOptions.epubTocDepth
+        )
         chapters = bookData.chapters
       } else {
         throw new Error(t('upload.unsupportedFormat'))
@@ -166,7 +194,7 @@ function App() {
     } finally {
       setExtractingChapters(false)
     }
-  }, [file, t])
+  }, [file, processingOptions, t])
 
   // 处理章节选择
   const handleChapterSelect = useCallback((chapterId: string, checked: boolean) => {
@@ -273,15 +301,30 @@ function App() {
       setCurrentStep(t('progress.completed'))
       
       toast.success(t('progress.processingCompleted'))
+      
+      // 发送任务完成通知
+      if (processingOptions.enableNotification) {
+        await notificationService.sendTaskCompleteNotification(
+          t('progress.bookProcessing') || '书籍处理',
+          bookData?.title
+        )
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('progress.processingError'), {
         duration: 5000,
         position: 'top-center',
       })
+      
+      // 发送错误通知
+      if (processingOptions.enableNotification) {
+        await notificationService.sendErrorNotification(
+          error instanceof Error ? error.message : t('progress.processingError')
+        )
+      }
     } finally {
       setProcessing(false)
     }
-  }, [extractedChapters, selectedChapters, file, bookData, aiConfig, bookType, customPrompt, processingOptions.outputLanguage, t])
+  }, [extractedChapters, selectedChapters, file, bookData, aiConfig, bookType, customPrompt, processingOptions, t])
 
   // 清除章节缓存
   const clearChapterCache = useCallback((chapterId: string) => {
@@ -524,7 +567,7 @@ function App() {
             )}
 
             {/* 配置对话框 */}
-            <ConfigDialog />
+            <ConfigDialog processing={processing} file={file} />
           </TabsContent>
 
           <TabsContent value="processing" className="mt-4">
@@ -631,22 +674,22 @@ function App() {
         </Tabs>
 
         {/* 阅读组件插入到这里 */}
-        {currentReadingChapter && fullBookData && (
-          fullBookData.name.endsWith('.epub') ? (
+        {currentReadingChapter && fullBookData && file && (
+          file.name.endsWith('.epub') ? (
             <EpubReader
               className="w-[800px] shrink-0 sticky top-0"
               chapter={currentReadingChapter}
               bookData={fullBookData}
               onClose={() => setCurrentReadingChapter(null)}
             />
-          ) : fullBookData.name.endsWith('.pdf') ? (
+          ) : (
             <PdfReader
               className="w-[800px] shrink-0 sticky top-0"
               chapter={currentReadingChapter}
               bookData={fullBookData}
               onClose={() => setCurrentReadingChapter(null)}
             />
-          ) : null
+          )
         )}
 
         {/* 回到顶部按钮 */}

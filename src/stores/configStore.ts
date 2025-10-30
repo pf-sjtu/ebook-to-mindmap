@@ -9,6 +9,8 @@ interface AIConfig {
   apiUrl: string
   model: string
   temperature: number
+  proxyUrl?: string // 代理服务器地址
+  proxyEnabled?: boolean // 是否启用代理
 }
 
 // 处理选项接口
@@ -19,6 +21,10 @@ interface ProcessingOptions {
   skipNonEssentialChapters: boolean
   maxSubChapterDepth: number
   outputLanguage: SupportedLanguage
+  chapterNamingMode: 'auto' | 'numbered' // 章节命名模式：auto-自动识别，numbered-第x章格式
+  enableNotification: boolean // 是否启用任务完成通知
+  chapterDetectionMode: 'normal' | 'smart' | 'epub-toc' // 章节识别模式：normal-普通模式，smart-智能检测，epub-toc-epub目录模式
+  epubTocDepth: number // epub目录深度，只在使用epub-toc模式时有效
 }
 
 // 配置store状态接口
@@ -30,6 +36,8 @@ interface ConfigState {
   setApiUrl: (apiUrl: string) => void
   setModel: (model: string) => void
   setTemperature: (temperature: number) => void
+  setProxyUrl: (proxyUrl: string) => void
+  setProxyEnabled: (enabled: boolean) => void
   
   // 处理选项
   processingOptions: ProcessingOptions
@@ -39,6 +47,10 @@ interface ConfigState {
   setSkipNonEssentialChapters: (enabled: boolean) => void
   setMaxSubChapterDepth: (depth: number) => void
   setOutputLanguage: (language: SupportedLanguage) => void
+  setChapterNamingMode: (mode: 'auto' | 'numbered') => void
+  setEnableNotification: (enabled: boolean) => void
+  setChapterDetectionMode: (mode: 'normal' | 'smart' | 'epub-toc') => void
+  setEpubTocDepth: (depth: number) => void
 }
 
 // 默认配置
@@ -47,7 +59,9 @@ const defaultAIConfig: AIConfig = {
   apiKey: '',
   apiUrl: 'https://api.openai.com/v1',
   model: 'gemini-1.5-flash',
-  temperature: 0.7
+  temperature: 0.7,
+  proxyUrl: '',
+  proxyEnabled: false
 }
 
 const defaultProcessingOptions: ProcessingOptions = {
@@ -56,7 +70,11 @@ const defaultProcessingOptions: ProcessingOptions = {
   useSmartDetection: false,
   skipNonEssentialChapters: true,
   maxSubChapterDepth: 0,
-  outputLanguage: 'en'
+  outputLanguage: 'en',
+  chapterNamingMode: 'auto',
+  enableNotification: true,
+  chapterDetectionMode: 'normal',
+  epubTocDepth: 1
 }
 
 // 创建配置store
@@ -80,6 +98,12 @@ export const useConfigStore = create<ConfigState>()(
       setTemperature: (temperature) => set((state) => ({
         aiConfig: { ...state.aiConfig, temperature }
       })),
+      setProxyUrl: (proxyUrl) => set((state) => ({
+        aiConfig: { ...state.aiConfig, proxyUrl }
+      })),
+      setProxyEnabled: (proxyEnabled) => set((state) => ({
+        aiConfig: { ...state.aiConfig, proxyEnabled }
+      })),
       
       // 处理选项
       processingOptions: defaultProcessingOptions,
@@ -100,6 +124,18 @@ export const useConfigStore = create<ConfigState>()(
       })),
       setOutputLanguage: (outputLanguage) => set((state) => ({
         processingOptions: { ...state.processingOptions, outputLanguage }
+      })),
+      setChapterNamingMode: (chapterNamingMode) => set((state) => ({
+        processingOptions: { ...state.processingOptions, chapterNamingMode }
+      })),
+      setEnableNotification: (enableNotification) => set((state) => ({
+        processingOptions: { ...state.processingOptions, enableNotification }
+      })),
+      setChapterDetectionMode: (chapterDetectionMode) => set((state) => ({
+        processingOptions: { ...state.processingOptions, chapterDetectionMode }
+      })),
+      setEpubTocDepth: (epubTocDepth) => set((state) => ({
+        processingOptions: { ...state.processingOptions, epubTocDepth }
       }))
     }),
     {

@@ -46,39 +46,58 @@ export class EpubProcessor {
     }
   }
 
-  async extractChapters(book: Book, useSmartDetection: boolean = false, skipNonEssentialChapters: boolean = true, maxSubChapterDepth: number = 0): Promise<ChapterData[]> {
+  async extractBookData(file: File, useSmartDetection: boolean = false, skipNonEssentialChapters: boolean = true, maxSubChapterDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto', chapterDetectionMode: 'normal' | 'smart' | 'epub-toc' = 'normal', epubTocDepth: number = 1): Promise<BookData & { chapters: ChapterData[] }> {
+    const bookData = await this.parseEpub(file)
+    const chapters = await this.extractChapters(bookData.book, useSmartDetection, skipNonEssentialChapters, maxSubChapterDepth, chapterNamingMode, chapterDetectionMode, epubTocDepth)
+    
+    return {
+      ...bookData,
+      chapters
+    }
+  }
+
+  async extractChapters(book: Book, useSmartDetection: boolean = false, skipNonEssentialChapters: boolean = true, maxSubChapterDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto', chapterDetectionMode: 'normal' | 'smart' | 'epub-toc' = 'normal', epubTocDepth: number = 1): Promise<ChapterData[]> {
     try {
       const chapters: ChapterData[] = []
 
       try {
-        const toc = book.navigation.toc.filter(item => !item.href.includes('#'))
-        // 获取章节信息（先按原始 TOC）
-        let chapterInfos = await this.extractChaptersFromToc(book, toc, 0, maxSubChapterDepth)
-        console.log(`📚 [DEBUG] 找到 ${chapterInfos.length} 个章节信息`, chapterInfos)
+        let chapterInfos: { title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[] = []
 
-        // 回退：当 TOC 长度≤3 时，直接用 spineItems 生成章节信息
-        if (toc.length <= 3) {
-          const fallbackChapterInfos = book.spine.spineItems
-            .map((spineItem: Section, idx: number) => {
-              const navItem: NavItem = {
-                id: spineItem.idref || `spine-${idx + 1}`,
-                href: spineItem.href,
-                label: spineItem.idref || `章节 ${idx + 1}`,
-                subitems: []
-              }
-              return {
-                title: navItem.label || `章节 ${idx + 1}`,
-                href: navItem.href!,
-                subitems: [],
-                tocItem: navItem,
-                depth: 0
-              }
-            })
-            .filter(item => !!item.href)
-          console.log('🔁 [DEBUG] TOC长度≤3，直接用 spineItems 生成章节信息，fallback 章节数:', fallbackChapterInfos.length)
+        if (chapterDetectionMode === 'epub-toc') {
+          // EPUB目录模式：使用指定的目录深度
+          const toc = book.navigation.toc.filter(item => !item.href.includes('#'))
+          chapterInfos = await this.extractChaptersFromToc(book, toc, 0, epubTocDepth, chapterNamingMode)
+          console.log(`📚 [DEBUG] EPUB目录模式 (深度${epubTocDepth}) 找到 ${chapterInfos.length} 个章节信息`, chapterInfos)
+        } else {
+          // 普通模式和智能模式：使用原有逻辑
+          const toc = book.navigation.toc.filter(item => !item.href.includes('#'))
+          chapterInfos = await this.extractChaptersFromToc(book, toc, 0, maxSubChapterDepth, chapterNamingMode)
+          console.log(`📚 [DEBUG] 找到 ${chapterInfos.length} 个章节信息`, chapterInfos)
 
-          if (fallbackChapterInfos.length >= chapterInfos.length) {
-            chapterInfos = fallbackChapterInfos
+          // 回退：当 TOC 长度≤3 时，直接用 spineItems 生成章节信息
+          if (toc.length <= 3) {
+            const fallbackChapterInfos = book.spine.spineItems
+              .map((spineItem: Section, idx: number) => {
+                const navItem: NavItem = {
+                  id: spineItem.idref || `spine-${idx + 1}`,
+                  href: spineItem.href,
+                  label: chapterNamingMode === 'numbered' ? `第${idx + 1}章` : (spineItem.idref || `章节 ${idx + 1}`),
+                  subitems: []
+                }
+                return {
+                  title: navItem.label || `第${idx + 1}章`,
+                  href: navItem.href!,
+                  subitems: [],
+                  tocItem: navItem,
+                  depth: 0
+                }
+              })
+              .filter(item => !!item.href)
+            console.log('🔁 [DEBUG] TOC长度≤3，直接用 spineItems 生成章节信息，fallback 章节数:', fallbackChapterInfos.length)
+
+            if (fallbackChapterInfos.length >= chapterInfos.length) {
+              chapterInfos = fallbackChapterInfos
+            }
           }
         }
         if (chapterInfos.length > 0) {
@@ -110,8 +129,14 @@ export class EpubProcessor {
         console.warn(`⚠️ [DEBUG] 无法获取EPUB目录:`, tocError)
       }
       // 应用智能章节检测
-      const finalChapters = this.detectChapters(chapters, useSmartDetection)
-      console.log(`📊 [DEBUG] 最终提取到 ${finalChapters.length} 个章节`)
+      let finalChapters = chapters
+      if (chapterDetectionMode === 'smart') {
+        finalChapters = this.detectChapters(chapters, true)
+        console.log(`🧠 [DEBUG] 智能检测模式，最终提取到 ${finalChapters.length} 个章节`)
+      } else {
+        finalChapters = this.detectChapters(chapters, useSmartDetection)
+        console.log(`📊 [DEBUG] 最终提取到 ${finalChapters.length} 个章节`)
+      }
 
       return finalChapters
     } catch (error) {
@@ -120,17 +145,25 @@ export class EpubProcessor {
     }
   }
 
-  private async extractChaptersFromToc(book: Book, toc: NavItem[], currentDepth: number = 0, maxDepth: number = 0): Promise<{ title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[]> {
+  private async extractChaptersFromToc(book: Book, toc: NavItem[], currentDepth: number = 0, maxDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto'): Promise<{ title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[]> {
     const chapterInfos: { title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[] = []
 
     for (const item of toc) {
       try {
         if (item.subitems && item.subitems.length > 0 && maxDepth > 0 && currentDepth < maxDepth) {
-          const subChapters = await this.extractChaptersFromToc(book, item.subitems, currentDepth + 1, maxDepth)
+          const subChapters = await this.extractChaptersFromToc(book, item.subitems, currentDepth + 1, maxDepth, chapterNamingMode)
           chapterInfos.push(...subChapters)
         } else if (item.href) {
+          // 根据章节命名模式生成标题
+          let chapterTitle: string
+          if (chapterNamingMode === 'numbered') {
+            chapterTitle = `第${chapterInfos.length + 1}章`
+          } else {
+            chapterTitle = item.label || `第${chapterInfos.length + 1}章`
+          }
+          
           const chapterInfo: { title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number } = {
-            title: item.label || `章节 ${chapterInfos.length + 1}`,
+            title: chapterTitle,
             href: item.href,
             subitems: item.subitems,
             tocItem: item, // 保存原始TOC项目信息

@@ -59,7 +59,17 @@ export class PdfProcessor {
     }
   }
 
-  async extractChapters(file: File, useSmartDetection: boolean = false, skipNonEssentialChapters: boolean = true, maxSubChapterDepth: number = 0): Promise<ChapterData[]> {
+  async extractBookData(file: File, useSmartDetection: boolean = false, skipNonEssentialChapters: boolean = true, maxSubChapterDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto', chapterDetectionMode: 'normal' | 'smart' | 'epub-toc' = 'normal', epubTocDepth: number = 1): Promise<BookData & { chapters: ChapterData[] }> {
+    const bookData = await this.parsePdf(file)
+    const chapters = await this.extractChapters(file, useSmartDetection, skipNonEssentialChapters, maxSubChapterDepth, chapterNamingMode, chapterDetectionMode, epubTocDepth)
+    
+    return {
+      ...bookData,
+      chapters
+    }
+  }
+
+  async extractChapters(file: File, useSmartDetection: boolean = false, skipNonEssentialChapters: boolean = true, maxSubChapterDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto', chapterDetectionMode: 'normal' | 'smart' | 'epub-toc' = 'normal', epubTocDepth: number = 1): Promise<ChapterData[]> {
     try {
       const arrayBuffer = await file.arrayBuffer()
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
@@ -75,7 +85,7 @@ export class PdfProcessor {
         console.log(`📚 [DEBUG] 获取到PDF目录:`, outline)
         if (outline && outline.length > 0) {
           // 获取章节信息
-          const chapterInfos = await this.extractChaptersFromOutline(pdf, outline, 0, maxSubChapterDepth)
+          const chapterInfos = await this.extractChaptersFromOutline(pdf, outline, 0, maxSubChapterDepth, chapterNamingMode)
           console.log(chapterInfos, 'chapterInfos')
           if (chapterInfos.length > 0) {
             // 根据章节信息提取内容
@@ -144,9 +154,11 @@ export class PdfProcessor {
 
         let detectedChapters: ChapterData[] = []
 
-        // 只有在用户启用智能检测时才使用
-        if (useSmartDetection) {
-          console.log(`🧠 [DEBUG] 启用智能章节检测`)
+        // 根据章节识别模式决定是否使用智能检测
+        const shouldUseSmartDetection = chapterDetectionMode === 'smart' || (chapterDetectionMode !== 'normal' && useSmartDetection)
+        
+        if (shouldUseSmartDetection) {
+          console.log(`🧠 [DEBUG] 启用智能章节检测 (模式: ${chapterDetectionMode})`)
           detectedChapters = this.detectChapters(allPageTexts)
         }
 
@@ -190,36 +202,30 @@ export class PdfProcessor {
     }
   }
 
-  private async extractChaptersFromOutline(pdf: any, outline: any[], currentDepth: number = 0, maxDepth: number = 0): Promise<{ title: string, pageIndex: number }[]> {
+  private async extractChaptersFromOutline(pdf: any, outline: any[], currentDepth: number = 0, maxDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto'): Promise<{ title: string, pageIndex: number }[]> {
     const chapterInfos: { title: string, pageIndex: number }[] = []
 
-    for (const item of outline) {
+    for (let i = 0; i < outline.length; i++) {
+      const item = outline[i]
       try {
-        // 递归处理子章节
-        // 只有当maxDepth大于0且当前深度小于最大深度时才递归处理子章节
         if (item.items && item.items.length > 0 && maxDepth > 0 && currentDepth < maxDepth) {
-          const subChapters = await this.extractChaptersFromOutline(pdf, item.items, currentDepth + 1, maxDepth)
+          const subChapters = await this.extractChaptersFromOutline(pdf, item.items, currentDepth + 1, maxDepth, chapterNamingMode)
           chapterInfos.push(...subChapters)
         } else if (item.dest) {
-          // 处理目标引用
-          let destArray
-          if (typeof item.dest === 'string') {
-            destArray = await pdf.getDestination(item.dest)
+          // 根据章节命名模式生成标题
+          let chapterTitle: string
+          if (chapterNamingMode === 'numbered') {
+            chapterTitle = `第${chapterInfos.length + 1}章`
           } else {
-            destArray = item.dest
+            chapterTitle = item.title || `第${chapterInfos.length + 1}章`
           }
+          
+          chapterInfos.push({
+            title: chapterTitle,
+            pageIndex: await this.getDestinationPageIndex(pdf, item.dest)
+          })
 
-          if (destArray && destArray[0]) {
-            const ref = destArray[0]
-            const pageIndex = await pdf.getPageIndex(ref)
-
-            chapterInfos.push({
-              title: item.title || `章节 ${chapterInfos.length + 1}`,
-              pageIndex: pageIndex
-            })
-
-            console.log(`📖 [DEBUG] 章节: "${item.title}" -> 第${pageIndex + 1}页`)
-          }
+          console.log(`📖 [DEBUG] 章节: "${item.title}" -> 第${chapterInfos[chapterInfos.length - 1].pageIndex + 1}页`)
         }
       } catch (error) {
         console.warn(`⚠️ [DEBUG] 跳过章节 "${item.title}":`, error)
@@ -230,6 +236,31 @@ export class PdfProcessor {
     chapterInfos.sort((a, b) => a.pageIndex - b.pageIndex)
 
     return chapterInfos
+  }
+
+  private async getDestinationPageIndex(pdf: any, dest: any): Promise<number> {
+    try {
+      if (typeof dest === 'string') {
+        // 如果dest是字符串，需要解析为页面引用
+        const namedDest = await pdf.getDestination(dest)
+        if (namedDest) {
+          return await this.getDestinationPageIndex(pdf, namedDest)
+        }
+      } else if (Array.isArray(dest) && dest.length > 0) {
+        // 如果dest是数组，第一个元素通常是页面引用
+        const pageRef = dest[0]
+        if (typeof pageRef === 'object' && pageRef.num !== undefined) {
+          const pageIndex = await pdf.getPageIndex(pageRef)
+          return pageIndex
+        } else if (typeof pageRef === 'number') {
+          return pageRef - 1 // PDF页面索引从0开始
+        }
+      }
+      return 0 // 默认返回第一页
+    } catch (error) {
+      console.warn('获取目标页面索引失败:', error)
+      return 0
+    }
   }
 
   private async extractTextFromPages(pdf: any, startPage: number, endPage: number): Promise<string> {
@@ -368,7 +399,8 @@ export class PdfProcessor {
       if (context) {
         const renderContext = {
           canvasContext: context,
-          viewport: viewport
+          viewport: viewport,
+          canvas: canvas
         }
         await page.render(renderContext).promise
       }

@@ -7,35 +7,88 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Settings, ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useState, useEffect } from 'react'
 import { useConfigStore, useAIConfig, useProcessingOptions } from '../../stores/configStore'
 import type { SupportedLanguage } from '../../services/prompts/utils'
+import { chapterPreviewService } from '../../services/chapterPreviewService'
+import { Loader2 } from 'lucide-react'
 
 interface ConfigDialogProps {
   processing: boolean
   file: File | null
 }
 
-export function ConfigDialog({ processing }: ConfigDialogProps) {
+export function ConfigDialog({ processing, file }: ConfigDialogProps) {
   const { t } = useTranslation()
   // 使用zustand store管理配置
   const aiConfig = useAIConfig()
   const processingOptions = useProcessingOptions()
+  
+  const [previewChapters, setPreviewChapters] = useState<{ title: string; preview: string }[]>([])
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false)
+
+  // 章节预览函数
+  const loadChapterPreview = async () => {
+    if (!file) {
+      setPreviewChapters([])
+      return
+    }
+
+    setIsPreviewLoading(true)
+    try {
+      const chapters = await chapterPreviewService.previewChapters(
+        file,
+        chapterDetectionMode,
+        epubTocDepth,
+        chapterNamingMode,
+        20 // 最多预览20个章节
+      )
+      setPreviewChapters(chapters)
+    } catch (error) {
+      console.error('加载章节预览失败:', error)
+      setPreviewChapters([])
+    } finally {
+      setIsPreviewLoading(false)
+    }
+  }
+
+  // 当章节识别模式或文件改变时，重新加载预览
+  useEffect(() => {
+    loadChapterPreview()
+  }, [file, chapterDetectionMode, epubTocDepth, chapterNamingMode])
   const {
     setAiProvider,
     setApiKey,
     setApiUrl,
     setModel,
     setTemperature,
+    setProxyUrl,
+    setProxyEnabled,
     setProcessingMode,
     setBookType,
     setUseSmartDetection,
     setSkipNonEssentialChapters,
-    setOutputLanguage
+    setMaxSubChapterDepth,
+    setOutputLanguage,
+    setChapterNamingMode,
+    setEnableNotification,
+    setChapterDetectionMode,
+    setEpubTocDepth
   } = useConfigStore()
 
   // 从store中解构状态值
   const { provider: aiProvider, apiKey, apiUrl, model, temperature } = aiConfig
-  const { processingMode, bookType, useSmartDetection, skipNonEssentialChapters, outputLanguage } = processingOptions
+  const { 
+    processingMode, 
+    bookType, 
+    useSmartDetection, 
+    skipNonEssentialChapters, 
+    outputLanguage,
+    chapterNamingMode,
+    enableNotification,
+    chapterDetectionMode,
+    epubTocDepth
+  } = processingOptions
 
   const providerSettings = {
     gemini: {
@@ -229,6 +282,43 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               )}
             </div>
 
+            {/* 代理设置 */}
+            <div className="space-y-4 p-4 bg-orange-50 dark:bg-orange-950/50 rounded-lg border dark:border-orange-800">
+              <div className="flex items-center gap-2 mb-3">
+                <Settings className="h-4 w-4" />
+                <Label className="text-sm font-medium">{t('config.proxySettings') || '代理设置'}</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="proxy-enabled"
+                  checked={aiConfig.proxyEnabled || false}
+                  onCheckedChange={setProxyEnabled}
+                  disabled={processing}
+                />
+                <Label htmlFor="proxy-enabled" className="text-sm">
+                  {t('config.enableProxy') || '启用代理'}
+                </Label>
+              </div>
+
+              {aiConfig.proxyEnabled && (
+                <div className="space-y-2">
+                  <Label htmlFor="proxy-url">{t('config.proxyUrl') || '代理服务器地址'}</Label>
+                  <Input
+                    id="proxy-url"
+                    type="url"
+                    placeholder="http://proxy.example.com:8080"
+                    value={aiConfig.proxyUrl || ''}
+                    onChange={(e) => setProxyUrl(e.target.value)}
+                    disabled={processing}
+                  />
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {t('config.proxyUrlDescription') || '输入代理服务器的完整URL地址，例如：http://proxy.example.com:8080'}
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="p-3 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg border dark:border-indigo-800">
               <div className="space-y-2">
                 <Label htmlFor="output-language" className="text-sm font-medium">
@@ -296,6 +386,53 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               </div>
             </div>
 
+            {/* 章节和通知设置 */}
+            <div className="space-y-4 p-4 bg-green-50 dark:bg-green-950/50 rounded-lg border dark:border-green-800">
+              <div className="flex items-center gap-2 mb-3">
+                <Settings className="h-4 w-4" />
+                <Label className="text-sm font-medium">{t('config.chapterAndNotificationSettings') || '章节和通知设置'}</Label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="chapter-naming-mode" className="text-sm font-medium">
+                    {t('config.chapterNamingMode') || '章节命名模式'}
+                  </Label>
+                  <Select value={chapterNamingMode} onValueChange={(value: 'auto' | 'numbered') => setChapterNamingMode(value)} disabled={processing}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('config.selectChapterNamingMode') || '选择章节命名模式'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">{t('config.autoNaming') || '自动识别章节名称'}</SelectItem>
+                      <SelectItem value="numbered">{t('config.numberedNaming') || '第x章格式'}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {t('config.chapterNamingModeDescription') || '选择章节标题的命名方式'}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    {t('config.notificationSettings') || '通知设置'}
+                  </Label>
+                  <div className="flex items-center space-x-2 pt-2">
+                    <Switch
+                      id="enable-notification"
+                      checked={enableNotification}
+                      onCheckedChange={setEnableNotification}
+                      disabled={processing}
+                    />
+                    <Label htmlFor="enable-notification" className="text-sm">
+                      {t('config.enableNotification') || '启用任务完成通知'}
+                    </Label>
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {t('config.notificationDescription') || '任务执行完成后发送浏览器通知'}
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/50 rounded-lg border dark:border-green-800">
               <div className="space-y-1">
@@ -342,22 +479,140 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/50 rounded-lg border dark:border-blue-800">
-              <div className="space-y-1">
-                <Label htmlFor="smart-detection" className="text-sm font-medium">
-                  {t('config.smartChapterDetection')}
-                </Label>
-                <p className="text-xs text-gray-600">
-                  {t('config.smartChapterDetectionDescription')}
-                </p>
+            {/* 章节识别模式设置 */}
+            <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg border dark:border-blue-800">
+              <div className="flex items-center gap-2 mb-3">
+                <Settings className="h-4 w-4" />
+                <Label className="text-sm font-medium">{t('config.chapterDetectionMode') || '智能检测章节'}</Label>
               </div>
-              <Switch
-                id="smart-detection"
-                checked={useSmartDetection}
-                onCheckedChange={setUseSmartDetection}
-                disabled={processing}
-              />
+
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    {t('config.selectDetectionMode') || '选择章节识别模式'}
+                  </Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="normal-mode"
+                        name="chapter-detection-mode"
+                        value="normal"
+                        checked={chapterDetectionMode === 'normal'}
+                        onChange={(e) => setChapterDetectionMode(e.target.value as 'normal' | 'smart' | 'epub-toc')}
+                        disabled={processing}
+                      />
+                      <Label htmlFor="normal-mode" className="text-sm font-normal">
+                        {t('config.normalMode') || '普通模式'}
+                      </Label>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 ml-6">
+                      {t('config.normalModeDescription') || '使用基础的章节识别算法，适用于大多数书籍'}
+                    </p>
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="smart-mode"
+                        name="chapter-detection-mode"
+                        value="smart"
+                        checked={chapterDetectionMode === 'smart'}
+                        onChange={(e) => setChapterDetectionMode(e.target.value as 'normal' | 'smart' | 'epub-toc')}
+                        disabled={processing}
+                      />
+                      <Label htmlFor="smart-mode" className="text-sm font-normal">
+                        {t('config.smartDetectionMode') || '智能检测章节模式'}
+                      </Label>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 ml-6">
+                      {t('config.smartDetectionModeDescription') || '使用AI智能识别章节边界，准确率更高但处理时间较长'}
+                    </p>
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="epub-toc-mode"
+                        name="chapter-detection-mode"
+                        value="epub-toc"
+                        checked={chapterDetectionMode === 'epub-toc'}
+                        onChange={(e) => setChapterDetectionMode(e.target.value as 'normal' | 'smart' | 'epub-toc')}
+                        disabled={processing}
+                      />
+                      <Label htmlFor="epub-toc-mode" className="text-sm font-normal">
+                        {t('config.epubTocMode') || '以epub目录读取章节的模式'}
+                      </Label>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 ml-6">
+                      {t('config.epubTocModeDescription') || '严格按照EPUB文件的目录结构提取章节，保持原始层级关系'}
+                    </p>
+                  </div>
+                </div>
+
+                {chapterDetectionMode === 'epub-toc' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="epub-toc-depth" className="text-sm font-medium">
+                      {t('config.epubTocDepth') || '关注第几级目录'}
+                    </Label>
+                    <Select value={epubTocDepth.toString()} onValueChange={(value) => setEpubTocDepth(parseInt(value))} disabled={processing}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('config.selectEpubTocDepth') || '选择目录深度'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">{t('config.epubTocDepth1') || '第1级目录（主要章节）'}</SelectItem>
+                        <SelectItem value="2">{t('config.epubTocDepth2') || '第2级目录（子章节）'}</SelectItem>
+                        <SelectItem value="3">{t('config.epubTocDepth3') || '第3级目录（小节）'}</SelectItem>
+                        <SelectItem value="4">{t('config.epubTocDepth4') || '第4级目录（详细小节）'}</SelectItem>
+                        <SelectItem value="5">{t('config.epubTocDepth5') || '第5级目录（最细粒度）'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {t('config.epubTocDepthDescription') || '选择要提取的目录层级深度，数值越大提取的章节越详细'}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* 章节预览 */}
+            {file && (
+              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border dark:border-gray-700">
+                <div className="flex items-center gap-2 mb-3">
+                  <Settings className="h-4 w-4" />
+                  <Label className="text-sm font-medium">
+                    {t('config.chapterPreview') || '章节预览'}
+                    {isPreviewLoading && <Loader2 className="h-3 w-3 animate-spin ml-2" />}
+                  </Label>
+                </div>
+
+                {previewChapters.length > 0 ? (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {previewChapters.map((chapter, index) => (
+                      <div key={index} className="flex items-start gap-2 p-2 bg-white dark:bg-gray-900 rounded border dark:border-gray-600">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-mono shrink-0 w-8">
+                          {index + 1}.
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {chapter.title}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                            {chapter.preview}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : !isPreviewLoading ? (
+                  <div className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
+                    {t('config.noChaptersFound') || '未找到章节预览'}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
+                    {t('config.loadingPreview') || '正在加载章节预览...'}
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
         </ScrollArea>

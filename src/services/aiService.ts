@@ -11,6 +11,43 @@ import {
 import type { MindElixirData } from 'mind-elixir'
 import { getLanguageInstruction, type SupportedLanguage } from './prompts/utils'
 
+// 代理fetch函数
+async function proxyFetch(url: string, options: RequestInit, proxyUrl?: string): Promise<Response> {
+  if (!proxyUrl) {
+    return fetch(url, options)
+  }
+
+  try {
+    // 如果启用了代理，使用代理服务器
+    // 支持多种代理方式：HTTP代理、SOCKS代理等
+    const proxyOptions: RequestInit = {
+      ...options,
+      headers: {
+        ...options.headers,
+        'X-Target-URL': url,
+        'X-Original-URL': url,
+        'X-Proxy-Target': url
+      }
+    }
+
+    const response = await fetch(proxyUrl, proxyOptions)
+    
+    // 如果代理服务器返回错误，抛出详细的错误信息
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`代理服务器错误: ${response.status} ${response.statusText} - ${errorText}`)
+    }
+
+    return response
+  } catch (error) {
+    // 如果代理失败，提供详细的错误信息
+    if (error instanceof Error) {
+      throw new Error(`代理连接失败: ${error.message}`)
+    }
+    throw new Error('代理连接失败: 未知错误')
+  }
+}
+
 interface Chapter {
   id: string
   title: string
@@ -24,6 +61,8 @@ interface AIConfig {
   apiUrl?: string // 用于OpenAI兼容的API地址
   model?: string
   temperature?: number
+  proxyUrl?: string // 代理服务器地址
+  proxyEnabled?: boolean // 是否启用代理
 }
 
 export class AIService {
@@ -262,7 +301,7 @@ export class AIService {
         }
       ]
       
-      const response = await fetch(`${this.model.apiUrl}/chat/completions`, {
+      const response = await proxyFetch(`${this.model.apiUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -273,7 +312,7 @@ export class AIService {
           messages,
           temperature: config.temperature || 0.7
         })
-      })
+      }, config.proxyEnabled ? config.proxyUrl : undefined)
 
       if (!response.ok) {
         const errorBody = await response.text()
@@ -304,7 +343,7 @@ export class AIService {
         requestHeaders['Authorization'] = `Bearer ${this.model.apiKey}`
       }
       
-      const response = await fetch(`${this.model.apiUrl}/api/chat`, {
+      const response = await proxyFetch(`${this.model.apiUrl}/api/chat`, {
         method: 'POST',
         headers: requestHeaders,
         body: JSON.stringify({
@@ -315,7 +354,7 @@ export class AIService {
             temperature: config.temperature || 0.7
           }
         })
-      })
+      }, config.proxyEnabled ? config.proxyUrl : undefined)
 
       if (!response.ok) {
         throw new Error(`Ollama API请求失败: ${response.status} ${response.statusText}`)
