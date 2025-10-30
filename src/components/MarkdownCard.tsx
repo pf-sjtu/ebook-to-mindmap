@@ -110,7 +110,7 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
       </CardHeader>
       {!isCollapsed && (
         <CardContent>
-          <div className="text-gray-700 leading-relaxed prose prose-sm max-w-none">
+          <div className="text-gray-700 dark:text-gray-200 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-200 prose-li:text-gray-700 dark:prose-li:text-gray-200 prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:text-gray-800 dark:prose-code:text-gray-100 prose-pre:text-gray-200 dark:prose-pre:text-gray-200 prose-blockquote:text-gray-600 dark:prose-blockquote:text-gray-300 prose-hr:border-gray-300 dark:prose-hr:border-gray-600 w-full break-words">
             <ReactMarkdown remarkPlugins={[remarkGfm,remarkCjkFriendly]}>
               {markdownContent || ''}
             </ReactMarkdown>
