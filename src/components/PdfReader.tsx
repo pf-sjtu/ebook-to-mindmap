@@ -12,7 +12,7 @@ import { useTheme } from './ThemeProvider'
 
 interface PdfReaderProps {
   chapter: ChapterData
-  bookData?: BookData | any // 支持不同类型的BookData
+  bookData?: BookData
   onClose: () => void
   className?: string
 }
