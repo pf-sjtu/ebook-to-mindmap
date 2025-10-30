@@ -395,11 +395,11 @@ function App() {
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="setup" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
-              {t('tabs.setup') || '设置'}
+              {t('tabs.setup')}
             </TabsTrigger>
             <TabsTrigger value="processing" className="flex items-center gap-2" disabled={!file && !bookSummary}>
               <Brain className="h-4 w-4" />
-              {t('tabs.processing') || '处理'}
+              {t('tabs.processing')}
             </TabsTrigger>
           </TabsList>
 

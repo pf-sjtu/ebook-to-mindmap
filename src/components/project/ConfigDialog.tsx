@@ -73,7 +73,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
       const chapters = await chapterPreviewService.previewChapters(
         file,
         chapterDetectionMode,
-        epubTocDepth,
+        epubTocDepth || 1,
         chapterNamingMode,
         20 // 最多预览20个章节
       )
@@ -215,6 +215,12 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                         onChange={(e) => setApiUrl(e.target.value)}
                         disabled={processing || aiProvider === '302.ai'}
                       />
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {aiProvider === 'gemini' && t('config.geminiApiUrlDescription') || '请输入完整的API地址，包含协议（http://或https://）'}
+                        {aiProvider === 'openai' && t('config.openaiApiUrlDescription') || 'OpenAI官方API地址：https://api.openai.com/v1'}
+                        {aiProvider === 'ollama' && t('config.ollamaApiUrlDescription') || '本地Ollama默认地址：http://localhost:11434'}
+                        {aiProvider === '302.ai' && t('config.ai302ApiUrlDescription') || '302.AI的API地址已自动配置'}
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -287,7 +293,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
             <div className="space-y-4 p-4 bg-orange-50 dark:bg-orange-950/50 rounded-lg border dark:border-orange-800">
               <div className="flex items-center gap-2 mb-3">
                 <Settings className="h-4 w-4" />
-                <Label className="text-sm font-medium">{t('config.proxySettings') || '代理设置'}</Label>
+                <Label className="text-sm font-medium">{t('config.proxySettings')}</Label>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -298,13 +304,13 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                   disabled={processing}
                 />
                 <Label htmlFor="proxy-enabled" className="text-sm">
-                  {t('config.enableProxy') || '启用代理'}
+                  {t('config.enableProxy')}
                 </Label>
               </div>
 
               {aiConfig.proxyEnabled && (
                 <div className="space-y-2">
-                  <Label htmlFor="proxy-url">{t('config.proxyUrl') || '代理服务器地址'}</Label>
+                  <Label htmlFor="proxy-url">{t('config.proxyUrl')}</Label>
                   <Input
                     id="proxy-url"
                     type="url"
@@ -314,7 +320,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                     disabled={processing}
                   />
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {t('config.proxyUrlDescription') || '输入代理服务器的完整URL地址，例如：http://proxy.example.com:8080'}
+                    {t('config.proxyUrlDescription')}
                   </p>
                 </div>
               )}
@@ -391,31 +397,31 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
             <div className="space-y-4 p-4 bg-green-50 dark:bg-green-950/50 rounded-lg border dark:border-green-800">
               <div className="flex items-center gap-2 mb-3">
                 <Settings className="h-4 w-4" />
-                <Label className="text-sm font-medium">{t('config.chapterAndNotificationSettings') || '章节和通知设置'}</Label>
+                <Label className="text-sm font-medium">{t('config.chapterAndNotificationSettings')}</Label>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="chapter-naming-mode" className="text-sm font-medium">
-                    {t('config.chapterNamingMode') || '章节命名模式'}
+                    {t('config.chapterNamingMode')}
                   </Label>
-                  <Select value={chapterNamingMode} onValueChange={(value: 'auto' | 'numbered') => setChapterNamingMode(value)} disabled={processing}>
+                  <Select value={chapterNamingMode || 'auto'} onValueChange={(value: 'auto' | 'numbered') => setChapterNamingMode(value)} disabled={processing}>
                     <SelectTrigger>
-                      <SelectValue placeholder={t('config.selectChapterNamingMode') || '选择章节命名模式'} />
+                      <SelectValue placeholder={t('config.selectChapterNamingMode')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="auto">{t('config.autoNaming') || '自动识别章节名称'}</SelectItem>
-                      <SelectItem value="numbered">{t('config.numberedNaming') || '第x章格式'}</SelectItem>
+                      <SelectItem value="auto">{t('config.autoNaming')}</SelectItem>
+                      <SelectItem value="numbered">{t('config.numberedNaming')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {t('config.chapterNamingModeDescription') || '选择章节标题的命名方式'}
+                    {t('config.chapterNamingModeDescription')}
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">
-                    {t('config.notificationSettings') || '通知设置'}
+                    {t('config.notificationSettings')}
                   </Label>
                   <div className="flex items-center space-x-2 pt-2">
                     <Switch
@@ -425,11 +431,11 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                       disabled={processing}
                     />
                     <Label htmlFor="enable-notification" className="text-sm">
-                      {t('config.enableNotification') || '启用任务完成通知'}
+                      {t('config.enableNotification')}
                     </Label>
                   </div>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {t('config.notificationDescription') || '任务执行完成后发送浏览器通知'}
+                    {t('config.notificationDescription')}
                   </p>
                 </div>
               </div>
@@ -484,13 +490,13 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
             <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg border dark:border-blue-800">
               <div className="flex items-center gap-2 mb-3">
                 <Settings className="h-4 w-4" />
-                <Label className="text-sm font-medium">{t('config.chapterDetectionMode') || '智能检测章节'}</Label>
+                <Label className="text-sm font-medium">{t('config.chapterDetectionMode')}</Label>
               </div>
 
               <div className="space-y-3">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">
-                    {t('config.selectDetectionMode') || '选择章节识别模式'}
+                    {t('config.selectDetectionMode')}
                   </Label>
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
@@ -504,11 +510,11 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                         disabled={processing}
                       />
                       <Label htmlFor="normal-mode" className="text-sm font-normal">
-                        {t('config.normalMode') || '普通模式'}
+                        {t('config.normalMode')}
                       </Label>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 ml-6">
-                      {t('config.normalModeDescription') || '使用基础的章节识别算法，适用于大多数书籍'}
+                      {t('config.normalModeDescription')}
                     </p>
 
                     <div className="flex items-center space-x-2">
@@ -522,11 +528,11 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                         disabled={processing}
                       />
                       <Label htmlFor="smart-mode" className="text-sm font-normal">
-                        {t('config.smartDetectionMode') || '智能检测章节模式'}
+                        {t('config.smartDetectionMode')}
                       </Label>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 ml-6">
-                      {t('config.smartDetectionModeDescription') || '使用AI智能识别章节边界，准确率更高但处理时间较长'}
+                      {t('config.smartDetectionModeDescription')}
                     </p>
 
                     <div className="flex items-center space-x-2">
@@ -540,11 +546,11 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                         disabled={processing}
                       />
                       <Label htmlFor="epub-toc-mode" className="text-sm font-normal">
-                        {t('config.epubTocMode') || '以epub目录读取章节的模式'}
+                        {t('config.epubTocMode')}
                       </Label>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 ml-6">
-                      {t('config.epubTocModeDescription') || '严格按照EPUB文件的目录结构提取章节，保持原始层级关系'}
+                      {t('config.epubTocModeDescription')}
                     </p>
                   </div>
                 </div>
@@ -552,22 +558,22 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                 {chapterDetectionMode === 'epub-toc' && (
                   <div className="space-y-2">
                     <Label htmlFor="epub-toc-depth" className="text-sm font-medium">
-                      {t('config.epubTocDepth') || '关注第几级目录'}
+                      {t('config.epubTocDepth')}
                     </Label>
-                    <Select value={epubTocDepth.toString()} onValueChange={(value) => setEpubTocDepth(parseInt(value))} disabled={processing}>
+                    <Select value={(epubTocDepth || 1).toString()} onValueChange={(value) => setEpubTocDepth(parseInt(value))} disabled={processing}>
                       <SelectTrigger>
-                        <SelectValue placeholder={t('config.selectEpubTocDepth') || '选择目录深度'} />
+                        <SelectValue placeholder={t('config.selectEpubTocDepth')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">{t('config.epubTocDepth1') || '第1级目录（主要章节）'}</SelectItem>
-                        <SelectItem value="2">{t('config.epubTocDepth2') || '第2级目录（子章节）'}</SelectItem>
-                        <SelectItem value="3">{t('config.epubTocDepth3') || '第3级目录（小节）'}</SelectItem>
-                        <SelectItem value="4">{t('config.epubTocDepth4') || '第4级目录（详细小节）'}</SelectItem>
-                        <SelectItem value="5">{t('config.epubTocDepth5') || '第5级目录（最细粒度）'}</SelectItem>
+                        <SelectItem value="1">{t('config.epubTocDepth1')}</SelectItem>
+                        <SelectItem value="2">{t('config.epubTocDepth2')}</SelectItem>
+                        <SelectItem value="3">{t('config.epubTocDepth3')}</SelectItem>
+                        <SelectItem value="4">{t('config.epubTocDepth4')}</SelectItem>
+                        <SelectItem value="5">{t('config.epubTocDepth5')}</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {t('config.epubTocDepthDescription') || '选择要提取的目录层级深度，数值越大提取的章节越详细'}
+                      {t('config.epubTocDepthDescription')}
                     </p>
                   </div>
                 )}
@@ -580,7 +586,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                 <div className="flex items-center gap-2 mb-3">
                   <Settings className="h-4 w-4" />
                   <Label className="text-sm font-medium">
-                    {t('config.chapterPreview') || '章节预览'}
+                    {t('config.chapterPreview')}
                     {isPreviewLoading && <Loader2 className="h-3 w-3 animate-spin ml-2" />}
                   </Label>
                 </div>
@@ -605,11 +611,11 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                   </div>
                 ) : !isPreviewLoading ? (
                   <div className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
-                    {t('config.noChaptersFound') || '未找到章节预览'}
+                    {t('config.noChaptersFound')}
                   </div>
                 ) : (
                   <div className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
-                    {t('config.loadingPreview') || '正在加载章节预览...'}
+                    {t('config.loadingPreview')}
                   </div>
                 )}
               </div>
