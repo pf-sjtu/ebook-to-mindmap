@@ -94,7 +94,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
         <ScrollArea className="max-h-[60vh] pr-4">
           <div className="space-y-4">
             {/* AI 服务配置 */}
-            <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+            <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border dark:border-gray-700">
               <div className="flex items-center gap-2 mb-3">
                 <Settings className="h-4 w-4" />
                 <Label className="text-sm font-medium">{t('config.aiServiceConfig')}</Label>
@@ -188,7 +188,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                       onChange={(e) => setTemperature(parseFloat(e.target.value))}
                       disabled={processing}
                     />
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
                       {t('config.temperatureDescription')}
                     </p>
                   </div>
@@ -221,7 +221,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
                       onChange={(e) => setTemperature(parseFloat(e.target.value) || 0.7)}
                       disabled={processing}
                     />
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
                       {t('config.temperatureDescription')}
                     </p>
                   </div>
@@ -229,7 +229,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               )}
             </div>
 
-            <div className="p-3 bg-indigo-50 rounded-lg border">
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg border dark:border-indigo-800">
               <div className="space-y-2">
                 <Label htmlFor="output-language" className="text-sm font-medium">
                   {t('config.outputLanguage')}
@@ -255,7 +255,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               </div>
             </div>
 
-            <div className="p-3 bg-purple-50 rounded-lg border">
+            <div className="p-3 bg-purple-50 dark:bg-purple-950/50 rounded-lg border dark:border-purple-800">
               <div className="space-y-3">
                 <div className="space-y-2">
                   <Label htmlFor="processing-mode" className="text-sm font-medium">
@@ -297,7 +297,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
             </div>
 
 
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border">
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/50 rounded-lg border dark:border-green-800">
               <div className="space-y-1">
                 <Label htmlFor="skip-non-essential" className="text-sm font-medium">
                   {t('config.skipIrrelevantChapters')}
@@ -314,7 +314,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               />
             </div>
 
-            <div className="p-3 bg-amber-50 rounded-lg border">
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/50 rounded-lg border dark:border-amber-800">
               <div className="space-y-2">
                 <Label htmlFor="max-sub-chapter-depth" className="text-sm font-medium">
                   {t('config.recursionDepth')}
@@ -342,7 +342,7 @@ export function ConfigDialog({ processing }: ConfigDialogProps) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
+            <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/50 rounded-lg border dark:border-blue-800">
               <div className="space-y-1">
                 <Label htmlFor="smart-detection" className="text-sm font-medium">
                   {t('config.smartChapterDetection')}

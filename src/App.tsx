@@ -576,15 +576,15 @@ ${bookSummary.overallSummary}
   }, [extractedChapters, bookData, apiKey, file, selectedChapters, processingMode, bookType, customPrompt, processingOptions.outputLanguage, t])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex justify-center gap-4 h-screen overflow-auto scroll-container">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-slate-900 p-4 flex justify-center gap-4 h-screen overflow-auto scroll-container">
       <Toaster />
       <div className="max-w-6xl space-y-4 w-[800px] shrink-0">
         <div className="text-center space-y-2 relative">
-          <h1 className="text-4xl font-bold text-gray-900 flex items-center justify-center gap-2">
-            <BookOpen className="h-8 w-8 text-blue-600" />
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 flex items-center justify-center gap-2">
+            <BookOpen className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             {t('app.title')}
           </h1>
-          <p className="text-gray-600">{t('app.description')}</p>
+          <p className="text-gray-600 dark:text-gray-300">{t('app.description')}</p>
           <div className="flex items-center justify-center gap-4">
             <LanguageSwitcher />
             <ThemeSwitcher />
@@ -681,7 +681,7 @@ ${bookSummary.overallSummary}
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                     {extractedChapters.map((chapter) => (
-                      <div key={chapter.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div key={chapter.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
                         <Checkbox
                           id={`chapter-${chapter.id}`}
                           checked={selectedChapters.has(chapter.id)}
@@ -988,7 +988,7 @@ ${bookSummary.overallSummary}
       {showBackToTop && (
         <Button
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 z-50 rounded-full w-12 h-12 shadow-lg hover:shadow-xl transition-all duration-300 bg-blue-600 hover:bg-blue-700"
+          className="fixed bottom-6 right-6 z-50 rounded-full w-12 h-12 shadow-lg hover:shadow-xl transition-all duration-300 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
           size="icon"
           aria-label={t('common.backToTop')}
         >
