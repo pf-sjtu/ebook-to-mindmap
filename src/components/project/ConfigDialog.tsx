@@ -5,7 +5,8 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Settings, ExternalLink } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Settings, ExternalLink, Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useConfigStore, useAIConfig, useProcessingOptions } from '../../stores/configStore'
@@ -96,7 +97,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
       apiKeyLabel: 'Gemini API Key',
       apiKeyPlaceholder: t('config.enterGeminiApiKey'),
       modelPlaceholder: t('config.geminiModelPlaceholder'),
-      apiUrlPlaceholder: '', // Gemini does not use a separate API URL input in this UI
+      apiUrlPlaceholder: 'https://generativelanguage.googleapis.com/v1beta',
       url: 'https://ai.google.dev/',
     },
     openai: {
@@ -206,7 +207,24 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="api-url">{t('config.apiUrl')}</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="api-url">{t('config.apiUrl')}</Label>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-4 w-4 text-gray-500 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs">
+                                {aiProvider === 'gemini' && t('config.geminiApiUrlDescription')}
+                                {aiProvider === 'openai' && t('config.openaiApiUrlDescription')}
+                                {aiProvider === 'ollama' && t('config.ollamaApiUrlDescription')}
+                                {aiProvider === '302.ai' && t('config.ai302ApiUrlDescription')}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       <Input
                         id="api-url"
                         type="url"
@@ -215,12 +233,6 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                         onChange={(e) => setApiUrl(e.target.value)}
                         disabled={processing || aiProvider === '302.ai'}
                       />
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {aiProvider === 'gemini' && t('config.geminiApiUrlDescription') || '请输入完整的API地址，包含协议（http://或https://）'}
-                        {aiProvider === 'openai' && t('config.openaiApiUrlDescription') || 'OpenAI官方API地址：https://api.openai.com/v1'}
-                        {aiProvider === 'ollama' && t('config.ollamaApiUrlDescription') || '本地Ollama默认地址：http://localhost:11434'}
-                        {aiProvider === '302.ai' && t('config.ai302ApiUrlDescription') || '302.AI的API地址已自动配置'}
-                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -257,6 +269,31 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
 
               {aiProvider === 'gemini' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="gemini-api-url">{t('config.apiUrl')}</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-gray-500 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-xs">
+                              {t('config.geminiApiUrlDescription')}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Input
+                      id="gemini-api-url"
+                      type="url"
+                      placeholder={providerSettings.gemini.apiUrlPlaceholder}
+                      value={apiUrl}
+                      onChange={(e) => setApiUrl(e.target.value)}
+                      disabled={processing}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="gemini-model">{t('config.modelName')}</Label>
                     <Input
