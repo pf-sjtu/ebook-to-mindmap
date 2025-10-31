@@ -99,14 +99,15 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
       /* 代码样式 */
       code {
         background-color: ${isDarkMode ? '#374151' : '#f3f4f6'};
+        color: ${isDarkMode ? '#f3f4f6' : '#111827'};
         padding: 0.125rem 0.25rem;
         border-radius: 0.25rem;
         font-family: 'Courier New', monospace;
-        font-size: 0.875rem;
       }
       
       pre {
         background-color: ${isDarkMode ? '#374151' : '#f3f4f6'};
+        color: ${isDarkMode ? '#f3f4f6' : '#111827'};
         padding: 1rem;
         border-radius: 0.5rem;
         overflow-x: auto;
@@ -120,8 +121,8 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
       
       /* 表格样式 */
       table {
-        width: 100%;
         border-collapse: collapse;
+        width: 100%;
         margin: 1rem 0;
       }
       
@@ -132,21 +133,43 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
       }
       
       th {
-        background-color: ${isDarkMode ? '#334155' : '#f9fafb'};
+        background-color: ${isDarkMode ? '#374151' : '#f9fafb'};
         font-weight: bold;
+      }
+      
+      /* 图片样式 */
+      img {
+        max-width: 100%;
+        height: auto;
+        margin: 1rem 0;
+        border-radius: 0.5rem;
+      }
+      
+      /* 强调样式 */
+      strong, b {
+        font-weight: bold;
+        color: ${isDarkMode ? '#f1f5f9' : '#111827'};
+      }
+      
+      em, i {
+        font-style: italic;
       }
     `
     
-    shadowRoot.innerHTML = `<div>${content}</div>`
+    // 清除之前的内容
+    shadowRoot.innerHTML = ''
     
-    // 添加或更新样式
-    const existingStyle = shadowRoot.querySelector('style')
-    if (existingStyle) {
-      existingStyle.replaceWith(style)
-    } else {
-      shadowRoot.appendChild(style)
-    }
-  }, [chapterHtmlContent, chapter.content])
+    // 添加样式
+    shadowRoot.appendChild(style)
+    
+    // 创建内容容器
+    const contentDiv = document.createElement('div')
+    contentDiv.innerHTML = content
+    
+    // 添加内容到Shadow DOM
+    shadowRoot.appendChild(contentDiv)
+    
+  }, [chapterHtmlContent, chapter.content, chapter.title]) // 添加chapter.title依赖确保内容更新
 
   // 加载章节的HTML内容
   useEffect(() => {
@@ -166,18 +189,29 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
         setChapterHtmlContent(chapter.content)
       } finally {
         setIsLoadingHtml(false)
-        // 章节加载完成后滚动到顶部
-        if (scrollAreaRef.current) {
-          const scrollViewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
-          if (scrollViewport) {
-            scrollViewport.scrollTop = 0
+        // 延迟滚动到顶部，确保内容已渲染
+        setTimeout(() => {
+          if (scrollAreaRef.current) {
+            const scrollViewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+            if (scrollViewport) {
+              scrollViewport.scrollTop = 0
+            }
           }
-        }
+        }, 100)
       }
     }
 
     loadChapterHtml()
   }, [chapter, bookData, epubProcessor])
+
+  // 确保内容变化时重新渲染Shadow DOM
+  useEffect(() => {
+    if (!isLoadingHtml && shadowRef.current) {
+      // 强制触发Shadow DOM更新
+      const event = new Event('content-updated')
+      shadowRef.current.dispatchEvent(event)
+    }
+  }, [chapterHtmlContent, isLoadingHtml])
 
   return (
     <div className={cn("w-full space-y-4", className)}>

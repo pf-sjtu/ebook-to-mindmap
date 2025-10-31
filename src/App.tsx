@@ -28,6 +28,8 @@ import { TimelineNavigation } from './components/TimelineNavigation'
 import { ChapterSummaryNavigation } from './components/ChapterSummaryNavigation'
 import { EpubReader } from './components/EpubReader'
 import { PdfReader } from './components/PdfReader'
+import { UploadToWebDAVButton } from './components/UploadToWebDAVButton'
+import { NavigationHeader } from './components/NavigationHeader'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { scrollToTop, openInMindElixir, downloadMindMap } from './utils'
@@ -1050,33 +1052,46 @@ function App() {
         ) : (
           <>
             {/* 步骤2: 处理过程和结果显示 */}
-            <div className="flex items-center gap-4 mb-4">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentStepIndex(1)}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                {t('common.backToConfig')}
-              </Button>
-              <div className="text-lg font-medium text-gray-700 dark:text-gray-300 truncate">
-                {bookData ? `${bookData.title} - ${bookData.author}` : '处理中...'}
-              </div>
-            </div>
+            <NavigationHeader
+              currentStep={currentStep}
+              bookTitle={bookData?.title}
+              bookAuthor={bookData?.author}
+              onBackToConfig={() => setCurrentStepIndex(1)}
+              processing={processing}
+              extractingChapters={extractingChapters}
+              progress={progress}
+              className="mb-6"
+            />
 
-            {/* 处理进度 */}
+            {/* 处理进度卡片 - 仅在有进度时显示 */}
             {(processing || extractingChapters) && (
-              <Card>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>{currentStep}</span>
+              <Card className="mb-6">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        <div className="absolute inset-0 h-5 w-5 animate-ping rounded-full bg-primary/20" />
                       </div>
-                      <span>{Math.round(progress)}%</span>
+                      <div>
+                        <p className="font-medium">{currentStep}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {extractingChapters 
+                            ? t('navigation.extractingDescription', { defaultValue: '正在从电子书中提取章节内容...' })
+                            : t('navigation.processingDescription', { defaultValue: '正在使用AI生成智能总结...' })
+                          }
+                        </p>
+                      </div>
                     </div>
-                    <Progress value={progress} className="w-full" />
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-primary">{Math.round(progress)}%</div>
+                      <div className="text-xs text-muted-foreground">
+                        {extractingChapters 
+                          ? t('navigation.extractingProgress', { defaultValue: '提取进度' })
+                          : t('navigation.processingProgress', { defaultValue: '处理进度' })
+                        }
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1122,17 +1137,25 @@ function App() {
                             <><Network className="h-5 w-5 inline-block mr-2" />{t('results.wholeMindMapTitle', { title: bookMindMap?.title })}</>
                           )}
                         </div>
-                        {processingMode === 'summary' && bookSummary && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={downloadAllMarkdown}
-                            className="flex items-center gap-2"
-                          >
-                            <Download className="h-4 w-4" />
-                            {t('download.downloadAllMarkdown')}
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {processingMode === 'summary' && bookSummary && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={downloadAllMarkdown}
+                              className="flex items-center gap-2"
+                            >
+                              <Download className="h-4 w-4" />
+                              {t('download.downloadAllMarkdown')}
+                            </Button>
+                          )}
+                          {processingMode === 'summary' && bookSummary && (
+                            <UploadToWebDAVButton 
+                              bookSummary={bookSummary}
+                              file={file}
+                            />
+                          )}
+                        </div>
                       </CardTitle>
                       <CardDescription>
                         {t('results.author', { author: bookSummary?.author || bookMindMap?.author })} | {t('results.chapterCount', { count: bookSummary?.chapters.length || bookMindMap?.chapters.length })}

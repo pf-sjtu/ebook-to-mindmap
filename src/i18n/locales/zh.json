@@ -13,7 +13,15 @@
     "extractChapters": "获取章节",
     "extractingChapters": "提取章节中...",
     "invalidFile": "请选择有效的 EPUB 或 PDF 文件",
-    "pleaseSelectFile": "请选择文件"
+    "pleaseSelectFile": "请选择文件",
+    "upload": "上传",
+    "uploading": "上传中...",
+    "uploaded": "已上传",
+    "exists": "云端已存在",
+    "uploadToWebDAV": "上传到WebDAV",
+    "confirmOverwrite": "确认覆盖文件",
+    "fileExistsMessage": "文件 \"{fileName}\" 在WebDAV云端已存在，是否要覆盖它？",
+    "overwrite": "覆盖"
   },
   "chapters": {
     "title": "章节选择",
@@ -87,11 +95,21 @@
     }
   },
   "common": {
-    "copy": "复制",
-    "delete": "删除",
-    "viewContent": "查看内容",
+    "selectFile": "选择文件",
     "backToTop": "回到顶部",
     "backToConfig": "返回配置",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "warning": "警告",
+    "info": "信息",
+    "copy": "复制",
     "openInMindElixir": "在 Mind Elixir Desktop 中打开",
     "clearCache": "清除缓存",
     "copiedToClipboard": "已复制到剪贴板",
@@ -99,8 +117,16 @@
     "copyChapterContent": "复制章节内容",
     "copyContent": "复制内容",
     "expand": "展开",
-    "collapse": "折叠",
-    "error": "未知错误"
+    "collapse": "折叠"
+  },
+  "navigation": {
+    "extractingChapters": "提取章节中",
+    "processing": "处理中",
+    "processingComplete": "处理完成",
+    "extractingDescription": "正在从电子书中提取章节内容...",
+    "processingDescription": "正在使用AI生成智能总结...",
+    "extractingProgress": "提取进度",
+    "processingProgress": "处理进度"
   },
   "tabs": {
     "setup": "设置",

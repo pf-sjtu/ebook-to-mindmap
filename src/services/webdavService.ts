@@ -23,28 +23,26 @@ export interface WebDAVOperationResult<T = any> {
 export type UploadProgressCallback = (progress: number) => void
 
 /**
- * 获取代理后的WebDAV URL
- * 在开发环境中使用代理避免CORS问题
+ * 获取代理后的URL
+ * @param originalUrl 原始URL
+ * @returns 代理后的URL
  */
 function getProxiedUrl(originalUrl: string): string {
-  // 检查是否为开发环境
-  if (import.meta.env.DEV) {
-    // 如果是坚果云的URL，转换为代理URL
-    if (originalUrl.includes('dav.jianguoyun.com')) {
-      const url = new URL(originalUrl)
-      // 提取路径部分，去掉 /dav 前缀
-      let pathname = url.pathname
-      if (pathname.startsWith('/dav/')) {
-        pathname = pathname.substring(4) // 去掉 '/dav'
-      } else if (pathname === '/dav') {
-        pathname = '/' // 根目录
-      }
-      // 如果路径为空，设为根路径
-      if (pathname === '') {
-        pathname = '/'
-      }
-      return `/webdav${pathname}`
+  // 在开发环境中，如果使用的是坚果云的URL，转换为代理URL
+  if (import.meta.env.DEV && originalUrl.includes('dav.jianguoyun.com')) {
+    const url = new URL(originalUrl)
+    // 提取路径部分，去掉 /dav 前缀
+    let pathname = url.pathname
+    if (pathname.startsWith('/dav/')) {
+      pathname = pathname.substring(4) // 去掉 '/dav'
+    } else if (pathname === '/dav') {
+      pathname = '/' // 根目录
     }
+    // 如果路径为空，设为根路径
+    if (pathname === '') {
+      pathname = '/'
+    }
+    return `/webdav${pathname}`
   }
   return originalUrl
 }
@@ -413,14 +411,48 @@ export class WebDAVService {
     }
 
     try {
+      console.log('🔄 WebDAV上传文件:')
+      console.log('   文件路径:', filePath)
+      console.log('   数据类型:', typeof data)
+      console.log('   数据大小:', typeof data === 'string' ? data.length : 'unknown')
+      console.log('   覆盖模式:', overwrite)
+      
+      // 确保目录存在
+      const dirPath = filePath.substring(0, filePath.lastIndexOf('/'))
+      if (dirPath && dirPath !== '/') {
+        console.log('📁 检查目录是否存在:', dirPath)
+        const dirExists = await this.client.exists(dirPath)
+        if (!dirExists) {
+          console.log('📁 创建目录:', dirPath)
+          await this.client.createDirectory(dirPath)
+        }
+      }
+      
       const result = await this.client.putFileContents(filePath, data, { overwrite })
+      
+      console.log('✅ WebDAV上传成功:', result)
       return { success: true, data: result }
     } catch (error) {
+      console.error('❌ WebDAV上传失败:', error)
       return {
         success: false,
         error: `上传文件失败: ${error instanceof Error ? error.message : '未知错误'}`
       }
     }
+  }
+
+  /**
+   * 上传文件（putFileContents的别名方法）
+   * @param filePath 文件路径
+   * @param data 文件内容
+   * @param overwrite 是否覆盖现有文件
+   */
+  async uploadFile(
+    filePath: string,
+    data: string | ArrayBuffer | Blob,
+    overwrite: boolean = true
+  ): Promise<WebDAVOperationResult<boolean>> {
+    return this.putFileContents(filePath, data, overwrite)
   }
 
   /**
@@ -502,6 +534,16 @@ export class WebDAVService {
         error: `检查路径失败: ${error instanceof Error ? error.message : '未知错误'}`
       }
     }
+  }
+
+  /**
+   * 简化的文件存在检查方法
+   * @param filePath 文件路径
+   * @returns 文件是否存在
+   */
+  async fileExists(filePath: string): Promise<boolean> {
+    const result = await this.exists(filePath)
+    return result.success ? (result.data || false) : false
   }
 
   /**
