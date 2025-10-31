@@ -595,19 +595,29 @@ export class WebDAVService {
       } else if (response.status === 404) {
         // 404 是预期的，不需要输出错误日志
         return { success: true, data: false }
+      } else if (response.status === 403) {
+        // 403 权限错误，可能目录不存在或无权限访问
+        console.warn(`⚠️ WebDAV 权限错误 (403): ${encodedPath}，可能目录不存在或无访问权限`)
+        return { success: true, data: false } // 假设不存在，让后续创建操作处理
       } else {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
       
     } catch (error) {
-      // 对于网络错误，返回 false 而不是抛出异常
-      if (error instanceof Error && (error.message.includes('404') || error.message.includes('Not Found'))) {
+      // 对于网络错误和权限错误，返回 false 而不是抛出异常
+      if (error instanceof Error && (
+        error.message.includes('404') || 
+        error.message.includes('Not Found') ||
+        error.message.includes('403') ||
+        error.message.includes('Forbidden')
+      )) {
+        console.warn(`⚠️ WebDAV 访问问题: ${error.message}`)
         return { success: true, data: false }
       }
       console.error('代理检查失败:', error)
       return {
         success: false,
-        error: `代理检查失败: ${error instanceof Error ? error.message : '未知错误'}`
+        error: error instanceof Error ? error.message : String(error)
       }
     }
   }

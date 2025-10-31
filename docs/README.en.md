@@ -36,6 +36,22 @@ An intelligent e-book parsing tool powered by AI technology that converts EPUB a
 - **Real-time Progress**: Visualized processing with real-time step display
 - **Interactive Mind Maps**: Support zooming, dragging, node expand/collapse
 - **Content Preview**: Support viewing original chapter content
+- **Reading Controls**: Font size adjustment and fullscreen mode for better reading experience
+- **Theme Support**: Complete dark/light theme support with automatic system theme detection
+
+### 🌐 Enhanced Reading Experience
+
+- **Font Size Control**: Adjustable font size (12px-24px) for EPUB content preview
+- **Fullscreen Mode**: Immersive reading experience with fullscreen toggle
+- **Adaptive Layout**: Content area automatically adjusts to screen height in fullscreen
+- **Theme Consistency**: Preview content follows the selected theme (light/dark/system)
+
+### ☁️ Cloud Sync & Storage
+
+- **WebDAV Support**: Upload and sync mind maps to WebDAV cloud storage
+- **Multiple Providers**: Support for坚果云, Nextcloud, ownCloud and other WebDAV services
+- **Overwrite Protection**: Smart file existence checking with overwrite confirmation
+- **Auto Sync**: Automatic synchronization to cloud storage after processing
 
 ## 🚀 Quick Start
 

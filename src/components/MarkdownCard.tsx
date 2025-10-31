@@ -63,8 +63,15 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
 
-  // 使用外部控制的展开状态
+  // 使用外部控制的展开状态，外部控制优先级更高
   const actualIsCollapsed = isExpanded !== undefined ? !isExpanded : isCollapsed
+
+  // 当外部控制的展开状态变化时，同步内部状态
+  React.useEffect(() => {
+    if (isExpanded !== undefined) {
+      setIsCollapsed(!isExpanded)
+    }
+  }, [isExpanded])
 
   const handleToggleCollapse = () => {
     if (isExpanded !== undefined) {

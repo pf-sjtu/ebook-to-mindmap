@@ -409,13 +409,18 @@ export class EpubProcessor {
         return ''
       }
 
-      // 读取章节内容
-      const chapterHTML = await section.render(book.load.bind(book))
+      try {
+        // 读取章节内容
+        const chapterHTML = await section.render(book.load.bind(book))
 
-      // 卸载章节内容以释放内存
-      section.unload()
+        // 卸载章节内容以释放内存
+        section.unload()
 
-      return chapterHTML
+        return chapterHTML || ''
+      } catch (renderError) {
+        console.warn(`⚠️ [DEBUG] 章节渲染失败 (href: ${href}):`, renderError)
+        return ''
+      }
     } catch (error) {
       console.warn(`❌ [DEBUG] 获取章节HTML失败 (href: ${href}):`, error)
       return ''

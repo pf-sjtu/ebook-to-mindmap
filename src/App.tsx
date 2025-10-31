@@ -19,11 +19,9 @@ import { autoSyncService } from './services/autoSyncService'
 import { ConfigDialog } from './components/project/ConfigDialog'
 import { WebDAVFileBrowser } from './components/project/WebDAVFileBrowser'
 import type { MindElixirData, Options } from 'mind-elixir'
-import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { DarkModeToggle } from './components/DarkModeToggle'
 import { UnifiedStatusBar } from './components/UnifiedStatusBar'
-import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { MarkdownCard } from './components/MarkdownCard'
 import { MindMapCard } from './components/MindMapCard'
 import { TimelineNavigation } from './components/TimelineNavigation'
@@ -33,11 +31,15 @@ import { PdfReader } from './components/PdfReader'
 import { UploadToWebDAVButton } from './components/UploadToWebDAVButton'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
-import { scrollToTop, openInMindElixir, downloadMindMap } from './utils'
+import { scrollToTop, openInMindElixir, downloadMindMap } from './utils/index'
 import { useWebDAVConfig, useConfigStore, useAIConfig, useProcessingOptions, usePromptConfig } from './stores/configStore'
 
 
 const options = { direction: 1, alignment: 'nodes' } as Options
+
+// 创建单例实例避免重复创建
+const epubProcessorInstance = new EpubProcessor()
+const pdfProcessorInstance = new PdfProcessor()
 
 interface Chapter {
   id: string
@@ -322,16 +324,55 @@ function App() {
 
   // 章节总结导航处理（用于跳转到章节总结）
   const handleChapterSummaryNavigation = useCallback((chapterId: string) => {
+    console.log(`🎯 [DEBUG] 导航点击章节: ${chapterId}`)
+    
+    // 1. 先设置当前查看的章节
     setCurrentViewingChapterSummary(chapterId)
-    // 展开目标章节，折叠其他章节
+    
+    // 2. 展开目标章节，折叠其他章节
     setExpandedChapters(new Set([chapterId]))
-    // 滚动到对应的章节总结
-    setTimeout(() => {
-      const element = document.getElementById(`chapter-summary-${chapterId}`)
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }
-    }, 100)
+    
+    // 3. 多次尝试滚动，确保元素可见且展开完成
+    const scrollToChapter = (attempt = 1) => {
+      setTimeout(() => {
+        const element = document.getElementById(`chapter-summary-${chapterId}`)
+        if (element) {
+          // 检查元素是否真的展开了（内容区域可见）
+          const contentElement = element.querySelector('[class*="CardContent"]')
+          const isActuallyExpanded = contentElement && 
+            contentElement.getAttribute('style') !== 'display: none' &&
+            !contentElement.classList.contains('hidden')
+          
+          if (isActuallyExpanded) {
+            console.log(`📍 [DEBUG] 元素已展开，开始滚动 (尝试 ${attempt}): ${chapterId}`)
+            // 使用 start 确保滚动到元素顶部，留出一些顶部空间
+            const headerOffset = 80 // 导航栏高度偏移
+            const elementPosition = element.getBoundingClientRect().top
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+            
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            })
+          } else if (attempt < 3) {
+            console.log(`⏳ [DEBUG] 元素未完全展开，重试 (尝试 ${attempt + 1}): ${chapterId}`)
+            scrollToChapter(attempt + 1)
+          } else {
+            console.warn(`⚠️ [DEBUG] 元素展开失败，强制滚动: ${chapterId}`)
+            element.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            })
+          }
+        } else {
+          console.warn(`❌ [DEBUG] 未找到目标元素: chapter-summary-${chapterId}`)
+        }
+      }, attempt * 200) // 每次尝试间隔200ms
+    }
+    
+    // 开始第一次滚动尝试
+    scrollToChapter()
   }, [])
 
   // 章节展开状态变化处理
@@ -424,8 +465,7 @@ function App() {
       let chapters: ChapterData[]
 
       if (file.name.endsWith('.epub')) {
-        const epubProcessor = new EpubProcessor()
-        bookData = await epubProcessor.extractBookData(
+        bookData = await epubProcessorInstance.extractBookData(
           file, 
           processingOptions.useSmartDetection, 
           processingOptions.skipNonEssentialChapters, 
@@ -436,8 +476,7 @@ function App() {
         )
         chapters = bookData.chapters
       } else if (file.name.endsWith('.pdf')) {
-        const pdfProcessor = new PdfProcessor()
-        bookData = await pdfProcessor.extractBookData(
+        bookData = await pdfProcessorInstance.extractBookData(
           file, 
           processingOptions.useSmartDetection, 
           processingOptions.skipNonEssentialChapters, 

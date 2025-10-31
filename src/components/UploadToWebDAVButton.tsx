@@ -244,21 +244,19 @@ export const UploadToWebDAVButton: React.FC<UploadToWebDAVButtonProps> = ({
               <AlertCircle className="h-5 w-5 text-yellow-600" />
               {t('upload.confirmOverwrite', { defaultValue: '确认覆盖文件' })}
             </DialogTitle>
-            <DialogDescription>
-              <Alert className="mt-2">
-                <AlertDescription className="space-y-2">
-                  <div>
-                    {fileName ? `文件 "${fileName}" 在WebDAV云端已存在，是否要覆盖它？` : '文件在WebDAV云端已存在，是否要覆盖它？'}
-                  </div>
-                  {fileName && (
-                    <div className="text-sm text-muted-foreground">
-                      远程路径: {webdavConfig.syncPath}/{fileName}
-                    </div>
-                  )}
-                </AlertDescription>
-              </Alert>
-            </DialogDescription>
           </DialogHeader>
+          <Alert className="mt-2">
+            <AlertDescription className="space-y-2">
+              <div>
+                {fileName ? `文件 "${fileName}" 在WebDAV云端已存在，是否要覆盖它？` : '文件在WebDAV云端已存在，是否要覆盖它？'}
+              </div>
+              {fileName && (
+                <div className="text-sm text-muted-foreground">
+                  远程路径: {webdavConfig.syncPath}/{fileName}
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
           <DialogFooter>
             <Button 
               variant="outline" 

@@ -289,28 +289,6 @@ export function EpubReader({
     
   }, [chapterHtmlContent, chapter.content, chapter.title, fontSize, isDarkMode]) // 添加 isDarkMode 依赖确保主题变化时重新渲染
 
-  // 监听系统主题变化（当用户选择 system 主题时）
-  useEffect(() => {
-    if (theme !== 'system') return
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    
-    const handleSystemThemeChange = () => {
-      // 系统主题变化时，强制重新渲染 Shadow DOM
-      if (shadowRef.current && (chapterHtmlContent || chapter.content)) {
-        // 触发重新渲染
-        const event = new Event('system-theme-changed')
-        shadowRef.current.dispatchEvent(event)
-      }
-    }
-
-    mediaQuery.addEventListener('change', handleSystemThemeChange)
-    
-    return () => {
-      mediaQuery.removeEventListener('change', handleSystemThemeChange)
-    }
-  }, [theme, chapterHtmlContent, chapter.content])
-
   // 加载章节的HTML内容
   useEffect(() => {
     const loadChapterHtml = async () => {
