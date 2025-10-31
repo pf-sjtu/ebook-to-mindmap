@@ -69,6 +69,54 @@ npm run dev
 
 访问 `http://localhost:5173` 开始使用。
 
+## 📁 项目结构
+
+```
+ebook-to-mindmap/
+├── 📄 package.json              # 项目依赖和脚本
+├── 📄 index.html                 # 入口 HTML 文件
+├── 📄 .env                       # 环境变量配置
+├── 📄 .gitignore                 # Git 忽略规则
+├── 📁 src/                       # 源代码目录
+│   ├── 📁 components/            # React 组件
+│   │   ├── 📁 ui/               # 基础 UI 组件
+│   │   ├── 📁 project/          # 项目相关组件
+│   │   └── 📄 *.tsx              # 其他功能组件
+│   ├── 📁 services/             # 服务层
+│   │   ├── 📄 aiService.ts      # AI 服务
+│   │   ├── 📄 pdfProcessor.ts   # PDF 处理
+│   │   └── 📄 *.ts              # 其他服务
+│   ├── 📁 stores/               # 状态管理
+│   ├── 📁 hooks/                # 自定义 Hooks
+│   ├── 📁 i18n/                 # 国际化配置
+│   ├── 📁 lib/                  # 工具库
+│   └── 📄 *.tsx                 # 页面组件
+├── 📁 config/                    # 配置文件目录
+│   ├── 📄 vite.config.ts        # Vite 构建配置
+│   ├── 📄 tailwind.config.js    # Tailwind CSS 配置
+│   ├── 📄 eslint.config.js      # ESLint 代码检查配置
+│   ├── 📄 tsconfig*.json        # TypeScript 配置
+│   └── 📄 components.json       # shadcn/ui 组件配置
+├── 📁 docs/                      # 文档目录
+│   ├── 📄 README.md              # 项目说明文档
+│   ├── 📄 README.en.md           # 英文说明文档
+│   ├── 📄 TODO.md                # 待办事项
+│   ├── 📄 LICENSE                # 许可证
+│   ├── 📄 CLAUDE.md              # Claude AI 使用说明
+│   ├── 📄 EPUB结构说明.md        # EPUB 格式说明
+│   ├── 📄 PDF处理流程文档.md     # PDF 处理说明
+│   └── 📄 浏览器代理解决方案.md   # 代理配置指南
+├── 📁 test/                      # 测试文件目录
+├── 📁 node_modules/              # 依赖包
+└── 📁 dist/                      # 构建输出目录
+```
+
+### 配置文件说明
+
+- **config/**: 所有配置文件统一管理，提高项目可维护性
+- **docs/**: 项目文档集中存放，包括说明文档和技术文档
+- **src/**: 源代码按功能模块组织，遵循最佳实践
+
 ## 📖 使用指南
 
 ### 1. 配置 AI 服务

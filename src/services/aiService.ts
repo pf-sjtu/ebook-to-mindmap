@@ -12,36 +12,114 @@ import type { MindElixirData } from 'mind-elixir'
 import { getLanguageInstruction, type SupportedLanguage } from './prompts/utils'
 import type { PromptConfig } from '../stores/configStore'
 
-// 代理fetch函数
+// 检查是否在浏览器环境中
+const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'undefined';
+
+// 动态加载代理相关包的函数
+async function getHttpsProxyAgent() {
+  if (isBrowser) {
+    return null; // 浏览器环境不支持代理
+  }
+  
+  try {
+    const httpsProxyAgentModule = await import('https-proxy-agent');
+    return httpsProxyAgentModule.HttpsProxyAgent;
+  } catch (error) {
+    console.warn('无法加载 https-proxy-agent，代理功能将不可用:', error);
+    return null;
+  }
+}
+
+// 代理fetch函数 - 使用 https-proxy-agent
 async function proxyFetch(url: string, options: RequestInit, proxyUrl?: string): Promise<Response> {
-  if (!proxyUrl) {
+  if (!proxyUrl || isBrowser) {
+    // 浏览器环境或未设置代理时，直接使用 fetch
     return fetch(url, options)
   }
 
   try {
-    // 如果启用了代理，使用代理服务器
-    // 支持多种代理方式：HTTP代理、SOCKS代理等
-    const proxyOptions: RequestInit = {
-      ...options,
+    // 动态获取 HttpsProxyAgent
+    const HttpsProxyAgent = await getHttpsProxyAgent();
+    if (!HttpsProxyAgent) {
+      console.warn('代理模块不可用，使用直接连接');
+      return fetch(url, options);
+    }
+    
+    // 使用 https-proxy-agent 创建代理 agent
+    const agent = new HttpsProxyAgent(proxyUrl)
+    
+    // 为 Node.js 环境创建自定义 fetch
+    const https = require('https')
+    const { URL } = require('url')
+    
+    const parsedUrl = new URL(url)
+    
+    // 构建请求选项
+    const requestOptions: any = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: options.method || 'GET',
       headers: {
         ...options.headers,
-        'X-Target-URL': url,
-        'X-Original-URL': url,
-        'X-Proxy-Target': url
-      }
+        'Host': parsedUrl.hostname,
+        'User-Agent': 'ebook-to-mindmap/1.0'
+      },
+      agent: agent,
+      timeout: 30000 // 30秒超时
     }
-
-    const response = await fetch(proxyUrl, proxyOptions)
     
-    // 如果代理服务器返回错误，抛出详细的错误信息
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`代理服务器错误: ${response.status} ${response.statusText} - ${errorText}`)
+    // 如果有请求体，添加 Content-Length 和 body
+    if (options.body) {
+      const bodyString = typeof options.body === 'string' ? options.body : JSON.stringify(options.body)
+      requestOptions.headers['Content-Length'] = Buffer.byteLength(bodyString)
     }
-
-    return response
+    
+    return new Promise((resolve, reject) => {
+      const req = https.request(requestOptions, (res: any) => {
+        const chunks: Buffer[] = []
+        
+        res.on('data', (chunk: Buffer) => {
+          chunks.push(chunk)
+        })
+        
+        res.on('end', () => {
+          const body = Buffer.concat(chunks).toString()
+          
+          // 创建 Response 对象
+          const response = new Response(body, {
+            status: res.statusCode,
+            statusText: res.statusMessage,
+            headers: res.headers
+          })
+          
+          resolve(response)
+        })
+        
+        res.on('error', (error: Error) => {
+          reject(error)
+        })
+      })
+      
+      req.on('error', (error: Error) => {
+        reject(new Error(`代理连接失败: ${error.message}`))
+      })
+      
+      req.on('timeout', () => {
+        req.destroy()
+        reject(new Error('代理请求超时'))
+      })
+      
+      // 发送请求体
+      if (options.body) {
+        const bodyString = typeof options.body === 'string' ? options.body : JSON.stringify(options.body)
+        req.write(bodyString)
+      }
+      
+      req.end()
+    })
+    
   } catch (error) {
-    // 如果代理失败，提供详细的错误信息
     if (error instanceof Error) {
       throw new Error(`代理连接失败: ${error.message}`)
     }
@@ -311,13 +389,19 @@ export class AIService {
     if (config.provider === 'gemini') {
       // Gemini API 不直接支持系统提示，将系统提示合并到用户提示前面
       const finalPrompt = `${prompt}\n\n**${systemPrompt}**`
-      const result = await this.model.generateContent(finalPrompt, {
-        generationConfig: {
-          temperature: config.temperature || 0.7
-        }
-      })
-      const response = await result.response
-      return response.text()
+      
+      // 如果启用代理，使用代理请求 Gemini API
+      if (config.proxyEnabled && config.proxyUrl) {
+        return await this.generateGeminiWithProxy(finalPrompt, config)
+      } else {
+        const result = await this.model.generateContent(finalPrompt, {
+          generationConfig: {
+            temperature: config.temperature || 0.7
+          }
+        })
+        const response = await result.response
+        return response.text()
+      }
     } else if (config.provider === 'openai' || config.provider === '302.ai') {
       const messages: Array<{role: 'system' | 'user', content: string}> = [
         {
@@ -392,13 +476,310 @@ export class AIService {
     throw new Error(`不支持的AI提供商: ${config.provider}`)
   }
 
+  // Gemini API 代理请求方法
+  private async generateGeminiWithProxy(prompt: string, config: AIConfig): Promise<string> {
+    // 浏览器环境不支持代理，回退到标准 Gemini API 调用
+    if (isBrowser) {
+      console.warn('浏览器环境不支持代理功能，使用直接连接');
+      const result = await this.model.generateContent(prompt, {
+        generationConfig: {
+          temperature: config.temperature || 0.7
+        }
+      })
+      const response = await result.response
+      return response.text()
+    }
+
+    try {
+      // 动态获取 HttpsProxyAgent
+      const HttpsProxyAgent = await getHttpsProxyAgent();
+      if (!HttpsProxyAgent) {
+        console.warn('代理模块不可用，使用直接连接');
+        const result = await this.model.generateContent(prompt, {
+          generationConfig: {
+            temperature: config.temperature || 0.7
+          }
+        })
+        const response = await result.response
+        return response.text()
+      }
+
+      const https = require('https')
+      const { URL } = require('url')
+      
+      // 构建请求 URL
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model || 'gemini-1.5-flash'}:generateContent?key=${config.apiKey}`
+      const parsedUrl = new URL(url)
+      
+      // 创建代理 agent
+      const agent = new HttpsProxyAgent(config.proxyUrl!)
+      
+      // 构建请求体
+      const postData = JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: config.temperature || 0.7
+        }
+      })
+      
+      // 构建请求选项
+      const requestOptions: any = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || 443,
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          'User-Agent': 'ebook-to-mindmap/1.0'
+        },
+        agent: agent,
+        timeout: 30000
+      }
+      
+      return new Promise((resolve, reject) => {
+        const req = https.request(requestOptions, (res: any) => {
+          const chunks: Buffer[] = []
+          
+          res.on('data', (chunk: Buffer) => {
+            chunks.push(chunk)
+          })
+          
+          res.on('end', () => {
+            const body = Buffer.concat(chunks).toString()
+            
+            if (res.statusCode === 200) {
+              try {
+                const response = JSON.parse(body)
+                const text = response.candidates?.[0]?.content?.parts?.[0]?.text || ''
+                resolve(text)
+              } catch (parseError) {
+                reject(new Error('Gemini API 响应解析失败'))
+              }
+            } else {
+              reject(new Error(`Gemini API 请求失败: ${res.statusCode} ${res.statusMessage} - ${body}`))
+            }
+          })
+          
+          res.on('error', (error: Error) => {
+            reject(error)
+          })
+        })
+        
+        req.on('error', (error: Error) => {
+          reject(new Error(`代理连接失败: ${error.message}`))
+        })
+        
+        req.on('timeout', () => {
+          req.destroy()
+          reject(new Error('代理请求超时'))
+        })
+        
+        req.write(postData)
+        req.end()
+      })
+      
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Gemini 代理请求失败: ${error.message}`)
+      }
+      throw new Error('Gemini 代理请求失败: 未知错误')
+    }
+  }
+
   // 辅助方法：检查API连接
   async testConnection(): Promise<boolean> {
     try {
       const text = await this.generateContent(getTestConnectionPrompt())
-      return text.includes('连接成功') || text.includes('成功')
+      
+      // 记录原始响应用于调试
+      console.log('AI连接测试原始响应:', text)
+      
+      // 清理响应文本，移除多余的空白字符和标点符号
+      const cleanText = text.trim().toLowerCase().replace(/[^\w\s\u4e00-\u9fa5]/gi, '')
+      
+      // 多种成功响应的判断条件
+      const successPatterns = [
+        'ok',           // 英文 OK
+        '连接成功',       // 中文连接成功
+        '成功',          // 中文成功
+        'success',      // 英文 success
+        'connected',    // 英文 connected
+        '正常',          // 中文正常
+        '可用',          // 中文可用
+        'ready',        // 英文 ready
+        'working',      // 英文 working
+        '测试成功',       // 中文测试成功
+        '连接正常',       // 中文连接正常
+      ]
+      
+      // 检查是否包含任何成功模式
+      const isSuccess = successPatterns.some(pattern => cleanText.includes(pattern))
+      
+      // 记录测试结果
+      console.log('AI连接测试结果:', {
+        cleanText,
+        isSuccess,
+        matchedPattern: successPatterns.find(pattern => cleanText.includes(pattern))
+      })
+      
+      return isSuccess
     } catch (error) {
+      console.warn('AI连接测试失败:', error)
       return false
+    }
+  }
+
+  // 测试代理连接
+  async testProxyConnection(): Promise<{ success: boolean; message: string; details?: any }> {
+    const config = this.getCurrentConfig()
+    
+    if (!config.proxyEnabled || !config.proxyUrl) {
+      return {
+        success: false,
+        message: '代理未启用'
+      }
+    }
+    
+    try {
+      // 测试基础代理连接
+      const testResult = await this.testBasicProxyConnectivity(config.proxyUrl)
+      
+      if (testResult.success) {
+        // 如果基础连接成功，测试 AI API 连接
+        const apiTestResult = await this.testConnection()
+        
+        if (apiTestResult) {
+          return {
+            success: true,
+            message: '代理连接成功，AI API 可用',
+            details: testResult.details
+          }
+        } else {
+          return {
+            success: false,
+            message: '代理连接成功，但 AI API 不可用',
+            details: testResult.details
+          }
+        }
+      } else {
+        return testResult
+      }
+    } catch (error) {
+      console.error('代理测试失败:', error)
+      return {
+        success: false,
+        message: `代理测试失败: ${error instanceof Error ? error.message : '未知错误'}`
+      }
+    }
+  }
+
+  // 测试基础代理连接性
+  private async testBasicProxyConnectivity(proxyUrl: string): Promise<{ success: boolean; message: string; details?: any }> {
+    // 浏览器环境不支持代理测试
+    if (isBrowser) {
+      return {
+        success: false,
+        message: '浏览器环境不支持代理功能'
+      }
+    }
+
+    try {
+      // 动态获取 HttpsProxyAgent
+      const HttpsProxyAgent = await getHttpsProxyAgent();
+      if (!HttpsProxyAgent) {
+        return {
+          success: false,
+          message: '代理模块不可用'
+        }
+      }
+
+      const https = require('https')
+      const { URL } = require('url')
+      
+      // 使用 httpbin.org 测试代理
+      const testUrl = 'https://httpbin.org/ip'
+      const parsedUrl = new URL(testUrl)
+      
+      const agent = new HttpsProxyAgent(proxyUrl)
+      
+      const requestOptions: any = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || 443,
+        path: parsedUrl.pathname,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'ebook-to-mindmap/1.0'
+        },
+        agent: agent,
+        timeout: 10000
+      }
+      
+      return new Promise((resolve) => {
+        const req = https.request(requestOptions, (res: any) => {
+          const chunks: Buffer[] = []
+          
+          res.on('data', (chunk: Buffer) => {
+            chunks.push(chunk)
+          })
+          
+          res.on('end', () => {
+            const body = Buffer.concat(chunks).toString()
+            
+            if (res.statusCode === 200) {
+              try {
+                const response = JSON.parse(body)
+                resolve({
+                  success: true,
+                  message: '代理连接成功',
+                  details: {
+                    proxyIP: response.origin,
+                    statusCode: res.statusCode
+                  }
+                })
+              } catch (parseError) {
+                resolve({
+                  success: false,
+                  message: '代理响应解析失败'
+                })
+              }
+            } else {
+              resolve({
+                success: false,
+                message: `代理服务器返回错误: ${res.statusCode}`,
+                details: { body }
+              })
+            }
+          })
+        })
+        
+        req.on('error', (error: Error) => {
+          resolve({
+            success: false,
+            message: `代理连接失败: ${error.message}`
+          })
+        })
+        
+        req.on('timeout', () => {
+          req.destroy()
+          resolve({
+            success: false,
+            message: '代理连接超时'
+          })
+        })
+        
+        req.end()
+      })
+      
+    } catch (error) {
+      return {
+        success: false,
+        message: `代理测试异常: ${error instanceof Error ? error.message : '未知错误'}`
+      }
     }
   }
 }

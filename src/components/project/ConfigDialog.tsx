@@ -7,14 +7,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Settings, ExternalLink, Info } from 'lucide-react'
+import { Settings, ExternalLink, Info, Play, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { PromptEditor } from './PromptEditor'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useConfigStore, useAIConfig, useProcessingOptions } from '../../stores/configStore'
 import type { SupportedLanguage } from '../../services/prompts/utils'
 import { chapterPreviewService } from '../../services/chapterPreviewService'
-import { Loader2 } from 'lucide-react'
+import { AIService } from '../../services/aiService'
 
 interface ConfigDialogProps {
   processing: boolean
@@ -29,6 +29,12 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
   
   const [previewChapters, setPreviewChapters] = useState<{ title: string; preview: string }[]>([])
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
+  
+  // 测试状态
+  const [isTestingConnection, setIsTestingConnection] = useState(false)
+  const [connectionTestResult, setConnectionTestResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [isTestingProxy, setIsTestingProxy] = useState(false)
+  const [proxyTestResult, setProxyTestResult] = useState<{ success: boolean; message: string; details?: any } | null>(null)
 
   const {
     setAiProvider,
@@ -63,6 +69,83 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
     chapterDetectionMode,
     epubTocDepth
   } = processingOptions
+
+  // 测试 AI 连接
+  const testAIConnection = async () => {
+    if (!aiConfig.apiKey) {
+      setConnectionTestResult({
+        success: false,
+        message: '请先配置 API Key'
+      })
+      return
+    }
+    
+    setIsTestingConnection(true)
+    setConnectionTestResult(null)
+    
+    try {
+      const aiService = new AIService(aiConfig)
+      const result = await aiService.testConnection()
+      
+      setConnectionTestResult({
+        success: result,
+        message: result ? 'AI API 连接成功' : 'AI API 连接失败'
+      })
+      
+      console.log('AI 连接测试详细结果:', {
+        provider: aiConfig.provider,
+        model: aiConfig.model,
+        apiUrl: aiConfig.apiUrl,
+        proxyEnabled: aiConfig.proxyEnabled,
+        proxyUrl: aiConfig.proxyUrl,
+        success: result
+      })
+    } catch (error) {
+      setConnectionTestResult({
+        success: false,
+        message: `测试失败: ${error instanceof Error ? error.message : '未知错误'}`
+      })
+      
+      console.error('AI 连接测试失败:', error)
+    } finally {
+      setIsTestingConnection(false)
+    }
+  }
+  
+  // 测试代理连接
+  const testProxyConnection = async () => {
+    if (!aiConfig.proxyEnabled || !aiConfig.proxyUrl) {
+      setProxyTestResult({
+        success: false,
+        message: '请先启用代理并配置代理地址'
+      })
+      return
+    }
+    
+    setIsTestingProxy(true)
+    setProxyTestResult(null)
+    
+    try {
+      const aiService = new AIService(aiConfig)
+      const result = await aiService.testProxyConnection()
+      
+      setProxyTestResult(result)
+      
+      console.log('代理测试详细结果:', {
+        proxyUrl: aiConfig.proxyUrl,
+        ...result
+      })
+    } catch (error) {
+      setProxyTestResult({
+        success: false,
+        message: `代理测试失败: ${error instanceof Error ? error.message : '未知错误'}`
+      })
+      
+      console.error('代理测试失败:', error)
+    } finally {
+      setIsTestingProxy(false)
+    }
+  }
 
   // 章节预览函数
   const loadChapterPreview = async () => {
@@ -158,10 +241,42 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
             <TabsContent value="ai-config" className="space-y-4 mt-4">
               {/* AI 服务配置 */}
               <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border dark:border-gray-700">
-                <div className="flex items-center gap-2 mb-3">
-                  <Settings className="h-4 w-4" />
-                  <Label className="text-sm font-medium">{t('config.aiServiceConfig')}</Label>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    <Label className="text-sm font-medium">{t('config.aiServiceConfig')}</Label>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={testAIConnection}
+                    disabled={isTestingConnection || processing || !apiKey}
+                    className="flex items-center gap-1"
+                  >
+                    {isTestingConnection ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Play className="h-3 w-3" />
+                    )}
+                    测试连接
+                  </Button>
                 </div>
+                
+                {/* 连接测试结果显示 */}
+                {connectionTestResult && (
+                  <div className={`flex items-center gap-2 p-2 rounded-md text-sm ${
+                    connectionTestResult.success 
+                      ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' 
+                      : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                  }`}>
+                    {connectionTestResult.success ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                    {connectionTestResult.message}
+                  </div>
+                )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -336,9 +451,27 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
 
             {/* 代理设置 */}
             <div className="space-y-4 p-4 bg-orange-50 dark:bg-orange-950/50 rounded-lg border dark:border-orange-800">
-              <div className="flex items-center gap-2 mb-3">
-                <Settings className="h-4 w-4" />
-                <Label className="text-sm font-medium">{t('config.proxySettings')}</Label>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  <Label className="text-sm font-medium">{t('config.proxySettings')}</Label>
+                </div>
+                {aiConfig.proxyEnabled && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={testProxyConnection}
+                    disabled={isTestingProxy || processing || !aiConfig.proxyUrl}
+                    className="flex items-center gap-1"
+                  >
+                    {isTestingProxy ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Play className="h-3 w-3" />
+                    )}
+                    测试代理
+                  </Button>
+                )}
               </div>
 
               <div className="flex items-center space-x-2">
@@ -353,13 +486,26 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                 </Label>
               </div>
 
+              {/* 浏览器环境代理提示 */}
+              <div className="p-2 bg-amber-50 dark:bg-amber-950/50 rounded-md border border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
+                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-medium mb-1">浏览器环境代理说明</div>
+                    <div className="opacity-90">
+                      当前在浏览器中运行，代理功能受限。如需使用代理，请配置浏览器扩展或系统级代理。
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {aiConfig.proxyEnabled && (
                 <div className="space-y-2">
                   <Label htmlFor="proxy-url">{t('config.proxyUrl')}</Label>
                   <Input
                     id="proxy-url"
                     type="url"
-                    placeholder="http://proxy.example.com:8080"
+                    placeholder="http://127.0.0.1:10808"
                     value={aiConfig.proxyUrl || ''}
                     onChange={(e) => setProxyUrl(e.target.value)}
                     disabled={processing}
@@ -367,6 +513,56 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     {t('config.proxyUrlDescription')}
                   </p>
+                  
+                  {/* 代理测试结果显示 */}
+                  {proxyTestResult && (
+                    <div className={`flex items-start gap-2 p-3 rounded-md text-sm ${
+                      proxyTestResult.success 
+                        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' 
+                        : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                    }`}>
+                      {proxyTestResult.success ? (
+                        <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      ) : (
+                        <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      )}
+                      <div className="space-y-2">
+                        <div>{proxyTestResult.message}</div>
+                        
+                        {/* 浏览器环境特殊提示 */}
+                        {proxyTestResult.message === '浏览器环境不支持代理功能' && (
+                          <div className="space-y-2 text-xs opacity-90">
+                            <div>
+                              💡 <strong>原因：</strong>浏览器出于安全考虑无法直接使用系统代理。
+                            </div>
+                            <div>
+                              🛠️ <strong>解决方案：</strong>
+                            </div>
+                            <ul className="ml-4 space-y-1 list-disc">
+                              <li>安装浏览器代理扩展（如 SwitchyOmega）</li>
+                              <li>在操作系统中配置全局代理设置</li>
+                              <li>或在本地开发环境中使用此应用</li>
+                            </ul>
+                            <div>
+                              📖 <a 
+                                href="/docs/浏览器代理解决方案.md" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="underline hover:no-underline flex items-center gap-1"
+                              >
+                                查看详细解决方案 <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 其他错误信息 */}
+                        {proxyTestResult.details?.proxyIP && (
+                          <div className="text-xs opacity-75">代理IP: {proxyTestResult.details.proxyIP}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -67,6 +67,54 @@ npm run dev
 
 Visit `http://localhost:5173` to start using.
 
+## 📁 Project Structure
+
+```
+ebook-to-mindmap/
+├── 📄 package.json              # Project dependencies and scripts
+├── 📄 index.html                 # Entry HTML file
+├── 📄 .env                       # Environment variables configuration
+├── 📄 .gitignore                 # Git ignore rules
+├── 📁 src/                       # Source code directory
+│   ├── 📁 components/            # React components
+│   │   ├── 📁 ui/               # Basic UI components
+│   │   ├── 📁 project/          # Project-related components
+│   │   └── 📄 *.tsx              # Other functional components
+│   ├── 📁 services/             # Service layer
+│   │   ├── 📄 aiService.ts      # AI service
+│   │   ├── 📄 pdfProcessor.ts   # PDF processing
+│   │   └── 📄 *.ts              # Other services
+│   ├── 📁 stores/               # State management
+│   ├── 📁 hooks/                # Custom Hooks
+│   ├── 📁 i18n/                 # Internationalization configuration
+│   ├── 📁 lib/                  # Utility library
+│   └── 📄 *.tsx                 # Page components
+├── 📁 config/                    # Configuration files directory
+│   ├── 📄 vite.config.ts        # Vite build configuration
+│   ├── 📄 tailwind.config.js    # Tailwind CSS configuration
+│   ├── 📄 eslint.config.js      # ESLint code checking configuration
+│   ├── 📄 tsconfig*.json        # TypeScript configuration
+│   └── 📄 components.json       # shadcn/ui component configuration
+├── 📁 docs/                      # Documentation directory
+│   ├── 📄 README.md              # Project documentation
+│   ├── 📄 README.en.md           # English documentation
+│   ├── 📄 TODO.md                # Todo items
+│   ├── 📄 LICENSE                # License
+│   ├── 📄 CLAUDE.md              # Claude AI usage guide
+│   ├── 📄 EPUB结构说明.md        # EPUB format documentation
+│   ├── 📄 PDF处理流程文档.md     # PDF processing documentation
+│   └── 📄 浏览器代理解决方案.md   # Proxy configuration guide
+├── 📁 test/                      # Test files directory
+├── 📁 node_modules/              # Dependencies
+└── 📁 dist/                      # Build output directory
+```
+
+### Configuration Files Description
+
+- **config/**: Unified management of all configuration files to improve project maintainability
+- **docs/**: Centralized storage of project documentation, including guides and technical docs
+- **src/**: Source code organized by functional modules, following best practices
+
 ## 📖 User Guide
 
 ### 1. Configure AI Service

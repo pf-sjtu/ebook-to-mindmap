@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "vite --config config/vite.config.ts",
+    "build": "tsc --project config/tsconfig.json && vite build --config config/vite.config.ts",
+    "lint": "eslint --config config/eslint.config.js .",
+    "preview": "vite preview --config config/vite.config.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -73,7 +73,9 @@
     "vaul": "^1.1.2",
     "xmldom": "^0.6.0",
     "zod": "^4.0.5",
-    "zustand": "^5.0.6"
+    "zustand": "^5.0.6",
+    "agent-base": "^7.1.4",
+    "https-proxy-agent": "^7.0.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

@@ -4,7 +4,7 @@ import type { SupportedLanguage } from '../services/prompts/utils'
 import { DEFAULT_PROMPT_CONFIG, DEFAULT_PROMPT_CONFIG_V2 } from '../services/prompts/templates'
 
 // 提示词配置接口
-interface PromptConfig {
+export interface PromptConfig {
   chapterSummary: {
     fiction: string
     nonFiction: string

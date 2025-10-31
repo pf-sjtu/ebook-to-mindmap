@@ -14,7 +14,7 @@ export {
 } from './overallSummary'
 
 // 测试连接的prompt
-export const getTestConnectionPrompt = () => '请回复"连接成功"'
+export const getTestConnectionPrompt = () => '这是一个连接测试。请简单回复"OK"，不要添加任何其他文字、标点符号或格式。'
 
 export {
   getChapterMindMapPrompt,
