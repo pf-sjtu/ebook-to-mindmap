@@ -33,7 +33,119 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
     if (!content) return
 
     const shadowRoot = shadowRef.current.shadowRoot || shadowRef.current.attachShadow({ mode: 'open' })
+    
+    // 检测当前主题
+    const isDarkMode = document.documentElement.classList.contains('dark')
+    
+    // 创建样式
+    const style = document.createElement('style')
+    style.textContent = `
+      :host {
+        display: block;
+        width: 100%;
+        min-height: 200px;
+      }
+      
+      div {
+        color: ${isDarkMode ? '#e2e8f0' : '#1f2937'};
+        background-color: ${isDarkMode ? '#1e293b' : '#ffffff'};
+        padding: 1rem;
+        border-radius: 0.5rem;
+        line-height: 1.6;
+      }
+      
+      /* 标题样式 */
+      h1, h2, h3, h4, h5, h6 {
+        color: ${isDarkMode ? '#f1f5f9' : '#111827'};
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+      }
+      
+      /* 段落样式 */
+      p {
+        margin-bottom: 1rem;
+        text-align: justify;
+      }
+      
+      /* 链接样式 */
+      a {
+        color: ${isDarkMode ? '#60a5fa' : '#2563eb'};
+        text-decoration: underline;
+      }
+      
+      a:hover {
+        color: ${isDarkMode ? '#93c5fd' : '#1d4ed8'};
+      }
+      
+      /* 列表样式 */
+      ul, ol {
+        margin-bottom: 1rem;
+        padding-left: 2rem;
+      }
+      
+      li {
+        margin-bottom: 0.5rem;
+      }
+      
+      /* 引用样式 */
+      blockquote {
+        border-left: 4px solid ${isDarkMode ? '#475569' : '#d1d5db'};
+        padding-left: 1rem;
+        margin: 1rem 0;
+        font-style: italic;
+        color: ${isDarkMode ? '#94a3b8' : '#6b7280'};
+      }
+      
+      /* 代码样式 */
+      code {
+        background-color: ${isDarkMode ? '#374151' : '#f3f4f6'};
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+      }
+      
+      pre {
+        background-color: ${isDarkMode ? '#374151' : '#f3f4f6'};
+        padding: 1rem;
+        border-radius: 0.5rem;
+        overflow-x: auto;
+        margin: 1rem 0;
+      }
+      
+      pre code {
+        background-color: transparent;
+        padding: 0;
+      }
+      
+      /* 表格样式 */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+      }
+      
+      th, td {
+        border: 1px solid ${isDarkMode ? '#475569' : '#d1d5db'};
+        padding: 0.5rem;
+        text-align: left;
+      }
+      
+      th {
+        background-color: ${isDarkMode ? '#334155' : '#f9fafb'};
+        font-weight: bold;
+      }
+    `
+    
     shadowRoot.innerHTML = `<div>${content}</div>`
+    
+    // 添加或更新样式
+    const existingStyle = shadowRoot.querySelector('style')
+    if (existingStyle) {
+      existingStyle.replaceWith(style)
+    } else {
+      shadowRoot.appendChild(style)
+    }
   }, [chapterHtmlContent, chapter.content])
 
   // 加载章节的HTML内容

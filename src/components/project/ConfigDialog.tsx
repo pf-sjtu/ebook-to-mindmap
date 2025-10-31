@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Settings, ExternalLink, Info, Play, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { PromptEditor } from './PromptEditor'
+import { WebDAVConfig } from './WebDAVConfig'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useConfigStore, useAIConfig, useProcessingOptions } from '../../stores/configStore'
@@ -233,9 +234,10 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-4">
           <Tabs defaultValue="ai-config" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="ai-config">{t('config.aiServiceConfig')}</TabsTrigger>
               <TabsTrigger value="prompts">{t('promptEditor.title')}</TabsTrigger>
+              <TabsTrigger value="webdav">WebDAV配置</TabsTrigger>
             </TabsList>
 
             <TabsContent value="ai-config" className="space-y-4 mt-4">
@@ -865,6 +867,10 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
 
             <TabsContent value="prompts" className="mt-4">
               <PromptEditor />
+            </TabsContent>
+
+            <TabsContent value="webdav" className="mt-4">
+              <WebDAVConfig />
             </TabsContent>
           </Tabs>
         </ScrollArea>

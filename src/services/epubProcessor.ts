@@ -20,26 +20,44 @@ export interface BookData {
 }
 
 export class EpubProcessor {
+  private processingFiles = new Set<string>() // 防重复处理的文件集合
+
   async parseEpub(file: File): Promise<BookData> {
     try {
-      // 将File转换为ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer()
+      // 检查是否正在处理相同的文件
+      const fileKey = `${file.name}_${file.size}_${file.lastModified}`
+      if (this.processingFiles.has(fileKey)) {
+        console.log(`⏳ [DEBUG] 文件正在处理中，跳过重复处理: ${file.name}`)
+        throw new Error('文件正在处理中，请稍候')
+      }
 
-      // 使用epub.js解析EPUB文件
-      const book = ePub()
-      await book.open(arrayBuffer)
+      this.processingFiles.add(fileKey)
+      console.log(`🔄 [DEBUG] 开始解析EPUB文件: ${file.name}`)
 
-      // 等待书籍加载完成
-      await book.ready
+      try {
+        // 将File转换为ArrayBuffer
+        const arrayBuffer = await file.arrayBuffer()
 
-      // 获取书籍元数据
-      const title = book.packaging?.metadata?.title || '未知标题'
-      const author = book.packaging?.metadata?.creator || '未知作者'
+        // 使用epub.js解析EPUB文件
+        const book = ePub()
+        await book.open(arrayBuffer)
 
-      return {
-        book,
-        title,
-        author
+        // 等待书籍加载完成
+        await book.ready
+
+        // 获取书籍元数据
+        const title = book.packaging?.metadata?.title || '未知标题'
+        const author = book.packaging?.metadata?.creator || '未知作者'
+
+        console.log(`✅ [DEBUG] EPUB文件解析完成: ${title}`)
+        return {
+          book,
+          title,
+          author
+        }
+      } finally {
+        // 处理完成后从集合中移除
+        this.processingFiles.delete(fileKey)
       }
     } catch (error) {
       throw new Error(`解析EPUB文件失败: ${error instanceof Error ? error.message : '未知错误'}`)

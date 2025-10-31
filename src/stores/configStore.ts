@@ -49,6 +49,19 @@ interface ProcessingOptions {
   epubTocDepth: number // epub目录深度，只在使用epub-toc模式时有效
 }
 
+// WebDAV配置接口
+interface WebDAVConfig {
+  enabled: boolean // 是否启用WebDAV
+  serverUrl: string // WebDAV服务器地址
+  username: string // 用户名
+  password: string // 密码
+  appName: string // 应用名称
+  autoSync: boolean // 是否自动同步
+  syncPath: string // 同步路径（默认为/fastReader）
+  lastSyncTime: string | null // 最后同步时间
+  connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error' // 连接状态
+}
+
 // 配置store状态接口
 interface ConfigState {
   // AI配置
@@ -73,6 +86,19 @@ interface ConfigState {
   setEnableNotification: (enabled: boolean) => void
   setChapterDetectionMode: (mode: 'normal' | 'smart' | 'epub-toc') => void
   setEpubTocDepth: (depth: number) => void
+  
+  // WebDAV配置
+  webdavConfig: WebDAVConfig
+  setWebDAVEnabled: (enabled: boolean) => void
+  setWebDAVServerUrl: (serverUrl: string) => void
+  setWebDAVUsername: (username: string) => void
+  setWebDAVPassword: (password: string) => void
+  setWebDAVAppName: (appName: string) => void
+  setWebDAVAutoSync: (autoSync: boolean) => void
+  setWebDAVSyncPath: (syncPath: string) => void
+  setWebDAVConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected' | 'error') => void
+  updateWebDAVLastSyncTime: () => void
+  resetWebDAVConfig: () => void
   
   // 提示词配置
   promptConfig: PromptConfig
@@ -109,6 +135,18 @@ const defaultProcessingOptions: ProcessingOptions = {
   enableNotification: true,
   chapterDetectionMode: 'normal',
   epubTocDepth: 1
+}
+
+const defaultWebDAVConfig: WebDAVConfig = {
+  enabled: false,
+  serverUrl: 'https://dav.jianguoyun.com/dav/',
+  username: '',
+  password: '',
+  appName: 'fastReader_by_PF',
+  autoSync: false,
+  syncPath: '/fastReader',
+  lastSyncTime: null,
+  connectionStatus: 'disconnected'
 }
 
 const defaultPromptConfig: PromptConfig = DEFAULT_PROMPT_CONFIG
@@ -176,6 +214,42 @@ export const useConfigStore = create<ConfigState>()(
       })),
       setEpubTocDepth: (epubTocDepth) => set((state) => ({
         processingOptions: { ...state.processingOptions, epubTocDepth }
+      })),
+      
+      // WebDAV配置
+      webdavConfig: defaultWebDAVConfig,
+      setWebDAVEnabled: (enabled) => set((state) => ({
+        webdavConfig: { ...state.webdavConfig, enabled }
+      })),
+      setWebDAVServerUrl: (serverUrl) => set((state) => ({
+        webdavConfig: { ...state.webdavConfig, serverUrl }
+      })),
+      setWebDAVUsername: (username) => set((state) => ({
+        webdavConfig: { ...state.webdavConfig, username }
+      })),
+      setWebDAVPassword: (password) => set((state) => ({
+        webdavConfig: { ...state.webdavConfig, password }
+      })),
+      setWebDAVAppName: (appName) => set((state) => ({
+        webdavConfig: { ...state.webdavConfig, appName }
+      })),
+      setWebDAVAutoSync: (autoSync) => set((state) => ({
+        webdavConfig: { ...state.webdavConfig, autoSync }
+      })),
+      setWebDAVSyncPath: (syncPath) => set((state) => ({
+        webdavConfig: { ...state.webdavConfig, syncPath }
+      })),
+      setWebDAVConnectionStatus: (connectionStatus) => set((state) => ({
+        webdavConfig: { ...state.webdavConfig, connectionStatus }
+      })),
+      updateWebDAVLastSyncTime: () => set((state) => ({
+        webdavConfig: { 
+          ...state.webdavConfig, 
+          lastSyncTime: new Date().toISOString()
+        }
+      })),
+      resetWebDAVConfig: () => set((state) => ({
+        webdavConfig: defaultWebDAVConfig
       })),
       
       // 提示词配置
@@ -277,6 +351,7 @@ export const useConfigStore = create<ConfigState>()(
       partialize: (state) => ({
         aiConfig: state.aiConfig,
         processingOptions: state.processingOptions,
+        webdavConfig: state.webdavConfig,
         promptConfig: state.promptConfig,
         promptVersionConfig: state.promptVersionConfig,
         currentPromptVersion: state.currentPromptVersion
@@ -288,6 +363,7 @@ export const useConfigStore = create<ConfigState>()(
 // 导出便捷的选择器
 export const useAIConfig = () => useConfigStore((state) => state.aiConfig)
 export const useProcessingOptions = () => useConfigStore((state) => state.processingOptions)
+export const useWebDAVConfig = () => useConfigStore((state) => state.webdavConfig)
 export const usePromptConfig = () => useConfigStore((state) => state.promptConfig)
 export const usePromptVersionConfig = () => useConfigStore((state) => state.promptVersionConfig)
 export const useCurrentPromptVersion = () => useConfigStore((state) => state.currentPromptVersion)

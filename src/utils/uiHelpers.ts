@@ -16,24 +16,91 @@ export const scrollToTop = () => {
   }
 }
 
+// 防止重复点击的标记
+let isLaunching = false
+
 /**
  * 在 MindElixir Desktop 中打开思维导图
  * @param mindmapData 思维导图数据
  * @param title 思维导图标题
  */
 export const openInMindElixir = async (mindmapData: MindElixirData, title: string) => {
+  // 防止重复点击
+  if (isLaunching) {
+    console.log('⏳ Mind Elixir 正在启动中，请稍候...')
+    toast.warning('Mind Elixir 正在启动中，请稍候...', {
+      duration: 2000,
+      position: 'top-center',
+    })
+    return
+  }
+
+  isLaunching = true
+  
   try {
-    await launchMindElixir(mindmapData)
+    console.log('正在尝试启动 Mind Elixir Desktop...')
+    
+    // 添加超时机制，防止无限重试
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('服务启动超时'))
+      }, 10000) // 10秒超时
+    })
+    
+    // 使用 Promise.race 来实现超时控制
+    await Promise.race([
+      launchMindElixir(mindmapData),
+      timeoutPromise
+    ])
+    
     toast.success(`已成功发送"${title}"到 Mind Elixir Desktop`, {
       duration: 3000,
       position: 'top-center',
     })
   } catch (error) {
     console.error('启动 Mind Elixir 失败:', error)
-    toast.error('启动 Mind Elixir 失败', {
-      duration: 5000,
+    
+    // 根据错误类型提供不同的提示
+    let errorMessage = '启动 Mind Elixir 失败'
+    let detailedMessage = ''
+    
+    if (error instanceof Error) {
+      const errorString = error.message.toLowerCase()
+      
+      // 优先检查更具体的错误
+      if (errorString.includes('ping')) {
+        errorMessage = '无法连接到 Mind Elixir Desktop'
+        detailedMessage = '请启动 Mind Elixir Desktop 应用程序'
+      } else if (errorString.includes('scheme') || errorString.includes('protocol')) {
+        errorMessage = 'Mind Elixir Desktop 未安装'
+        detailedMessage = '请先安装 Mind Elixir Desktop 应用程序'
+      } else if (errorString.includes('timeout') || errorString.includes('connection') || errorString.includes('启动超时') || errorString.includes('服务启动')) {
+        errorMessage = 'Mind Elixir Desktop 连接超时'
+        detailedMessage = '请确保 Mind Elixir Desktop 正在运行'
+      }
+    }
+    
+    // 显示详细的错误提示
+    toast.error(`${errorMessage}${detailedMessage ? ': ' + detailedMessage : ''}`, {
+      duration: 8000,
       position: 'top-center',
+      action: {
+        label: '下载',
+        onClick: () => {
+          // 打开 Mind Elixir 官网下载页面
+          window.open('https://mind-elixir.com/', '_blank')
+        }
+      }
     })
+    
+    // 在控制台提供更详细的帮助信息
+    console.log('%c💡 Mind Elixir Desktop 安装帮助:', 'color: #3b82f6; font-weight: bold; font-size: 14px;')
+    console.log('%c1. 请访问 https://mind-elixir.com/ 下载并安装 Mind Elixir Desktop', 'color: #64748b;')
+    console.log('%c2. 安装后请确保应用程序正在运行', 'color: #64748b;')
+    console.log('%c3. 再次点击"在 Mind Elixir 中打开"按钮', 'color: #64748b;')
+  } finally {
+    // 重置状态
+    isLaunching = false
   }
 }
 

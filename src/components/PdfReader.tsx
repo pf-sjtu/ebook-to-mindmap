@@ -62,12 +62,18 @@ export function PdfReader({ chapter, bookData, onClose, className, showHeader = 
       canvasContainerRef.current.innerHTML = ''
       canvasContainerRef.current.appendChild(canvas)
 
+      // 检测当前主题
+      const isDarkMode = document.documentElement.classList.contains('dark')
+      
       // 设置canvas样式
       canvas.style.maxWidth = '100%'
       canvas.style.height = 'auto'
-      canvas.style.border = '1px solid #e5e7eb'
+      canvas.style.border = `1px solid ${isDarkMode ? '#475569' : '#e5e7eb'}`
       canvas.style.borderRadius = '8px'
-      canvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      canvas.style.boxShadow = isDarkMode 
+        ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
+        : '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      canvas.style.backgroundColor = isDarkMode ? '#1e293b' : '#ffffff'
     }
   }, [currentPageIndex, chapterPages])
 

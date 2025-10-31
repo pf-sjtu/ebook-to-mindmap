@@ -13,7 +13,11 @@ import { EpubProcessor, type ChapterData, type BookData as EpubBookData } from '
 import { PdfProcessor, type BookData as PdfBookData } from './services/pdfProcessor'
 import { AIService } from './services/aiService'
 import { CacheService } from './services/cacheService'
+import { notificationService } from './services/notificationService'
+import { webdavService } from './services/webdavService'
+import { autoSyncService } from './services/autoSyncService'
 import { ConfigDialog } from './components/project/ConfigDialog'
+import { WebDAVFileBrowser } from './components/project/WebDAVFileBrowser'
 import type { MindElixirData, Options } from 'mind-elixir'
 import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
@@ -27,7 +31,7 @@ import { PdfReader } from './components/PdfReader'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { scrollToTop, openInMindElixir, downloadMindMap } from './utils'
-import { notificationService } from './services/notificationService'
+import { useWebDAVConfig } from './stores/configStore'
 
 
 const options = { direction: 1, alignment: 'nodes' } as Options
@@ -62,6 +66,8 @@ const cacheService = new CacheService()
 
 function App() {
   const { t } = useTranslation()
+  const webdavConfig = useWebDAVConfig()
+  
   const [currentStepIndex, setCurrentStepIndex] = useState(1) // 1: 配置步骤, 2: 处理步骤
   const [file, setFile] = useState<File | null>(null)
   const [processing, setProcessing] = useState(false)
@@ -71,6 +77,9 @@ function App() {
   const [bookSummary, setBookSummary] = useState<BookSummary | null>(null)
   const [bookMindMap, setBookMindMap] = useState<BookMindMap | null>(null)
   const [extractedChapters, setExtractedChapters] = useState<ChapterData[] | null>(null)
+  
+  // WebDAV相关状态
+  const [isWebDAVBrowserOpen, setIsWebDAVBrowserOpen] = useState(false)
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set())
   const [bookData, setBookData] = useState<{ title: string; author: string } | null>(null)
   const [fullBookData, setFullBookData] = useState<EpubBookData | PdfBookData | null>(null)
@@ -97,6 +106,39 @@ function App() {
   const { processingMode, bookType, useSmartDetection, skipNonEssentialChapters } = processingOptions
 
   // zustand的persist中间件会自动处理配置的加载和保存
+
+  // WebDAV自动连接测试
+  useEffect(() => {
+    const initializeWebDAVIfNeeded = async () => {
+      // 如果WebDAV已启用且配置完整但服务未初始化，自动测试连接
+      if (webdavConfig.enabled && 
+          webdavConfig.serverUrl && 
+          webdavConfig.username && 
+          webdavConfig.password &&
+          !webdavService.isInitialized()) {
+        
+        console.log('App: WebDAV配置完整，自动初始化连接...')
+        
+        try {
+          const initResult = await webdavService.initialize(webdavConfig)
+          if (initResult.success) {
+            console.log('App: WebDAV自动连接成功')
+            toast.success('WebDAV已自动连接')
+          } else {
+            console.error('App: WebDAV自动连接失败:', initResult.error)
+            // 不显示错误提示，避免与配置页面的测试提示冲突
+          }
+        } catch (error) {
+          console.error('App: WebDAV自动连接异常:', error)
+        }
+      }
+    }
+
+    // 延迟执行，避免组件初始化时的重复调用
+    // 给WebDAVConfig组件留出时间处理配置变化
+    const timer = setTimeout(initializeWebDAVIfNeeded, 3000)
+    return () => clearTimeout(timer)
+  }, [webdavConfig.enabled, webdavConfig.serverUrl, webdavConfig.username, webdavConfig.password])
 
   // 请求通知权限
   useEffect(() => {
@@ -209,6 +251,53 @@ function App() {
     setCurrentStepIndex(1)
     setRightPanelContent(null)
   }, [])
+
+  // 处理WebDAV文件选择
+  const handleWebDAVFileSelect = useCallback(async (file: File) => {
+    // 直接使用已经下载的File对象
+    setFile(file)
+    setExtractedChapters(null)
+    setBookData(null)
+    setSelectedChapters(new Set())
+    setBookSummary(null)
+    setBookMindMap(null)
+    setCurrentStepIndex(1)
+    setRightPanelContent(null)
+    
+    toast.success(`已选择文件: ${file.name}`)
+  }, [])
+
+  // 获取文件MIME类型
+  const getMimeType = (fileName: string): string => {
+    const extension = fileName.toLowerCase().split('.').pop()
+    switch (extension) {
+      case 'pdf':
+        return 'application/pdf'
+      case 'epub':
+        return 'application/epub+zip'
+      case 'txt':
+        return 'text/plain'
+      case 'md':
+        return 'text/markdown'
+      default:
+        return 'application/octet-stream'
+    }
+  }
+
+  // 打开WebDAV文件浏览器
+  const openWebDAVBrowser = useCallback(() => {
+    if (!webdavConfig.enabled) {
+      toast.error('请先在设置中启用并配置WebDAV')
+      return
+    }
+    
+    if (!webdavService.isInitialized()) {
+      toast.error('WebDAV服务未初始化，请先测试连接')
+      return
+    }
+    
+    setIsWebDAVBrowserOpen(true)
+  }, [webdavConfig.enabled])
 
   // 章节导航处理（用于原文预览）
   const handleChapterNavigation = useCallback((chapterId: string) => {
@@ -496,6 +585,15 @@ function App() {
         if (overallSummary) {
           cacheService.setCache(file.name, 'overall_summary', overallSummary)
         }
+
+        // 自动同步到WebDAV
+        try {
+          const fileName = file.name.replace(/\.[^/.]+$/, '') // 移除文件扩展名
+          await autoSyncService.syncSummary(summary, fileName)
+        } catch (error) {
+          console.error('自动同步失败:', error)
+          // 同步失败不影响主流程，只记录错误
+        }
       } else if (processingMode === 'mindmap' || processingMode === 'combined-mindmap') {
         // 步骤1: 生成章节思维导图
         setCurrentStep(t('progress.generatingMindMaps'))
@@ -576,6 +674,15 @@ function App() {
         })
         if (combinedMindMap) {
           cacheService.setCache(file.name, 'combined_mindmap', combinedMindMap)
+        }
+
+        // 自动同步到WebDAV
+        try {
+          const fileName = file.name.replace(/\.[^/.]+$/, '') // 移除文件扩展名
+          await autoSyncService.syncMindMap(mindMapResult, fileName)
+        } catch (error) {
+          console.error('自动同步失败:', error)
+          // 同步失败不影响主流程，只记录错误
         }
       }
       
@@ -681,6 +788,11 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-slate-900 p-4 flex justify-center gap-4 h-screen overflow-auto scroll-container">
       <Toaster />
+      <WebDAVFileBrowser
+        isOpen={isWebDAVBrowserOpen}
+        onClose={() => setIsWebDAVBrowserOpen(false)}
+        onFileSelect={handleWebDAVFileSelect}
+      />
       <div className="max-w-full xl:max-w-7xl space-y-4 w-full flex-1">
         <div className="text-center space-y-2 relative">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 flex items-center justify-center gap-2">
@@ -734,13 +846,26 @@ function App() {
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="file">{t('upload.selectFile')}</Label>
-                      <Input
-                        id="file"
-                        type="file"
-                        accept=".epub,.pdf"
-                        onChange={handleFileChange}
-                        disabled={processing}
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="file"
+                          type="file"
+                          accept=".epub,.pdf"
+                          onChange={handleFileChange}
+                          disabled={processing}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={openWebDAVBrowser}
+                          disabled={processing}
+                          className="flex items-center gap-2"
+                        >
+                          <Network className="h-4 w-4" />
+                          WebDAV
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between">
