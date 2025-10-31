@@ -13,7 +13,17 @@
     "extractChapters": "Extract Chapters",
     "extractingChapters": "Extracting chapters...",
     "invalidFile": "Please select a valid EPUB or PDF file",
-    "pleaseSelectFile": "Please select a file"
+    "pleaseSelectFile": "Please select a file",
+    "upload": "Upload",
+    "uploading": "Uploading...",
+    "uploaded": "Uploaded",
+    "exists": "Exists on Cloud",
+    "uploadToWebDAV": "Upload to WebDAV",
+    "confirmOverwrite": "Confirm Overwrite File",
+    "fileExistsMessage": "File \"{fileName}\" already exists on WebDAV cloud, do you want to overwrite it?",
+    "overwrite": "Overwrite",
+    "clickToOverwrite": "Click to Upload and Overwrite",
+    "reupload": "Re-upload"
   },
   "chapters": {
     "title": "Chapter Selection",
@@ -33,6 +43,7 @@
     "extractingEpub": "Parsing EPUB file...",
     "extractingPdf": "Parsing PDF file...",
     "extractingChapters": "Extracting chapter content...",
+    "startProcessing": "Start Processing",
     "processingChapter": "Processing chapter {{current}}/{{total}}: {{title}}",
     "analyzingConnections": "Analyzing chapter connections...",
     "generatingOverallSummary": "Generating overall summary...",
@@ -85,11 +96,28 @@
     }
   },
   "mindElixir": {
-    "launchSuccess": "Successfully sent \"{{title}}\" to Mind Elixir Desktop",
-    "launchError": "Failed to launch Mind Elixir Desktop, please ensure Mind Elixir Desktop app is installed",
+    "launchSuccess": "Successfully sent to Mind Elixir Desktop",
+    "launchError": "Failed to launch Mind Elixir Desktop",
+    "exportError": "Failed to export mind map",
+    "launching": "Mind Elixir is launching, please wait...",
+    "launchingTitle": "Trying to launch Mind Elixir Desktop...",
+    "launchFailed": "Failed to launch Mind Elixir",
+    "cannotConnect": "Cannot connect to Mind Elixir Desktop",
+    "cannotConnectDetail": "Please start the Mind Elixir Desktop application",
+    "notInstalled": "Mind Elixir Desktop is not installed",
+    "notInstalledDetail": "Please install Mind Elixir Desktop application first",
+    "connectionTimeout": "Mind Elixir Desktop connection timeout",
+    "connectionTimeoutDetail": "Please ensure Mind Elixir Desktop is running",
+    "download": "Download",
     "exportSuccess": "{{title}} successfully exported as {{format}} format",
-    "exportError": "Failed to export {{format}} format: {{error}}",
-    "unsupportedFormat": "Unsupported format: {{format}}"
+    "exportFailed": "Export failed: {{error}}",
+    "unsupportedFormat": "Unsupported format: {{format}}",
+    "help": {
+      "title": "💡 Mind Elixir Desktop Installation Help:",
+      "step1": "1. Please visit https://mind-elixir.com/ to download and install Mind Elixir Desktop",
+      "step2": "2. After installation, ensure the application is running",
+      "step3": "3. Click the \"Open in Mind Elixir\" button again"
+    }
   },
   "backToTop": "Back to Top",
   "common": {

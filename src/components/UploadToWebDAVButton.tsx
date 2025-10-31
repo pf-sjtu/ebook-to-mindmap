@@ -63,8 +63,11 @@ export const UploadToWebDAVButton: React.FC<UploadToWebDAVButtonProps> = ({
     if (!file) return ''
     // 获取原文件名（不含扩展名）
     const originalName = file.name.replace(/\.[^/.]+$/, '')
-    // 清理文件名中的特殊字符
-    const sanitizedName = originalName.replace(/[^\w\s-]/g, '').trim()
+    // 清理文件名中的特殊字符，但保留中文、日文、韩文等多语言字符
+    const sanitizedName = originalName
+      .replace(/[<>:"/\\|?*]/g, '') // 移除 Windows 不允许的字符
+      .replace(/\s+/g, ' ') // 将多个空格合并为单个空格
+      .trim()
     return `${sanitizedName}-完整摘要.md`
   }
 
@@ -114,6 +117,7 @@ export const UploadToWebDAVButton: React.FC<UploadToWebDAVButtonProps> = ({
 
       // 检查是否需要覆盖确认
       if (!forceOverwrite && await webdavService.fileExists(remotePath)) {
+        console.log('设置文件名到状态:', fileName)
         setFileName(fileName)
         setShowConfirmDialog(true)
         setIsUploading(false)
@@ -186,7 +190,13 @@ export const UploadToWebDAVButton: React.FC<UploadToWebDAVButtonProps> = ({
 
     if (uploadStatus === 'uploaded') {
       return (
-        <Button variant="outline" size="sm" className={className}>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => uploadToWebDAV()} 
+          className={`${className} border-green-200 hover:border-green-300 hover:bg-green-50`}
+          title={t('upload.reupload', { defaultValue: '重新上传' })}
+        >
           <Check className="h-4 w-4 mr-1 text-green-600" />
           {t('upload.uploaded', { defaultValue: '已上传' })}
         </Button>
@@ -195,7 +205,13 @@ export const UploadToWebDAVButton: React.FC<UploadToWebDAVButtonProps> = ({
 
     if (uploadStatus === 'exists') {
       return (
-        <Button variant="outline" size="sm" className={className}>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => uploadToWebDAV()} 
+          className={`${className} border-blue-200 hover:border-blue-300 hover:bg-blue-50`}
+          title={t('upload.clickToOverwrite', { defaultValue: '点击覆盖上传' })}
+        >
           <Cloud className="h-4 w-4 mr-1 text-blue-600" />
           {t('upload.exists', { defaultValue: '云端已存在' })}
         </Button>
@@ -230,11 +246,15 @@ export const UploadToWebDAVButton: React.FC<UploadToWebDAVButtonProps> = ({
             </DialogTitle>
             <DialogDescription>
               <Alert className="mt-2">
-                <AlertDescription>
-                  {t('upload.fileExistsMessage', { 
-                    defaultValue: '文件 "{fileName}" 在WebDAV云端已存在，是否要覆盖它？',
-                    fileName 
-                  })}
+                <AlertDescription className="space-y-2">
+                  <div>
+                    {fileName ? `文件 "${fileName}" 在WebDAV云端已存在，是否要覆盖它？` : '文件在WebDAV云端已存在，是否要覆盖它？'}
+                  </div>
+                  {fileName && (
+                    <div className="text-sm text-muted-foreground">
+                      远程路径: {webdavConfig.syncPath}/{fileName}
+                    </div>
+                  )}
                 </AlertDescription>
               </Alert>
             </DialogDescription>

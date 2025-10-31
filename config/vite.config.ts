@@ -64,5 +64,20 @@ export default defineConfig({
         }
       }
     }
+  },
+  // 添加静态文件处理配置
+  publicDir: 'public',
+  // 确保 favicon.ico 请求被正确处理
+  configureServer: (server) => {
+    server.middlewares.use((req, res, next) => {
+      if (req.url === '/favicon.ico') {
+        // 重定向到 SVG favicon
+        res.statusCode = 302;
+        res.setHeader('Location', '/favicon.svg');
+        res.end();
+        return;
+      }
+      next();
+    });
   }
 })

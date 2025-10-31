@@ -21,7 +21,9 @@
     "uploadToWebDAV": "上传到WebDAV",
     "confirmOverwrite": "确认覆盖文件",
     "fileExistsMessage": "文件 \"{fileName}\" 在WebDAV云端已存在，是否要覆盖它？",
-    "overwrite": "覆盖"
+    "overwrite": "覆盖",
+    "clickToOverwrite": "点击覆盖上传",
+    "reupload": "重新上传"
   },
   "chapters": {
     "title": "章节选择",
@@ -41,6 +43,7 @@
     "extractingEpub": "正在解析 EPUB 文件...",
     "extractingPdf": "正在解析 PDF 文件...",
     "extractingChapters": "正在提取章节内容...",
+    "startProcessing": "开始处理",
     "processingChapter": "正在处理第 {{current}}/{{total}} 章: {{title}}",
     "analyzingConnections": "正在分析章节关联...",
     "generatingOverallSummary": "正在生成全书总结...",
@@ -289,7 +292,26 @@
   "mindElixir": {
     "launchSuccess": "已成功发送到 Mind Elixir Desktop",
     "launchError": "启动 Mind Elixir Desktop 失败",
-    "exportError": "导出思维导图失败"
+    "exportError": "导出思维导图失败",
+    "launching": "Mind Elixir 正在启动中，请稍候...",
+    "launchingTitle": "正在尝试启动 Mind Elixir Desktop...",
+    "launchFailed": "启动 Mind Elixir 失败",
+    "cannotConnect": "无法连接到 Mind Elixir Desktop",
+    "cannotConnectDetail": "请启动 Mind Elixir Desktop 应用程序",
+    "notInstalled": "Mind Elixir Desktop 未安装",
+    "notInstalledDetail": "请先安装 Mind Elixir Desktop 应用程序",
+    "connectionTimeout": "Mind Elixir Desktop 连接超时",
+    "connectionTimeoutDetail": "请确保 Mind Elixir Desktop 正在运行",
+    "download": "下载",
+    "exportSuccess": "{{title}} 已成功导出为 {{format}} 格式",
+    "exportFailed": "导出失败: {{error}}",
+    "unsupportedFormat": "不支持的格式: {{format}}",
+    "help": {
+      "title": "💡 Mind Elixir Desktop 安装帮助:",
+      "step1": "1. 请访问 https://mind-elixir.com/ 下载并安装 Mind Elixir Desktop",
+      "step2": "2. 安装后请确保应用程序正在运行",
+      "step3": "3. 再次点击\"在 Mind Elixir 中打开\"按钮"
+    }
   },
   "statusBar": {
     "enterProcessing": "进入处理界面",

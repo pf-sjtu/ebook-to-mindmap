@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
-import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp, ArrowLeft, Download } from 'lucide-react'
+import { Upload, BookOpen, Brain, FileText, Loader2, Network, Trash2, List, ChevronUp, ArrowLeft, Download, Plus, Minus, Maximize2, Minimize2 } from 'lucide-react'
 import { EpubProcessor, type ChapterData, type BookData as EpubBookData } from './services/epubProcessor'
 import { PdfProcessor, type BookData as PdfBookData } from './services/pdfProcessor'
 import { AIService } from './services/aiService'
@@ -98,6 +98,11 @@ function App() {
   const [currentViewingChapter, setCurrentViewingChapter] = useState<string>('')
   const [currentViewingChapterSummary, setCurrentViewingChapterSummary] = useState<string>('')
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
+  
+  // 预览窗口控制状态
+  const [previewFontSize, setPreviewFontSize] = useState(16)
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false)
+  const previewCardRef = useRef<HTMLDivElement>(null)
 
 
 
@@ -356,6 +361,57 @@ function App() {
   const handleCloseRightPanel = useCallback(() => {
     setRightPanelContent(null)
     setCurrentViewingChapter('')
+  }, [])
+
+  // 预览窗口字体大小控制
+  const increasePreviewFontSize = useCallback(() => {
+    setPreviewFontSize(prev => Math.min(prev + 2, 24))
+  }, [])
+
+  const decreasePreviewFontSize = useCallback(() => {
+    setPreviewFontSize(prev => Math.max(prev - 2, 12))
+  }, [])
+
+  // 预览窗口全屏控制
+  const togglePreviewFullscreen = useCallback(() => {
+    if (!previewCardRef.current) return
+    
+    if (!isPreviewFullscreen) {
+      // 进入全屏
+      if (previewCardRef.current.requestFullscreen) {
+        previewCardRef.current.requestFullscreen()
+      } else if ((previewCardRef.current as any).webkitRequestFullscreen) {
+        (previewCardRef.current as any).webkitRequestFullscreen()
+      } else if ((previewCardRef.current as any).msRequestFullscreen) {
+        (previewCardRef.current as any).msRequestFullscreen()
+      }
+    } else {
+      // 退出全屏
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen()
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen()
+      }
+    }
+  }, [isPreviewFullscreen])
+
+  // 监听全屏状态变化
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsPreviewFullscreen(!!document.fullscreenElement)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('msfullscreenchange', handleFullscreenChange)
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange)
+    }
   }, [])
 
   // 提取章节
@@ -1024,20 +1080,65 @@ function App() {
 
               {/* 右侧预览区域 */}
               {rightPanelContent && (
-                <Card className="w-80 lg:w-96 h-fit sticky top-4">
+                <Card ref={previewCardRef} className="w-80 lg:w-96 h-fit sticky top-4">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium truncate">
+                      <CardTitle className="text-sm font-medium truncate flex-1">
                         {rightPanelContent.title}
                       </CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCloseRightPanel}
-                        className="h-6 w-6 p-0"
-                      >
-                        ×
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        {/* 字体大小调节按钮 - 只在 EPUB 时显示 */}
+                        {file?.name.endsWith('.epub') && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={decreasePreviewFontSize}
+                              disabled={previewFontSize <= 12}
+                              className="h-6 w-6 p-0"
+                              title={t('reader.epub.decreaseFontSize', '减小字体')}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="text-xs font-medium px-1 min-w-[2.5rem] text-center">
+                              {previewFontSize}px
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={increasePreviewFontSize}
+                              disabled={previewFontSize >= 24}
+                              className="h-6 w-6 p-0"
+                              title={t('reader.epub.increaseFontSize', '增大字体')}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
+                        
+                        {/* 全屏按钮 - 只在 EPUB 时显示 */}
+                        {file?.name.endsWith('.epub') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={togglePreviewFullscreen}
+                            className="h-6 w-6 p-0"
+                            title={isPreviewFullscreen ? t('reader.epub.exitFullscreen', '退出全屏') : t('reader.epub.enterFullscreen', '进入全屏')}
+                          >
+                            {isPreviewFullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+                          </Button>
+                        )}
+                        
+                        {/* 关闭按钮 */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCloseRightPanel}
+                          className="h-6 w-6 p-0"
+                        >
+                          ×
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
@@ -1048,6 +1149,9 @@ function App() {
                           bookData={fullBookData}
                           onClose={handleCloseRightPanel}
                           showHeader={false}
+                          externalFontSize={previewFontSize}
+                          externalFullscreen={isPreviewFullscreen}
+                          onToggleFullscreen={togglePreviewFullscreen}
                         />
                       ) : (
                         <PdfReader

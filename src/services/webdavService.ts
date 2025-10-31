@@ -308,8 +308,13 @@ export class WebDAVService {
     try {
       console.log('通过Vite代理下载文件:', filePath)
       
+      // 对路径进行 URL 编码，但保留 / 分隔符
+      const encodedPath = filePath.split('/').map(segment => 
+        segment ? encodeURIComponent(segment) : ''
+      ).join('/')
+      
       // 构建代理URL，使用 /webdav 路径
-      const proxyUrl = `/webdav${filePath}`
+      const proxyUrl = `/webdav${encodedPath}`
       console.log('代理URL:', proxyUrl)
       
       // 使用fetch下载
@@ -526,12 +531,83 @@ export class WebDAVService {
     }
 
     try {
-      const exists = await this.client.exists(path)
+      // 标准化路径
+      let normalizedPath = path
+      
+      // 清理路径，移除 ../dav/ 前缀
+      if (normalizedPath.startsWith('../dav/')) {
+        normalizedPath = normalizedPath.replace('../dav/', '/')
+      }
+      
+      if (!normalizedPath.startsWith('/')) {
+        normalizedPath = '/' + normalizedPath
+      }
+      
+      // 在开发环境中，如果使用代理，直接通过 HTTP 检查
+      if (import.meta.env.DEV && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
+        return await this.checkExistsViaProxy(normalizedPath)
+      }
+      
+      const exists = await this.client.exists(normalizedPath)
       return { success: true, data: exists }
     } catch (error) {
+      // 对于 404 错误，返回 false 而不是错误
+      if (error instanceof Error && error.message.includes('404')) {
+        return { success: true, data: false }
+      }
+      console.error('检查路径失败:', error)
       return {
         success: false,
         error: `检查路径失败: ${error instanceof Error ? error.message : '未知错误'}`
+      }
+    }
+  }
+
+  /**
+   * 通过代理检查文件是否存在
+   * @param path 文件路径
+   */
+  private async checkExistsViaProxy(path: string): Promise<WebDAVOperationResult<boolean>> {
+    if (!this.config) {
+      return { success: false, error: 'WebDAV配置未找到' }
+    }
+
+    try {
+      // 对路径进行 URL 编码，但保留 / 分隔符
+      const encodedPath = path.split('/').map(segment => 
+        segment ? encodeURIComponent(segment) : ''
+      ).join('/')
+      
+      // 构建代理URL
+      const proxyUrl = `/webdav${encodedPath}`
+      
+      // 使用 HEAD 请求检查文件是否存在
+      const response = await fetch(proxyUrl, {
+        method: 'HEAD',
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
+          'User-Agent': 'ebook-to-mindmap/1.0'
+        }
+      })
+      
+      if (response.status === 200 || response.status === 204) {
+        return { success: true, data: true }
+      } else if (response.status === 404) {
+        // 404 是预期的，不需要输出错误日志
+        return { success: true, data: false }
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+    } catch (error) {
+      // 对于网络错误，返回 false 而不是抛出异常
+      if (error instanceof Error && (error.message.includes('404') || error.message.includes('Not Found'))) {
+        return { success: true, data: false }
+      }
+      console.error('代理检查失败:', error)
+      return {
+        success: false,
+        error: `代理检查失败: ${error instanceof Error ? error.message : '未知错误'}`
       }
     }
   }
