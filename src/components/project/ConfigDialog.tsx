@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Settings, ExternalLink, Info, Play, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { PromptEditor } from './PromptEditor'
 import { WebDAVConfig } from './WebDAVConfig'
+import { AIProviderConfig } from './AIProviderConfig'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useConfigStore, useAIConfig, useProcessingOptions } from '../../stores/configStore'
@@ -234,8 +235,9 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-4">
           <Tabs defaultValue="ai-config" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="ai-config">{t('config.aiServiceConfig')}</TabsTrigger>
+              <TabsTrigger value="ai-providers">AI服务商</TabsTrigger>
               <TabsTrigger value="prompts">{t('promptEditor.title')}</TabsTrigger>
               <TabsTrigger value="webdav">WebDAV配置</TabsTrigger>
             </TabsList>
@@ -863,6 +865,10 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                 )}
               </div>
             )}
+            </TabsContent>
+
+            <TabsContent value="ai-providers" className="mt-4">
+              <AIProviderConfig />
             </TabsContent>
 
             <TabsContent value="prompts" className="mt-4">

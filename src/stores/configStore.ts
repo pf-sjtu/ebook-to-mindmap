@@ -37,6 +37,7 @@ interface AIProviderConfig {
   proxyEnabled?: boolean // 是否启用代理
   customFields?: Record<string, any> // 自定义字段，用于不同服务商的特殊配置
   isCustom: boolean // 是否为自定义配置
+  isDefault?: boolean // 是否为默认配置
   createdAt: string // 创建时间
   updatedAt: string // 更新时间
 }
@@ -125,6 +126,19 @@ interface ConfigState {
   getAIProviderById: (id: string) => AIProviderConfig | undefined
   createAIProviderFromTemplate: (template: 'gemini' | 'openai' | 'ollama' | '302.ai', name: string) => string
   getAvailableAITemplates: () => Array<{ id: string; name: string; description: string }>
+  
+  // AI配置管理器方法（直接访问）
+  addProvider: (config: Omit<AIProviderConfig, 'id' | 'createdAt' | 'updatedAt'>) => string
+  updateProvider: (id: string, config: Partial<AIProviderConfig>) => void
+  deleteProvider: (id: string) => void
+  duplicateProvider: (id: string, newName: string) => string
+  setActiveProvider: (id: string) => void
+  getProviderById: (id: string) => AIProviderConfig | undefined
+  
+  // Token使用量追踪
+  tokenUsage: number
+  addTokenUsage: (tokens: number) => void
+  resetTokenUsage: () => void
   
   // 处理选项
   processingOptions: ProcessingOptions
@@ -228,7 +242,7 @@ const defaultAIConfig: AIConfig = {
 const createDefaultAIConfigManager = (): AIConfigManager => {
   const defaultProvider: AIProviderConfig = {
     id: 'default-gemini',
-    name: 'Google Gemini (默认)',
+    name: 'Google Gemini',
     provider: 'gemini',
     apiKey: '',
     apiUrl: 'https://generativelanguage.googleapis.com/v1beta',
@@ -237,6 +251,7 @@ const createDefaultAIConfigManager = (): AIConfigManager => {
     proxyUrl: '',
     proxyEnabled: false,
     isCustom: false,
+    isDefault: true, // 添加默认标识字段
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }
@@ -347,6 +362,30 @@ export const useConfigStore = create<ConfigState>()(
         ...createDefaultAIConfigManager(),
         
         // 重写方法以支持状态管理
+        addProvider: (config) => {
+          const id = `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          const newProvider: AIProviderConfig = {
+            ...config,
+            id,
+            isDefault: false, // 确保新配置不是默认配置
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+          
+          set((prevState) => {
+            const newAIConfigManager = {
+              ...prevState.aiConfigManager,
+              providers: [...prevState.aiConfigManager.providers, newProvider]
+            }
+            return {
+              aiConfigManager: newAIConfigManager,
+              aiConfig: computeAIConfig(newAIConfigManager)
+            }
+          })
+          
+          return id
+        },
+        
         updateProvider: (id, config) => {
           set((prevState) => {
             const newAIConfigManager = {
@@ -410,6 +449,15 @@ export const useConfigStore = create<ConfigState>()(
         
         // 向后兼容的AI配置（从当前激活的服务商获取）
         aiConfig: computeAIConfig(initialAIConfigManager),
+        
+        // Token使用量追踪
+        tokenUsage: 0,
+        addTokenUsage: (tokens) => set((state) => ({
+          tokenUsage: state.tokenUsage + tokens
+        })),
+        resetTokenUsage: () => set(() => ({
+          tokenUsage: 0
+        })),
       
         // 向后兼容的设置方法（更新当前激活的提供商）
         setAiProvider: (provider) => {
@@ -522,7 +570,7 @@ export const useConfigStore = create<ConfigState>()(
         
         duplicateAIProvider: (id, newName) => {
           const state = get()
-          const original = state.aiConfigManager.getProviderById(id)
+          const original = state.getProviderById(id)
           if (!original) return ''
           
           const newId = `provider-${Date.now()}`
@@ -531,8 +579,9 @@ export const useConfigStore = create<ConfigState>()(
             id: newId,
             name: newName,
             isActive: false,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
+            isDefault: false, // 确保复制的配置不是默认配置
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           }
           
           set((prevState) => {
@@ -580,6 +629,7 @@ export const useConfigStore = create<ConfigState>()(
             ...templateConfig,
             id: `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             name,
+            isDefault: false, // 确保从模板创建的配置不是默认配置
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           }
@@ -604,6 +654,37 @@ export const useConfigStore = create<ConfigState>()(
             name: template.name,
             description: template.description
           }))
+        },
+        
+        // AI配置管理器方法（直接访问）
+        addProvider: (config) => {
+          const state = get()
+          return state.addAIProvider(config)
+        },
+        
+        updateProvider: (id, config) => {
+          const state = get()
+          state.updateAIProvider(id, config)
+        },
+        
+        deleteProvider: (id) => {
+          const state = get()
+          state.deleteAIProvider(id)
+        },
+        
+        duplicateProvider: (id, newName) => {
+          const state = get()
+          return state.duplicateAIProvider(id, newName)
+        },
+        
+        setActiveProvider: (id) => {
+          const state = get()
+          state.setActiveAIProvider(id)
+        },
+        
+        getProviderById: (id) => {
+          const state = get()
+          return state.getAIProviderById(id)
         },
         
         // 处理选项
@@ -773,7 +854,9 @@ export const useConfigStore = create<ConfigState>()(
     {
       name: 'ebook-mindmap-config', // localStorage中的键名
       partialize: (state) => ({
+        aiConfigManager: state.aiConfigManager,
         aiConfig: state.aiConfig,
+        tokenUsage: state.tokenUsage,
         processingOptions: state.processingOptions,
         webdavConfig: state.webdavConfig,
         promptConfig: state.promptConfig,
@@ -786,6 +869,7 @@ export const useConfigStore = create<ConfigState>()(
 
 // 导出便捷的选择器
 export const useAIConfig = () => useConfigStore((state) => state.aiConfig)
+export const useTokenUsage = () => useConfigStore((state) => state.tokenUsage)
 export const useProcessingOptions = () => useConfigStore((state) => state.processingOptions)
 export const useWebDAVConfig = () => useConfigStore((state) => state.webdavConfig)
 export const usePromptConfig = () => useConfigStore((state) => state.promptConfig)

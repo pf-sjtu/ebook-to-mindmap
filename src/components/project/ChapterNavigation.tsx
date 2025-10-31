@@ -17,6 +17,7 @@ interface Chapter {
 
 interface ChapterNavigationProps {
   chapters: Chapter[]
+  totalChapters: number // 原始章节总数
   processingMode: 'summary' | 'mindmap' | 'combined-mindmap'
   onChapterClick: (chapterId: string) => void
   processing?: boolean
@@ -24,6 +25,7 @@ interface ChapterNavigationProps {
 
 export function ChapterNavigation({ 
   chapters, 
+  totalChapters,
   processingMode, 
   onChapterClick, 
   processing = false 
@@ -58,7 +60,7 @@ export function ChapterNavigation({
   }
 
   const processedCount = chapters.filter(ch => ch.processed).length
-  const totalCount = chapters.length
+  const totalCount = chapters.length // 需要处理的章节数，不是原始章节总数
 
   if (chapters.length === 0) {
     return null

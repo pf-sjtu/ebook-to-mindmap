@@ -106,3 +106,23 @@ jspm_packages/
 
 # DynamoDB Local files
 .dynamodb/
+
+# IDE specific files
+Windsurf.*
+*.VisualElementsManifest.xml
+Windsurf.exe
+unins000.*
+chrome_*.pak
+*.dll
+icudtl.dat
+snapshot_blob.bin
+vk_swiftshader.*
+vulkan-1.dll
+resources.pak
+
+# Binary directories
+bin/
+tools/
+locales/
+policies/
+resources/

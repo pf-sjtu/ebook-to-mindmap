@@ -60,9 +60,12 @@ export const UploadToWebDAVButton: React.FC<UploadToWebDAVButtonProps> = ({
 
   // 生成文件名
   const generateFileName = () => {
-    if (!bookSummary) return ''
-    const sanitizedTitle = bookSummary.title.replace(/[^\w\s-]/g, '').trim()
-    return `${sanitizedTitle}-完整摘要.md`
+    if (!file) return ''
+    // 获取原文件名（不含扩展名）
+    const originalName = file.name.replace(/\.[^/.]+$/, '')
+    // 清理文件名中的特殊字符
+    const sanitizedName = originalName.replace(/[^\w\s-]/g, '').trim()
+    return `${sanitizedName}-完整摘要.md`
   }
 
   // 检查文件是否已存在
@@ -163,7 +166,7 @@ export const UploadToWebDAVButton: React.FC<UploadToWebDAVButtonProps> = ({
     if (webdavConfig.enabled && bookSummary) {
       checkFileExists()
     }
-  }, [webdavConfig.enabled, bookSummary])
+  }, [webdavConfig.enabled, bookSummary?.title, bookSummary?.author]) // 只依赖关键属性，避免重复检查
 
   // 如果WebDAV未启用，不显示按钮
   if (!webdavConfig.enabled) {

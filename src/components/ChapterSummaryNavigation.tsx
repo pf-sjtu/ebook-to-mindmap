@@ -35,7 +35,7 @@ export function ChapterSummaryNavigation({
 
   const getProgressPercentage = () => {
     const processedCount = chapters.filter(ch => ch.processed).length
-    return totalChapters > 0 ? (processedCount / totalChapters) * 100 : 0
+    return chapters.length > 0 ? (processedCount / chapters.length) * 100 : 0
   }
 
   const getChapterStatus = (chapter: typeof chapters[0]) => {
@@ -99,7 +99,7 @@ export function ChapterSummaryNavigation({
           {/* 统计信息 */}
           <div className="text-center">
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              {chapters.filter(ch => ch.processed).length}/{totalChapters}
+              {chapters.filter(ch => ch.processed).length}/{chapters.length}
             </div>
           </div>
         </div>

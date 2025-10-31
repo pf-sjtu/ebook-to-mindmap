@@ -289,7 +289,18 @@
     },
     "epub": {
       "close": "Close",
-      "loadingContent": "Loading chapter content..."
+      "loadingContent": "Loading chapter content...",
+      "decreaseFontSize": "Decrease Font Size",
+      "increaseFontSize": "Increase Font Size",
+      "enterFullscreen": "Enter Fullscreen",
+      "exitFullscreen": "Exit Fullscreen"
     }
+  },
+  "statusBar": {
+    "enterProcessing": "Enter Processing",
+    "backToConfig": "Back to Config",
+    "readyToProcess": "Ready to process",
+    "viewingResults": "Viewing results",
+    "completed": "Completed"
   }
 }

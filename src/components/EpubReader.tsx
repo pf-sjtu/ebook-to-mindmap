@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { BookOpen, Loader2 } from 'lucide-react'
+import { BookOpen, Loader2, Plus, Minus, Maximize2, Minimize2 } from 'lucide-react'
 import type { ChapterData, BookData } from '@/services/epubProcessor'
 import { EpubProcessor } from '@/services/epubProcessor'
 import { cn } from '@/lib/utils'
@@ -22,8 +22,11 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
   const [chapterHtmlContent, setChapterHtmlContent] = useState<string>('')
   const [isLoadingHtml, setIsLoadingHtml] = useState(false)
   const [epubProcessor] = useState(() => new EpubProcessor())
+  const [fontSize, setFontSize] = useState(16)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const shadowRef = useRef<HTMLDivElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   // 使用 Shadow DOM 来隔离 EPUB 内容样式
   useEffect(() => {
@@ -52,6 +55,26 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
         padding: 1rem;
         border-radius: 0.5rem;
         line-height: 1.6;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+        box-sizing: border-box;
+        font-size: ${fontSize}px;
+      }
+      
+      /* 确保所有文本元素都不会溢出 */
+      * {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      
+      /* 防止长文本溢出 */
+      p, span, div, text {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
       }
       
       /* 标题样式 */
@@ -169,7 +192,68 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
     // 添加内容到Shadow DOM
     shadowRoot.appendChild(contentDiv)
     
-  }, [chapterHtmlContent, chapter.content, chapter.title]) // 添加chapter.title依赖确保内容更新
+    // 确保内容完全渲染后滚动到顶部
+    requestAnimationFrame(() => {
+      if (scrollAreaRef.current) {
+        const scrollViewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+        if (scrollViewport) {
+          scrollViewport.scrollTop = 0
+        }
+      }
+    })
+    
+  }, [chapterHtmlContent, chapter.content, chapter.title, fontSize]) // 添加fontSize依赖确保字体大小变化时重新渲染
+
+  // 字体大小调节函数
+  const increaseFontSize = () => {
+    setFontSize(prev => Math.min(prev + 2, 24))
+  }
+
+  const decreaseFontSize = () => {
+    setFontSize(prev => Math.max(prev - 2, 12))
+  }
+
+  // 全屏切换函数
+  const toggleFullscreen = () => {
+    if (!cardRef.current) return
+    
+    if (!isFullscreen) {
+      // 进入全屏
+      if (cardRef.current.requestFullscreen) {
+        cardRef.current.requestFullscreen()
+      } else if ((cardRef.current as any).webkitRequestFullscreen) {
+        (cardRef.current as any).webkitRequestFullscreen()
+      } else if ((cardRef.current as any).msRequestFullscreen) {
+        (cardRef.current as any).msRequestFullscreen()
+      }
+    } else {
+      // 退出全屏
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen()
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen()
+      }
+    }
+  }
+
+  // 监听全屏状态变化
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('msfullscreenchange', handleFullscreenChange)
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange)
+    }
+  }, [])
 
   // 加载章节的HTML内容
   useEffect(() => {
@@ -181,23 +265,25 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
 
       setIsLoadingHtml(true)
       try {
+        // 增加延迟确保Shadow DOM已准备好
+        await new Promise(resolve => setTimeout(resolve, 50))
+        
         const htmlContent = await epubProcessor.getSingleChapterHTML(bookData.book, chapter.href || '')
-        setChapterHtmlContent(htmlContent)
+        
+        // 确保HTML内容有效后再设置
+        if (htmlContent && htmlContent.trim()) {
+          setChapterHtmlContent(htmlContent)
+        } else {
+          // 如果获取的HTML内容为空，回退到使用原始content
+          console.warn('获取的HTML内容为空，使用原始content')
+          setChapterHtmlContent(chapter.content)
+        }
       } catch (error) {
         console.error('加载章节HTML失败:', error)
         // 如果获取HTML失败，回退到使用原始content
         setChapterHtmlContent(chapter.content)
       } finally {
         setIsLoadingHtml(false)
-        // 延迟滚动到顶部，确保内容已渲染
-        setTimeout(() => {
-          if (scrollAreaRef.current) {
-            const scrollViewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
-            if (scrollViewport) {
-              scrollViewport.scrollTop = 0
-            }
-          }
-        }, 100)
       }
     }
 
@@ -206,17 +292,27 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
 
   // 确保内容变化时重新渲染Shadow DOM
   useEffect(() => {
-    if (!isLoadingHtml && shadowRef.current) {
+    if (!isLoadingHtml && shadowRef.current && chapterHtmlContent) {
       // 强制触发Shadow DOM更新
       const event = new Event('content-updated')
       shadowRef.current.dispatchEvent(event)
+      
+      // 确保内容完全渲染后滚动到顶部
+      setTimeout(() => {
+        if (scrollAreaRef.current) {
+          const scrollViewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+          if (scrollViewport) {
+            scrollViewport.scrollTop = 0
+          }
+        }
+      }, 100)
     }
   }, [chapterHtmlContent, isLoadingHtml])
 
   return (
     <div className={cn("w-full space-y-4", className)}>
       {/* 主要阅读区域 */}
-      <Card>
+      <Card ref={cardRef}>
         {showHeader && (
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -224,13 +320,49 @@ export function EpubReader({ chapter, bookData, onClose, className, showHeader =
                 <BookOpen className="h-5 w-5" />
                 {chapter.title}
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onClose}
-              >
-                {t('reader.epub.close')}
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* 字体大小调节按钮 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={decreaseFontSize}
+                  disabled={fontSize <= 12}
+                  title={t('reader.epub.decreaseFontSize', '减小字体')}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium px-2 min-w-[3rem] text-center">
+                  {fontSize}px
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={increaseFontSize}
+                  disabled={fontSize >= 24}
+                  title={t('reader.epub.increaseFontSize', '增大字体')}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+                
+                {/* 全屏切换按钮 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? t('reader.epub.exitFullscreen', '退出全屏') : t('reader.epub.enterFullscreen', '进入全屏')}
+                >
+                  {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+                
+                {/* 关闭按钮 */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onClose}
+                >
+                  {t('reader.epub.close')}
+                </Button>
+              </div>
             </div>
           </CardHeader>
         )}

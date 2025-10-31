@@ -279,12 +279,23 @@
     },
     "epub": {
       "close": "关闭",
-      "loadingContent": "正在加载章节内容..."
+      "loadingContent": "正在加载章节内容...",
+      "decreaseFontSize": "减小字体",
+      "increaseFontSize": "增大字体",
+      "enterFullscreen": "进入全屏",
+      "exitFullscreen": "退出全屏"
     }
   },
   "mindElixir": {
     "launchSuccess": "已成功发送到 Mind Elixir Desktop",
     "launchError": "启动 Mind Elixir Desktop 失败",
     "exportError": "导出思维导图失败"
+  },
+  "statusBar": {
+    "enterProcessing": "进入处理界面",
+    "backToConfig": "返回配置",
+    "readyToProcess": "准备就绪，可以开始处理",
+    "viewingResults": "查看处理结果",
+    "completed": "已完成"
   }
 }

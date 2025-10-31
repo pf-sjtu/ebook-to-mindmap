@@ -21,6 +21,8 @@ import { WebDAVFileBrowser } from './components/project/WebDAVFileBrowser'
 import type { MindElixirData, Options } from 'mind-elixir'
 import type { Summary } from 'node_modules/mind-elixir/dist/types/summary'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
+import { DarkModeToggle } from './components/DarkModeToggle'
+import { UnifiedStatusBar } from './components/UnifiedStatusBar'
 import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { MarkdownCard } from './components/MarkdownCard'
 import { MindMapCard } from './components/MindMapCard'
@@ -29,11 +31,10 @@ import { ChapterSummaryNavigation } from './components/ChapterSummaryNavigation'
 import { EpubReader } from './components/EpubReader'
 import { PdfReader } from './components/PdfReader'
 import { UploadToWebDAVButton } from './components/UploadToWebDAVButton'
-import { NavigationHeader } from './components/NavigationHeader'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { scrollToTop, openInMindElixir, downloadMindMap } from './utils'
-import { useWebDAVConfig } from './stores/configStore'
+import { useWebDAVConfig, useConfigStore, useAIConfig, useProcessingOptions, usePromptConfig } from './stores/configStore'
 
 
 const options = { direction: 1, alignment: 'nodes' } as Options
@@ -59,16 +60,16 @@ interface BookMindMap {
   title: string
   author: string
   chapters: Chapter[]
-  combinedMindMap: MindElixirData | null
+  combinedMindMap?: MindElixirData | null
 }
 
-// 导入配置store
-import { useAIConfig, useProcessingOptions, usePromptConfig, useConfigStore } from './stores/configStore'
 const cacheService = new CacheService()
 
 function App() {
   const { t } = useTranslation()
   const webdavConfig = useWebDAVConfig()
+  const { tokenUsage, addTokenUsage, resetTokenUsage } = useConfigStore()
+  const { model: currentModel } = useAIConfig()
   
   const [currentStepIndex, setCurrentStepIndex] = useState(1) // 1: 配置步骤, 2: 处理步骤
   const [file, setFile] = useState<File | null>(null)
@@ -471,7 +472,9 @@ function App() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${bookSummary.title}_总结.md`
+    // 使用原文件名，只改变后缀
+    const baseFileName = file.name.replace(/\.[^/.]+$/, '')
+    link.download = `${baseFileName}_总结.md`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -693,6 +696,9 @@ function App() {
       
       toast.success(t('progress.processingCompleted'))
       
+      // 自动切换到处理页面
+      setCurrentStepIndex(2)
+      
       // 发送任务完成通知
       if (processingOptions.enableNotification) {
         await notificationService.sendTaskCompleteNotification(
@@ -797,39 +803,31 @@ function App() {
       />
       <div className="max-w-full xl:max-w-7xl space-y-4 w-full flex-1">
         <div className="text-center space-y-2 relative">
+          <div className="absolute top-0 right-0 flex items-center gap-2">
+            <LanguageSwitcher />
+            <DarkModeToggle />
+          </div>
           <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 flex items-center justify-center gap-2">
             <BookOpen className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             {t('app.title')}
           </h1>
           <p className="text-gray-600 dark:text-gray-300">{t('app.description')}</p>
-          <div className="flex items-center justify-center gap-4">
-            <LanguageSwitcher />
-            <ThemeSwitcher />
-          </div>
         </div>
+
+        {/* 统一状态栏 */}
+        <UnifiedStatusBar
+          currentView={currentStepIndex === 1 ? 'config' : 'processing'}
+          processing={processing}
+          progress={progress}
+          currentStep={currentStep}
+          currentModel={currentModel}
+          tokenUsage={tokenUsage}
+          onToggleView={() => setCurrentStepIndex(currentStepIndex === 1 ? 2 : 1)}
+        />
 
         {currentStepIndex === 1 ? (
           <>
-            {/* 如果有缓存数据，显示切换按钮 */}
-            {(bookSummary || bookMindMap) && (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-600 dark:text-gray-300">
-                      发现缓存的处理结果
-                    </div>
-                    <Button
-                      onClick={() => setCurrentStepIndex(2)}
-                      className="flex items-center gap-2"
-                    >
-                      <Brain className="h-4 w-4" />
-                      查看处理结果
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            
+                        
             {/* 主内容区域：配置界面 + 右侧预览 */}
             <div className="flex gap-4">
               {/* 配置界面 */}
@@ -848,34 +846,69 @@ function App() {
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="file">{t('upload.selectFile')}</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="file"
-                          type="file"
-                          accept=".epub,.pdf"
-                          onChange={handleFileChange}
-                          disabled={processing}
-                          className="flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={openWebDAVBrowser}
-                          disabled={processing}
-                          className="flex items-center gap-2"
-                        >
-                          <Network className="h-4 w-4" />
-                          WebDAV
-                        </Button>
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 min-w-0 flex-1">
+                          <FileText className="h-4 w-4 shrink-0" />
+                          <span className="truncate">
+                            {file?.name || t('upload.noFileSelected')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => document.getElementById('file')?.click()}
+                            disabled={processing}
+                            className="flex items-center gap-2"
+                          >
+                            <Upload className="h-4 w-4" />
+                            本地上传
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={openWebDAVBrowser}
+                            disabled={processing}
+                            className="flex items-center gap-2"
+                          >
+                            <Network className="h-4 w-4" />
+                            WebDAV
+                          </Button>
+                        </div>
                       </div>
+                      <Input
+                        id="file"
+                        type="file"
+                        accept=".epub,.pdf"
+                        onChange={handleFileChange}
+                        disabled={processing}
+                        className="hidden" // 隐藏原始input，通过按钮触发
+                      />
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <FileText className="h-4 w-4" />
-                        {t('upload.selectedFile')}: {file?.name || t('upload.noFileSelected')}
-                      </div>
+                    <div className="flex items-center justify-end">
                       <div className="flex items-center gap-2">
+                        <Button
+                          onClick={extractChapters}
+                          disabled={!file || extractingChapters || processing}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          {extractingChapters ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              {t('upload.extractingChapters')}
+                            </>
+                          ) : (
+                            <>
+                              <List className="h-4 w-4" />
+                              {t('upload.extractChapters')}
+                            </>
+                          )}
+                        </Button>
                         <ConfigDialog processing={processing} file={file} />
                         <Button
                           variant="outline"
@@ -888,25 +921,6 @@ function App() {
                           {t('upload.clearCache')}
                         </Button>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Button
-                        onClick={extractChapters}
-                        disabled={!file || extractingChapters || processing}
-                        className="w-full"
-                      >
-                        {extractingChapters ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            {t('upload.extractingChapters')}
-                          </>
-                        ) : (
-                          <>
-                            <List className="mr-2 h-4 w-4" />
-                            {t('upload.extractChapters')}
-                          </>
-                        )}
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1052,51 +1066,8 @@ function App() {
         ) : (
           <>
             {/* 步骤2: 处理过程和结果显示 */}
-            <NavigationHeader
-              currentStep={currentStep}
-              bookTitle={bookData?.title}
-              bookAuthor={bookData?.author}
-              onBackToConfig={() => setCurrentStepIndex(1)}
-              processing={processing}
-              extractingChapters={extractingChapters}
-              progress={progress}
-              className="mb-6"
-            />
-
-            {/* 处理进度卡片 - 仅在有进度时显示 */}
-            {(processing || extractingChapters) && (
-              <Card className="mb-6">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                        <div className="absolute inset-0 h-5 w-5 animate-ping rounded-full bg-primary/20" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{currentStep}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {extractingChapters 
-                            ? t('navigation.extractingDescription', { defaultValue: '正在从电子书中提取章节内容...' })
-                            : t('navigation.processingDescription', { defaultValue: '正在使用AI生成智能总结...' })
-                          }
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-primary">{Math.round(progress)}%</div>
-                      <div className="text-xs text-muted-foreground">
-                        {extractingChapters 
-                          ? t('navigation.extractingProgress', { defaultValue: '提取进度' })
-                          : t('navigation.processingProgress', { defaultValue: '处理进度' })
-                        }
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
+            
+            
             {/* 主内容区域：左侧章节总结导航 + 中间结果 + 右侧预览 */}
             <div className="flex gap-4">
               {/* 左侧章节总结导航 */}
@@ -1360,7 +1331,8 @@ function App() {
             </div>
           </>
         )}
-
+        
+        
         {/* 章节阅读器 */}
         {currentReadingChapter && (
           file.name.endsWith('.epub') ? (
