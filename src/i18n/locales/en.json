@@ -1,4 +1,14 @@
 {
+  "fontSize": {
+    "title": "Font Size Control",
+    "description": "Adjust the font size of preview content",
+    "control": "Font",
+    "increase": "Increase Font",
+    "decrease": "Decrease Font",
+    "reset": "Reset",
+    "currentScale": "Current Scale",
+    "baseSize": "Base Size"
+  },
   "app": {
     "title": "eBook to Mind Map",
     "description": "Use AI technology to parse EPUB and PDF eBooks by chapters and generate intelligent summaries"

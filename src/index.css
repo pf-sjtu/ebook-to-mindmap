@@ -108,6 +108,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* 字体大小控制变量 */
+  --font-scale: 1;
+  --base-font-size: 16px;
 }
 
 .dark {
@@ -170,6 +174,43 @@
   }
   
   /* 全局HTML标签样式支持 */
+  .prose {
+    font-size: calc(var(--base-font-size) * var(--font-scale));
+    line-height: 1.6;
+  }
+  
+  /* 文本对齐和布局 */
+  .prose center {
+    text-align: center;
+    display: block;
+    margin: 1rem 0;
+  }
+  
+  .prose p[align="center"] {
+    text-align: center;
+  }
+  
+  .prose p[align="left"] {
+    text-align: left;
+  }
+  
+  .prose p[align="right"] {
+    text-align: right;
+  }
+  
+  .prose div[align="center"] {
+    text-align: center;
+  }
+  
+  .prose div[align="left"] {
+    text-align: left;
+  }
+  
+  .prose div[align="right"] {
+    text-align: right;
+  }
+  
+  /* 文本装饰 */
   .prose u {
     text-decoration: underline;
   }
@@ -201,20 +242,103 @@
     color: #fde68a;
   }
   
+  /* 字体大小和样式 */
   .prose sub {
-    font-size: 0.75em;
+    font-size: calc(0.75em * var(--font-scale));
     vertical-align: sub;
     line-height: 0;
   }
   
   .prose sup {
-    font-size: 0.75em;
+    font-size: calc(0.75em * var(--font-scale));
     vertical-align: super;
     line-height: 0;
   }
   
   .prose small {
-    font-size: 0.875em;
+    font-size: calc(0.875em * var(--font-scale));
     opacity: 0.8;
+  }
+  
+  .prose big {
+    font-size: calc(1.25em * var(--font-scale));
+    font-weight: bold;
+  }
+  
+  .prose tt {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #f3f4f6;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+  
+  .dark .prose tt {
+    background-color: #374151;
+    color: #e5e7eb;
+  }
+  
+  /* 引用和缩进 */
+  .prose blockquote {
+    border-left: 4px solid #d1d5db;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    font-style: italic;
+    color: #6b7280;
+  }
+  
+  .dark .prose blockquote {
+    border-left-color: #4b5563;
+    color: #9ca3af;
+  }
+  
+  .prose hr {
+    border: none;
+    height: 1px;
+    background-color: #e5e7eb;
+    margin: 2rem 0;
+  }
+  
+  .dark .prose hr {
+    background-color: #4b5563;
+  }
+  
+  /* 链接样式 - 修复深色模式显示问题 */
+  .prose a {
+    color: #2563eb;
+    text-decoration: underline;
+    transition: color 0.2s ease;
+  }
+  
+  .prose a:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+  }
+  
+  .prose a:visited {
+    color: #7c3aed;
+  }
+  
+  .prose a:active {
+    color: #1e40af;
+  }
+  
+  /* 深色模式链接样式 */
+  .dark .prose a {
+    color: #60a5fa;
+    text-decoration: underline;
+  }
+  
+  .dark .prose a:hover {
+    color: #93c5fd;
+    text-decoration: underline;
+  }
+  
+  .dark .prose a:visited {
+    color: #c084fc;
+  }
+  
+  .dark .prose a:active {
+    color: #3b82f6;
   }
 }

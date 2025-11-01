@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown预览功能测试</title>
+    <style>
+        :root {
+            --font-scale: 1;
+            --base-font-size: 16px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .dark body {
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        
+        .prose {
+            font-size: calc(var(--base-font-size) * var(--font-scale));
+            line-height: 1.6;
+            max-width: none;
+        }
+        
+        .prose u {
+            text-decoration: underline;
+        }
+        
+        .prose ins {
+            text-decoration: underline;
+        }
+        
+        .prose del {
+            text-decoration: line-through;
+        }
+        
+        .prose s {
+            text-decoration: line-through;
+        }
+        
+        .prose mark {
+            background-color: #fef3c7;
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+        }
+        
+        .dark .prose mark {
+            background-color: #713f12;
+            color: #fde68a;
+        }
+        
+        .prose sub {
+            font-size: calc(0.75em * var(--font-scale));
+            vertical-align: sub;
+            line-height: 0;
+        }
+        
+        .prose sup {
+            font-size: calc(0.75em * var(--font-scale));
+            vertical-align: super;
+            line-height: 0;
+        }
+        
+        .prose small {
+            font-size: calc(0.875em * var(--font-scale));
+            opacity: 0.8;
+        }
+        
+        /* 链接样式 */
+        .prose a {
+            color: #2563eb;
+            text-decoration: underline;
+            transition: color 0.2s ease;
+        }
+        
+        .prose a:hover {
+            color: #1d4ed8;
+            text-decoration: underline;
+        }
+        
+        .prose a:visited {
+            color: #7c3aed;
+        }
+        
+        .prose a:active {
+            color: #1e40af;
+        }
+        
+        /* 深色模式链接样式 */
+        .dark .prose a {
+            color: #60a5fa;
+            text-decoration: underline;
+        }
+        
+        .dark .prose a:hover {
+            color: #93c5fd;
+            text-decoration: underline;
+        }
+        
+        .dark .prose a:visited {
+            color: #c084fc;
+        }
+        
+        .dark .prose a:active {
+            color: #3b82f6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .dark .container {
+            background: #2a2a2a;
+        }
+        
+        .controls {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .dark .controls {
+            background: #333;
+        }
+        
+        .controls button {
+            margin: 0 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #0056b3;
+        }
+        
+        .controls button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .scale-display {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 8px 12px;
+            background: #e9ecef;
+            border-radius: 4px;
+            min-width: 60px;
+            text-align: center;
+        }
+        
+        .dark .scale-display {
+            background: #555;
+        }
+        
+        .theme-toggle {
+            float: right;
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .dark .theme-toggle {
+            background: #333;
+            border-color: #555;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="theme-toggle" onclick="toggleTheme()">🌙 深色模式</button>
+        
+        <h1>Markdown预览功能测试</h1>
+        
+        <div class="controls">
+            <h3>字体大小控制</h3>
+            <button onclick="decreaseFontSize()">减小字体 (A-)</button>
+            <span class="scale-display" id="scaleDisplay">100%</span>
+            <button onclick="increaseFontSize()">增大字体 (A+)</button>
+            <button onclick="resetFontSize()">重置</button>
+        </div>
+        
+        <div class="prose">
+            <h2>HTML格式支持测试</h2>
+            <p>这是一个包含<u>下划线文本</u>的测试段落。</p>
+            
+            <p>这里有一些<a href="https://example.com">链接测试</a>和<mark>标记文本</mark>。</p>
+            
+            <p>还有<ins>插入文本</ins>和<del>删除文本</del>以及<s>删除线文本</s>。</p>
+            
+            <p>测试上标X<sup>2</sup>和下标H<sub>2</sub>O的显示效果。</p>
+            
+            <p><small>这是小号文本</small>和正常文本的对比展示。</p>
+            
+            <h3>链接状态测试</h3>
+            <p>
+                <a href="https://github.com">GitHub链接</a> (未访问)<br>
+                <a href="https://github.com/test">测试链接</a> (访问后变色)<br>
+                <a href="https://example.com" target="_blank">外部链接</a>
+            </p>
+            
+            <h3>综合格式测试</h3>
+            <p>
+                这段文字包含了<strong>粗体</strong>、<em>斜体</em>、<u>下划线</u>、
+                <mark>高亮</mark>、<ins>插入</ins>、<del>删除</ins>等多种格式，
+                还有上标X<sup>2</sup>和下标H<sub>2</sub>O，以及<small>小号文字</small>。
+            </p>
+            
+            <blockquote>
+                这是一个引用块，里面也包含<u>下划线文本</u>和<a href="#">链接</a>。
+            </blockquote>
+            
+            <h3>列表格式测试</h3>
+            <ul>
+                <li>普通列表项</li>
+                <li>包含<u>下划线</u>的列表项</li>
+                <li>包含<a href="#">链接</a>的列表项</li>
+                <li>包含<mark>标记</mark>的列表项</li>
+            </ul>
+            
+            <ol>
+                <li>有序列表项1</li>
+                <li>有序列表项2（包含<ins>插入文本</ins>）</li>
+                <li>有序列表项3（包含<del>删除文本</del>）</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let fontScale = 1;
+        let isDarkMode = false;
+
+        function updateFontScale(scale) {
+            fontScale = scale;
+            document.documentElement.style.setProperty('--font-scale', scale.toString());
+            document.getElementById('scaleDisplay').textContent = Math.round(scale * 100) + '%';
+            localStorage.setItem('font-scale', scale.toString());
+        }
+
+        function increaseFontSize() {
+            const newScale = Math.min(fontScale + 0.1, 2);
+            updateFontScale(newScale);
+        }
+
+        function decreaseFontSize() {
+            const newScale = Math.max(fontScale - 0.1, 0.5);
+            updateFontScale(newScale);
+        }
+
+        function resetFontSize() {
+            updateFontScale(1);
+        }
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            document.documentElement.classList.toggle('dark');
+            const button = document.querySelector('.theme-toggle');
+            button.textContent = isDarkMode ? '☀️ 浅色模式' : '🌙 深色模式';
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 恢复字体大小设置
+            const savedScale = localStorage.getItem('font-scale');
+            if (savedScale) {
+                const scale = parseFloat(savedScale);
+                if (!isNaN(scale) && scale >= 0.5 && scale <= 2) {
+                    updateFontScale(scale);
+                }
+            }
+
+            // 恢复主题设置
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                isDarkMode = true;
+                document.documentElement.classList.add('dark');
+                document.querySelector('.theme-toggle').textContent = '☀️ 浅色模式';
+            }
+        });
+    </script>
+</body>
+</html>

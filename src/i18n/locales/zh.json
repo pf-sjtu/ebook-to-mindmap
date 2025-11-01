@@ -1,4 +1,14 @@
 {
+  "fontSize": {
+    "title": "字体大小控制",
+    "description": "调节预览内容的字体大小",
+    "control": "字体",
+    "increase": "增大字体",
+    "decrease": "减小字体",
+    "reset": "重置",
+    "currentScale": "当前缩放比例",
+    "baseSize": "基础大小"
+  },
   "app": {
     "title": "电子书转思维导图",
     "description": "使用 AI 技术按章节解析 EPUB 和 PDF 电子书并生成智能总结"
