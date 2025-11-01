@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { SupportedLanguage } from '../services/prompts/utils'
 import { DEFAULT_PROMPT_CONFIG, DEFAULT_PROMPT_CONFIG_V2 } from '../services/prompts/templates'
+import { ConfigExportService } from '../services/configExportService'
 
 // 提示词配置接口
 export interface PromptConfig {
@@ -101,6 +102,12 @@ interface WebDAVConfig {
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error' // 连接状态
 }
 
+// AI服务选项接口
+interface AIServiceOptions {
+  maxRetries?: number // 最大重试次数，默认3次
+  baseRetryDelay?: number // 基础重试延迟时间（毫秒），默认60s
+}
+
 // 配置store状态接口
 interface ConfigState {
   // AI配置管理
@@ -177,6 +184,16 @@ interface ConfigState {
   setOverallSummaryPrompt: (prompt: string) => void
   resetPromptsToDefault: () => void
   resetPromptsToDefaultForVersion: (version: 'v1' | 'v2') => void
+  
+  // AI服务选项
+  aiServiceOptions: AIServiceOptions
+  setMaxRetries: (maxRetries: number) => void
+  setBaseRetryDelay: (baseRetryDelay: number) => void
+  
+  // 配置导出导入功能
+  exportConfig: () => string
+  importConfig: (yamlContent: string) => { success: boolean; error?: string }
+  resetAllConfig: () => void
 }
 
 // AI服务商模板配置
@@ -334,6 +351,11 @@ const defaultPromptVersionConfig: PromptVersionConfig = {
   v2: DEFAULT_PROMPT_CONFIG_V2
 }
 
+const defaultAIServiceOptions: AIServiceOptions = {
+  maxRetries: 3,
+  baseRetryDelay: 60000 // 60秒
+}
+
 // 计算aiConfig的辅助函数
 const computeAIConfig = (aiConfigManager: AIConfigManager): AIConfig => {
   const activeProvider = aiConfigManager.providers.find(p => 
@@ -462,57 +484,57 @@ export const useConfigStore = create<ConfigState>()(
         // 向后兼容的设置方法（更新当前激活的提供商）
         setAiProvider: (provider) => {
           const state = get()
-          const activeProvider = state.aiConfigManager.getActiveProvider()
+          const activeProvider = state.getActiveProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { provider })
           }
         },
         setApiKey: (apiKey) => {
           const state = get()
-          const activeProvider = state.aiConfigManager.getActiveProvider()
+          const activeProvider = state.getActiveProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { apiKey })
           }
         },
         setApiUrl: (apiUrl) => {
           const state = get()
-          const activeProvider = state.aiConfigManager.getActiveProvider()
+          const activeProvider = state.getActiveProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { apiUrl })
           }
         },
         setModel: (model) => {
           const state = get()
-          const activeProvider = state.aiConfigManager.getActiveProvider()
+          const activeProvider = state.getActiveProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { model })
           }
         },
         setTemperature: (temperature) => {
           const state = get()
-          const activeProvider = state.aiConfigManager.getActiveProvider()
+          const activeProvider = state.getActiveProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { temperature })
           }
         },
         setProxyUrl: (proxyUrl) => {
           const state = get()
-          const activeProvider = state.aiConfigManager.getActiveProvider()
+          const activeProvider = state.getActiveProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { proxyUrl })
           }
         },
-        setProxyEnabled: (proxyEnabled) => {
+        setProxyEnabled: (enabled) => {
           const state = get()
-          const activeProvider = state.aiConfigManager.getActiveProvider()
+          const activeProvider = state.getActiveProvider()
           if (activeProvider) {
-            state.updateAIProvider(activeProvider.id, { proxyEnabled })
+            state.updateAIProvider(activeProvider.id, { proxyEnabled: enabled })
           }
         },
         
         // 新的AI服务商管理方法
         addAIProvider: (config) => {
-          const id = `provider-${Date.now()}`
+          const id = `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
           const newProvider: AIProviderConfig = {
             ...config,
             id,
@@ -848,7 +870,76 @@ export const useConfigStore = create<ConfigState>()(
             promptConfig: newPromptConfig,
             promptVersionConfig: updatedVersionConfig
           }
-        })
+        }),
+
+        // AI服务选项
+        aiServiceOptions: defaultAIServiceOptions,
+        setMaxRetries: (maxRetries) => set((state) => ({
+          aiServiceOptions: { ...state.aiServiceOptions, maxRetries }
+        })),
+        setBaseRetryDelay: (baseRetryDelay) => set((state) => ({
+          aiServiceOptions: { ...state.aiServiceOptions, baseRetryDelay }
+        })),
+
+        // 配置导出导入功能
+        exportConfig: () => {
+          const state = get()
+          return ConfigExportService.exportConfig(state)
+        },
+
+        importConfig: (yamlContent) => {
+          try {
+            const importedConfig = ConfigExportService.importConfig(yamlContent)
+            
+            // 验证配置
+            const validation = ConfigExportService.validateConfig(importedConfig)
+            if (!validation.isValid) {
+              return {
+                success: false,
+                error: `配置验证失败: ${validation.errors.join(', ')}`
+              }
+            }
+
+            // 应用导入的配置
+            set((state) => {
+              const currentPromptVersion = importedConfig.config.currentPromptVersion
+              const promptConfig = importedConfig.config.promptVersionConfig[currentPromptVersion]
+              
+              return {
+                aiConfigManager: importedConfig.config.aiConfigManager,
+                processingOptions: importedConfig.config.processingOptions,
+                webdavConfig: importedConfig.config.webdavConfig,
+                promptConfig,
+                promptVersionConfig: importedConfig.config.promptVersionConfig,
+                currentPromptVersion,
+                tokenUsage: importedConfig.config.tokenUsage,
+                aiServiceOptions: importedConfig.config.aiServiceOptions || defaultAIServiceOptions,
+                aiConfig: computeAIConfig(importedConfig.config.aiConfigManager)
+              }
+            })
+
+            return { success: true }
+          } catch (error) {
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : '导入配置时发生未知错误'
+            }
+          }
+        },
+
+        resetAllConfig: () => {
+          set((state) => ({
+            aiConfigManager: createDefaultAIConfigManager(),
+            processingOptions: defaultProcessingOptions,
+            webdavConfig: defaultWebDAVConfig,
+            promptConfig: defaultPromptConfig,
+            promptVersionConfig: defaultPromptVersionConfig,
+            currentPromptVersion: 'v1',
+            tokenUsage: 0,
+            aiServiceOptions: defaultAIServiceOptions,
+            aiConfig: defaultAIConfig
+          }))
+        }
       }
     },
     {
@@ -861,7 +952,8 @@ export const useConfigStore = create<ConfigState>()(
         webdavConfig: state.webdavConfig,
         promptConfig: state.promptConfig,
         promptVersionConfig: state.promptVersionConfig,
-        currentPromptVersion: state.currentPromptVersion
+        currentPromptVersion: state.currentPromptVersion,
+        aiServiceOptions: state.aiServiceOptions
       })
     }
   )
@@ -872,6 +964,7 @@ export const useAIConfig = () => useConfigStore((state) => state.aiConfig)
 export const useTokenUsage = () => useConfigStore((state) => state.tokenUsage)
 export const useProcessingOptions = () => useConfigStore((state) => state.processingOptions)
 export const useWebDAVConfig = () => useConfigStore((state) => state.webdavConfig)
+export const useAIServiceOptions = () => useConfigStore((state) => state.aiServiceOptions)
 export const usePromptConfig = () => useConfigStore((state) => state.promptConfig)
 export const usePromptVersionConfig = () => useConfigStore((state) => state.promptVersionConfig)
 export const useCurrentPromptVersion = () => useConfigStore((state) => state.currentPromptVersion)

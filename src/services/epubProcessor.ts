@@ -2,6 +2,13 @@ import ePub, { Book, type NavItem } from '@ssshooter/epubjs'
 import { SKIP_CHAPTER_KEYWORDS } from './constants'
 import type Section from '@ssshooter/epubjs/types/section'
 
+// 格式化章节编号，支持补零
+const formatChapterNumber = (index: number, total: number = 99): string => {
+  // 根据总数确定位数
+  const digits = total >= 100 ? 3 : 2
+  return index.toString().padStart(digits, '0')
+}
+
 
 export interface ChapterData {
   id: string
@@ -84,7 +91,9 @@ export class EpubProcessor {
         if (chapterDetectionMode === 'epub-toc') {
           // EPUB目录模式：使用指定的目录深度，不过滤锚点链接
           const toc = book.navigation.toc
-          chapterInfos = await this.extractChaptersFromToc(book, toc, 0, epubTocDepth, chapterNamingMode)
+          // 估算总章节数，用于补零格式化
+          const estimatedTotal = Math.max(toc.length, book.spine.spineItems.length)
+          chapterInfos = await this.extractChaptersFromToc(book, toc, 0, epubTocDepth, chapterNamingMode, estimatedTotal)
           console.log(`📚 [DEBUG] EPUB目录模式 (深度${epubTocDepth}) 找到 ${chapterInfos.length} 个章节信息`, chapterInfos)
           
           // 回退：如果TOC为空或提取失败，使用spineItems
@@ -95,11 +104,11 @@ export class EpubProcessor {
                 const navItem: NavItem = {
                   id: spineItem.idref || `spine-${idx + 1}`,
                   href: spineItem.href,
-                  label: chapterNamingMode === 'numbered' ? `第${idx + 1}章` : (spineItem.idref || `章节 ${idx + 1}`),
+                  label: chapterNamingMode === 'numbered' ? `第${formatChapterNumber(idx + 1, book.spine.spineItems.length)}章` : (spineItem.idref || `章节 ${idx + 1}`),
                   subitems: []
                 }
                 return {
-                  title: navItem.label || `第${idx + 1}章`,
+                  title: navItem.label || `第${formatChapterNumber(idx + 1, book.spine.spineItems.length)}章`,
                   href: navItem.href!,
                   subitems: [],
                   tocItem: navItem,
@@ -112,7 +121,9 @@ export class EpubProcessor {
         } else {
           // 普通模式和智能模式：使用原有逻辑
           const toc = book.navigation.toc.filter(item => !item.href.includes('#'))
-          chapterInfos = await this.extractChaptersFromToc(book, toc, 0, maxSubChapterDepth, chapterNamingMode)
+          // 估算总章节数，用于补零格式化
+          const estimatedTotal = Math.max(toc.length, book.spine.spineItems.length)
+          chapterInfos = await this.extractChaptersFromToc(book, toc, 0, maxSubChapterDepth, chapterNamingMode, estimatedTotal)
           console.log(`📚 [DEBUG] 找到 ${chapterInfos.length} 个章节信息`, chapterInfos)
 
           // 回退：当 TOC 长度≤3 时，直接用 spineItems 生成章节信息
@@ -122,11 +133,11 @@ export class EpubProcessor {
                 const navItem: NavItem = {
                   id: spineItem.idref || `spine-${idx + 1}`,
                   href: spineItem.href,
-                  label: chapterNamingMode === 'numbered' ? `第${idx + 1}章` : (spineItem.idref || `章节 ${idx + 1}`),
+                  label: chapterNamingMode === 'numbered' ? `第${formatChapterNumber(idx + 1, book.spine.spineItems.length)}章` : (spineItem.idref || `章节 ${idx + 1}`),
                   subitems: []
                 }
                 return {
-                  title: navItem.label || `第${idx + 1}章`,
+                  title: navItem.label || `第${formatChapterNumber(idx + 1, book.spine.spineItems.length)}章`,
                   href: navItem.href!,
                   subitems: [],
                   tocItem: navItem,
@@ -172,10 +183,10 @@ export class EpubProcessor {
       // 应用智能章节检测
       let finalChapters = chapters
       if (chapterDetectionMode === 'smart') {
-        finalChapters = this.detectChapters(chapters, true)
+        finalChapters = this.detectChapters(chapters, true, chapterNamingMode)
         console.log(`🧠 [DEBUG] 智能检测模式，最终提取到 ${finalChapters.length} 个章节`)
       } else {
-        finalChapters = this.detectChapters(chapters, useSmartDetection)
+        finalChapters = this.detectChapters(chapters, useSmartDetection, chapterNamingMode)
         console.log(`📊 [DEBUG] 最终提取到 ${finalChapters.length} 个章节`)
       }
 
@@ -186,7 +197,7 @@ export class EpubProcessor {
     }
   }
 
-  private async extractChaptersFromToc(book: Book, toc: NavItem[], currentDepth: number = 0, maxDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto'): Promise<{ title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[]> {
+  private async extractChaptersFromToc(book: Book, toc: NavItem[], currentDepth: number = 0, maxDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto', totalChapters: number = 99): Promise<{ title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[]> {
     const chapterInfos: { title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[] = []
 
     for (const item of toc) {
@@ -199,7 +210,7 @@ export class EpubProcessor {
           // 根据章节命名模式生成标题
           let chapterTitle: string
           if (chapterNamingMode === 'numbered') {
-            chapterTitle = `第${chapterInfos.length + 1}章`
+            chapterTitle = `第${formatChapterNumber(chapterInfos.length + 1, totalChapters)}章`
           } else {
             chapterTitle = item.label || `第${chapterInfos.length + 1}章`
           }
@@ -216,7 +227,7 @@ export class EpubProcessor {
         
         // 然后递归处理子项目
         if (item.subitems && item.subitems.length > 0 && maxDepth > 0 && currentDepth < maxDepth) {
-          const subChapters = await this.extractChaptersFromToc(book, item.subitems, currentDepth + 1, maxDepth, chapterNamingMode)
+          const subChapters = await this.extractChaptersFromToc(book, item.subitems, currentDepth + 1, maxDepth, chapterNamingMode, totalChapters)
           chapterInfos.push(...subChapters)
         }
       } catch (error) {
@@ -427,7 +438,7 @@ export class EpubProcessor {
     }
   }
 
-  private detectChapters(chapters: ChapterData[], useSmartDetection: boolean): ChapterData[] {
+  private detectChapters(chapters: ChapterData[], useSmartDetection: boolean, chapterNamingMode: 'auto' | 'numbered' = 'auto'): ChapterData[] {
     if (!useSmartDetection) {
       return chapters
     }
@@ -483,9 +494,12 @@ export class EpubProcessor {
 
         // 开始新章节
         chapterCount++
+        const fallbackTitle = chapterNamingMode === 'numbered' 
+          ? `第${formatChapterNumber(chapterCount, chapters.length)}章`
+          : `第 ${chapterCount} 章`
         currentChapter = {
           id: chapter.id || `chapter-${chapterCount}`,
-          title: chapterTitle || `第 ${chapterCount} 章`,
+          title: chapterTitle || fallbackTitle,
           content: content,
           href: chapter.href,
           tocItem: chapter.tocItem,

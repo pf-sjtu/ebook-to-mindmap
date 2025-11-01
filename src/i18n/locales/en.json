@@ -206,7 +206,7 @@
   },
   "config": {
     "title": "Configuration",
-    "aiServiceConfig": "AI Service Configuration",
+    "aiServiceConfig": "Normal",
     "description": "Configure AI services and processing options",
     "aiProvider": "AI Provider",
     "selectAiProvider": "Select AI Provider",

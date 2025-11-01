@@ -7,6 +7,7 @@ interface ChapterSummaryNavigationProps {
   chapters: Array<{
     id: string
     title: string
+    content?: string // 章节原始内容，用于预览
     processed: boolean
   }>
   totalChapters: number // 总章节数

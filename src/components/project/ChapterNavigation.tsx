@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 interface Chapter {
   id: string
   title: string
+  content?: string // 章节原始内容，用于预览
   summary?: string
   mindMap?: any
   processed: boolean
@@ -126,6 +127,12 @@ export function ChapterNavigation({
                           <div className="font-medium text-sm truncate">
                             {index + 1}. {chapter.title}
                           </div>
+                          {/* 添加内容预览 */}
+                          {chapter.content && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                              {chapter.content.substring(0, 20)}...
+                            </div>
+                          )}
                           {processingMode === 'summary' && hasContent && isExpanded && (
                             <div className="text-xs text-muted-foreground mt-1 line-clamp-3">
                               {hasContent.substring(0, 150)}...

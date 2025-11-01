@@ -115,13 +115,9 @@ export function UnifiedStatusBar({
               <Badge variant="secondary" className="flex items-center gap-1">
                 {getModelIcon(currentModel)}
                 <span className="text-xs">{currentModel}</span>
-              </Badge>
-            )}
-            
-            {tokenUsage > 0 && (
-              <Badge variant="outline" className="flex items-center gap-1">
-                <Zap className="h-3 w-3" />
-                <span className="text-xs">{formatTokenCount(tokenUsage)} tokens</span>
+                {tokenUsage > 0 && (
+                  <span className="text-xs text-muted-foreground">({formatTokenCount(tokenUsage)})</span>
+                )}
               </Badge>
             )}
 

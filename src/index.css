@@ -168,4 +168,53 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* 全局HTML标签样式支持 */
+  .prose u {
+    text-decoration: underline;
+  }
+  
+  .prose ins {
+    text-decoration: underline;
+  }
+  
+  .prose del {
+    text-decoration: line-through;
+  }
+  
+  .prose s {
+    text-decoration: line-through;
+  }
+  
+  .prose strikethrough {
+    text-decoration: line-through;
+  }
+  
+  .prose mark {
+    background-color: #fef3c7;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+  }
+  
+  .dark .prose mark {
+    background-color: #713f12;
+    color: #fde68a;
+  }
+  
+  .prose sub {
+    font-size: 0.75em;
+    vertical-align: sub;
+    line-height: 0;
+  }
+  
+  .prose sup {
+    font-size: 0.75em;
+    vertical-align: super;
+    line-height: 0;
+  }
+  
+  .prose small {
+    font-size: 0.875em;
+    opacity: 0.8;
+  }
 }

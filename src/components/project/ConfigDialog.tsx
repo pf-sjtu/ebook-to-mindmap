@@ -11,9 +11,10 @@ import { Settings, ExternalLink, Info, Play, CheckCircle, XCircle, Loader2 } fro
 import { PromptEditor } from './PromptEditor'
 import { WebDAVConfig } from './WebDAVConfig'
 import { AIProviderConfig } from './AIProviderConfig'
+import { ConfigExportImport } from '../ConfigExportImport'
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
-import { useConfigStore, useAIConfig, useProcessingOptions } from '../../stores/configStore'
+import { useConfigStore, useAIConfig, useProcessingOptions, useAIServiceOptions } from '../../stores/configStore'
 import type { SupportedLanguage } from '../../services/prompts/utils'
 import { chapterPreviewService } from '../../services/chapterPreviewService'
 import { AIService } from '../../services/aiService'
@@ -28,6 +29,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
   // 使用zustand store管理配置
   const aiConfig = useAIConfig()
   const processingOptions = useProcessingOptions()
+  const aiServiceOptions = useAIServiceOptions()
   
   const [previewChapters, setPreviewChapters] = useState<{ title: string; preview: string }[]>([])
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
@@ -55,7 +57,9 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
     setChapterNamingMode,
     setEnableNotification,
     setChapterDetectionMode,
-    setEpubTocDepth
+    setEpubTocDepth,
+    setMaxRetries,
+    setBaseRetryDelay
   } = useConfigStore()
 
   // 从store中解构状态值
@@ -72,6 +76,9 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
     epubTocDepth
   } = processingOptions
 
+  // 从AI服务选项中解构状态值
+  const { maxRetries, baseRetryDelay } = aiServiceOptions
+
   // 测试 AI 连接
   const testAIConnection = async () => {
     if (!aiConfig.apiKey) {
@@ -86,7 +93,9 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
     setConnectionTestResult(null)
     
     try {
-      const aiService = new AIService(aiConfig)
+      const aiService = new AIService(aiConfig, undefined, {
+        ...aiServiceOptions
+      })
       const result = await aiService.testConnection()
       
       setConnectionTestResult({
@@ -128,7 +137,9 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
     setProxyTestResult(null)
     
     try {
-      const aiService = new AIService(aiConfig)
+      const aiService = new AIService(aiConfig, undefined, {
+        ...aiServiceOptions
+      })
       const result = await aiService.testProxyConnection()
       
       setProxyTestResult(result)
@@ -223,23 +234,24 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
           {t('config.title')}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-w-[95vw] md:max-w-2xl max-h-[85vh] w-full">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
+          <DialogTitle className="flex items-center gap-2 text-wrap break-words">
+            <Settings className="h-5 w-5 flex-shrink-0" />
             {t('config.aiServiceConfig')}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-wrap break-words">
             {t('config.description')}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-4">
           <Tabs defaultValue="ai-config" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="ai-config">{t('config.aiServiceConfig')}</TabsTrigger>
-              <TabsTrigger value="ai-providers">AI服务商</TabsTrigger>
-              <TabsTrigger value="prompts">{t('promptEditor.title')}</TabsTrigger>
-              <TabsTrigger value="webdav">WebDAV配置</TabsTrigger>
+            <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
+              <TabsTrigger value="ai-config" className="flex-1 min-w-fit">{t('config.aiServiceConfig')}</TabsTrigger>
+              <TabsTrigger value="ai-providers" className="flex-1 min-w-fit">AI服务商</TabsTrigger>
+              <TabsTrigger value="prompts" className="flex-1 min-w-fit">{t('promptEditor.title')}</TabsTrigger>
+              <TabsTrigger value="webdav" className="flex-1 min-w-fit">WebDAV配置</TabsTrigger>
+              <TabsTrigger value="export-import" className="flex-1 min-w-fit">导出导入</TabsTrigger>
             </TabsList>
 
             <TabsContent value="ai-config" className="space-y-4 mt-4">
@@ -282,8 +294,8 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                   </div>
                 )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="ai-provider">{t('config.aiProvider')}</Label>
                   <div className="flex flex-col items-start gap-2">
                     <Select
@@ -296,7 +308,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                       }}
                       disabled={processing}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('config.selectAiProvider')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -315,7 +327,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="apikey">
                     {providerSettings[aiProvider].apiKeyLabel}
                   </Label>
@@ -326,16 +338,17 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     disabled={processing}
+                    className="w-full"
                   />
                 </div>
               </div>
 
               {(aiProvider === 'openai' || aiProvider === 'ollama' || aiProvider === '302.ai') && (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="space-y-2 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="api-url">{t('config.apiUrl')}</Label>
+                        <Label htmlFor="api-url" className="text-wrap">{t('config.apiUrl')}</Label>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -359,11 +372,12 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                         value={apiUrl}
                         onChange={(e) => setApiUrl(e.target.value)}
                         disabled={processing || aiProvider === '302.ai'}
+                        className="w-full"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="model">{t('config.modelName')}</Label>
+                    <div className="space-y-2 min-w-0">
+                      <Label htmlFor="model" className="text-wrap">{t('config.modelName')}</Label>
                       <Input
                         id="model"
                         type="text"
@@ -371,6 +385,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                         value={model}
                         onChange={(e) => setModel(e.target.value)}
                         disabled={processing}
+                        className="w-full"
                       />
                     </div>
                   </div>
@@ -395,10 +410,10 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
               )}
 
               {aiProvider === 'gemini' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-2 min-w-0">
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="gemini-api-url">{t('config.apiUrl')}</Label>
+                      <Label htmlFor="gemini-api-url" className="text-wrap">{t('config.apiUrl')}</Label>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -419,10 +434,11 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                       value={apiUrl}
                       onChange={(e) => setApiUrl(e.target.value)}
                       disabled={processing}
+                      className="w-full"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gemini-model">{t('config.modelName')}</Label>
+                  <div className="space-y-2 min-w-0">
+                    <Label htmlFor="gemini-model" className="text-wrap">{t('config.modelName')}</Label>
                     <Input
                       id="gemini-model"
                       type="text"
@@ -430,10 +446,11 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                       value={model}
                       onChange={(e) => setModel(e.target.value)}
                       disabled={processing}
+                      className="w-full"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gemini-temperature">{t('config.temperature')}</Label>
+                  <div className="space-y-2 min-w-0">
+                    <Label htmlFor="gemini-temperature" className="text-wrap">{t('config.temperature')}</Label>
                     <Input
                       id="gemini-temperature"
                       type="number"
@@ -444,6 +461,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                       value={temperature}
                       onChange={(e) => setTemperature(parseFloat(e.target.value) || 0.7)}
                       disabled={processing}
+                      className="w-full"
                     />
                     <p className="text-xs text-gray-600 dark:text-gray-400">
                       {t('config.temperatureDescription')}
@@ -571,6 +589,85 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
               )}
             </div>
 
+            {/* 流量限制配置 */}
+            <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg border dark:border-blue-800">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  <Label className="text-sm font-medium">AI流量限制配置</Label>
+                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-gray-500 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        配置API流量限制时的重试策略，包括重试次数和等待时间
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="max-retries" className="text-sm font-medium">
+                    最大重试次数
+                  </Label>
+                  <Input
+                    id="max-retries"
+                    type="number"
+                    min="0"
+                    max="10"
+                    placeholder="3"
+                    value={maxRetries || 3}
+                    onChange={(e) => setMaxRetries(parseInt(e.target.value) || 3)}
+                    disabled={processing}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    当API返回流量限制错误时的最大重试次数，默认3次
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="base-retry-delay" className="text-sm font-medium">
+                    重试等待时间（秒）
+                  </Label>
+                  <Input
+                    id="base-retry-delay"
+                    type="number"
+                    min="1"
+                    max="300"
+                    placeholder="60"
+                    value={(baseRetryDelay || 60000) / 1000}
+                    onChange={(e) => setBaseRetryDelay((parseInt(e.target.value) || 60) * 1000)}
+                    disabled={processing}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    流量限制时的等待时间，默认60秒（测试环境可设置较短时间）
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-md border border-blue-200 dark:border-blue-700">
+                <div className="flex items-start gap-2 text-xs text-blue-700 dark:text-blue-400">
+                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-1">
+                    <div className="font-medium">流量限制重试机制说明</div>
+                    <div className="opacity-90">
+                      • 自动识别429状态码和token_quota_exceeded等错误<br/>
+                      • 支持智能等待时间调整<br/>
+                      • 详细的重试日志记录<br/>
+                      • 配置更改立即生效，无需重启应用
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="p-3 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg border dark:border-indigo-800">
               <div className="space-y-2">
                 <Label htmlFor="output-language" className="text-sm font-medium">
@@ -645,13 +742,13 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                 <Label className="text-sm font-medium">{t('config.chapterAndNotificationSettings')}</Label>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="chapter-naming-mode" className="text-sm font-medium">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-2 min-w-0 w-full">
+                  <Label htmlFor="chapter-naming-mode" className="text-wrap text-sm font-medium">
                     {t('config.chapterNamingMode')}
                   </Label>
                   <Select value={chapterNamingMode || 'auto'} onValueChange={(value: 'auto' | 'numbered') => setChapterNamingMode(value)} disabled={processing}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder={t('config.selectChapterNamingMode')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -664,8 +761,8 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">
+                <div className="space-y-2 min-w-0 w-full">
+                  <Label className="text-wrap text-sm font-medium">
                     {t('config.notificationSettings')}
                   </Label>
                   <div className="flex items-center space-x-2 pt-2">
@@ -839,9 +936,9 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                 {previewChapters.length > 0 ? (
                   <div className="space-y-2 max-h-60 overflow-y-auto">
                     {previewChapters.map((chapter, index) => (
-                      <div key={index} className="flex items-start gap-2 p-2 bg-white dark:bg-gray-900 rounded border dark:border-gray-600">
+                      <div key={`${chapter.title}-${index}`} className="flex items-start gap-2 p-2 bg-white dark:bg-gray-900 rounded border dark:border-gray-600">
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-mono shrink-0 w-8">
-                          {index + 1}.
+                          {(index + 1).toString().padStart(2, '0')}.
                         </span>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
@@ -878,9 +975,15 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
             <TabsContent value="webdav" className="mt-4">
               <WebDAVConfig />
             </TabsContent>
+
+            <TabsContent value="export-import" className="mt-4">
+              <ConfigExportImport />
+            </TabsContent>
           </Tabs>
         </ScrollArea>
       </DialogContent>
     </Dialog>
   )
 }
+
+export default ConfigDialog

@@ -232,7 +232,7 @@ function AIProviderDialog({ trigger, provider, mode, open, onOpenChange, onSave 
                       value={formData.name || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                       placeholder="输入配置名称"
-                      className="w-full h-8 px-2 text-sm border rounded-md box-border"
+                      className="w-full h-8 px-2 text-sm border rounded-md box-border bg-background text-foreground border-border"
                     />
                   </div>
                   <div>
@@ -240,7 +240,7 @@ function AIProviderDialog({ trigger, provider, mode, open, onOpenChange, onSave 
                     <select 
                       value={formData.provider} 
                       onChange={(e) => setFormData(prev => ({ ...prev, provider: e.target.value as any }))}
-                      className="w-full h-8 px-2 text-sm border rounded-md box-border"
+                      className="w-full h-8 px-2 text-sm border rounded-md box-border bg-background text-foreground border-border"
                     >
                       <option value="gemini">Google Gemini</option>
                       <option value="openai">OpenAI GPT</option>
@@ -257,7 +257,7 @@ function AIProviderDialog({ trigger, provider, mode, open, onOpenChange, onSave 
                       value={formData.apiKey || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, apiKey: e.target.value }))}
                       placeholder="输入API密钥"
-                      className="w-full h-8 px-2 text-sm border rounded-md box-border"
+                      className="w-full h-8 px-2 text-sm border rounded-md box-border bg-background text-foreground border-border"
                     />
                   </div>
 
@@ -268,7 +268,7 @@ function AIProviderDialog({ trigger, provider, mode, open, onOpenChange, onSave 
                       value={formData.apiUrl || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, apiUrl: e.target.value }))}
                       placeholder="输入API地址"
-                      className="w-full h-8 px-2 text-sm border rounded-md box-border"
+                      className="w-full h-8 px-2 text-sm border rounded-md box-border bg-background text-foreground border-border"
                     />
                   </div>
                 </CardContent>
@@ -286,7 +286,7 @@ function AIProviderDialog({ trigger, provider, mode, open, onOpenChange, onSave 
                       value={formData.model || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
                       placeholder="输入模型名称"
-                      className="w-full h-8 px-2 text-sm border rounded-md box-border"
+                      className="w-full h-8 px-2 text-sm border rounded-md box-border bg-background text-foreground border-border"
                     />
                   </div>
                   <div>
@@ -298,7 +298,7 @@ function AIProviderDialog({ trigger, provider, mode, open, onOpenChange, onSave 
                       step="0.1"
                       value={formData.temperature || 0.7}
                       onChange={(e) => setFormData(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
-                      className="w-full h-8 px-2 text-sm border rounded-md box-border"
+                      className="w-full h-8 px-2 text-sm border rounded-md box-border bg-background text-foreground border-border"
                     />
                   </div>
 
@@ -322,7 +322,7 @@ function AIProviderDialog({ trigger, provider, mode, open, onOpenChange, onSave 
                           value={formData.proxyUrl || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, proxyUrl: e.target.value }))}
                           placeholder="http://proxy.example.com:8080"
-                          className="w-full h-8 px-2 text-sm border rounded-md box-border"
+                          className="w-full h-8 px-2 text-sm border rounded-md box-border bg-background text-foreground border-border"
                         />
                       </div>
                     )}
@@ -533,6 +533,22 @@ export function AIProviderConfig() {
 
   return (
     <div className="space-y-4">
+      {/* 提示说明 */}
+      <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-800 dark:text-blue-200">
+              <p className="font-medium mb-1">AI服务商配置说明</p>
+              <p className="text-xs">
+                在此页面可以管理多个AI服务商配置，包括Google Gemini、OpenAI GPT、Ollama本地服务等。
+                您可以创建多个配置，支持自定义API地址、模型参数和代理设置，随时自由切换使用。
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-medium">AI服务商配置</h3>

@@ -144,13 +144,30 @@ interface AIConfig {
   proxyEnabled?: boolean // 是否启用代理
 }
 
+interface AIServiceOptions {
+  onTokenUsage?: (tokens: number) => void // Token使用量回调函数
+  maxRetries?: number // 最大重试次数，默认3次
+  baseRetryDelay?: number // 基础重试延迟时间（毫秒），默认60s
+}
+
+// 流量限制错误类型
+interface RateLimitError extends Error {
+  isRateLimit: boolean
+  retryAfter?: number // 建议的重试等待时间（秒）
+  status?: number
+  code?: string
+}
+
 export class AIService {
   private config: AIConfig | (() => AIConfig)
   private promptConfig: PromptConfig | (() => PromptConfig)
   private genAI?: GoogleGenerativeAI
   private model: any
+  private onTokenUsage?: (tokens: number) => void
+  private maxRetries: number
+  private baseRetryDelay: number
 
-  constructor(config: AIConfig | (() => AIConfig), promptConfig?: PromptConfig | (() => PromptConfig)) {
+  constructor(config: AIConfig | (() => AIConfig), promptConfig?: PromptConfig | (() => PromptConfig), options?: AIServiceOptions) {
     this.config = config
     this.promptConfig = promptConfig || (() => ({
       chapterSummary: {
@@ -165,6 +182,9 @@ export class AIService {
       connectionAnalysis: '',
       overallSummary: ''
     }))
+    this.onTokenUsage = options?.onTokenUsage
+    this.maxRetries = options?.maxRetries || 3
+    this.baseRetryDelay = options?.baseRetryDelay || 60000 // 默认60秒
     
     const currentConfig = typeof config === 'function' ? config() : config
     
@@ -196,6 +216,135 @@ export class AIService {
 
   private getCurrentConfig(): AIConfig {
     return typeof this.config === 'function' ? this.config() : this.config
+  }
+
+  // 识别流量限制错误
+  private identifyRateLimitError(error: any, status?: number, errorBody?: string): RateLimitError | null {
+    // 检查HTTP状态码
+    if (status === 429) {
+      const rateLimitError: RateLimitError = new Error('API流量限制') as RateLimitError
+      rateLimitError.isRateLimit = true
+      rateLimitError.status = status
+      
+      // 尝试从响应体中提取重试时间
+      if (errorBody) {
+        try {
+          const bodyData = JSON.parse(errorBody)
+          rateLimitError.retryAfter = bodyData.retry_after || bodyData.retryAfter || 10
+          rateLimitError.code = bodyData.code || 'rate_limit_exceeded'
+        } catch {
+          rateLimitError.retryAfter = 10
+          rateLimitError.code = 'rate_limit_exceeded'
+        }
+      } else {
+        rateLimitError.retryAfter = 10
+        rateLimitError.code = 'rate_limit_exceeded'
+      }
+      
+      return rateLimitError
+    }
+    
+    // 检查错误消息中的流量限制关键词
+    const errorMessage = String(error?.message || error || '')
+    const rateLimitKeywords = [
+      'token_quota_exceeded',
+      'rate_limit_exceeded',
+      'too many requests',
+      'tokens per minute limit',
+      'rate limit',
+      'quota exceeded',
+      'too many tokens'
+    ]
+    
+    if (rateLimitKeywords.some(keyword => 
+      errorMessage.toLowerCase().includes(keyword.toLowerCase())
+    )) {
+      const rateLimitError: RateLimitError = new Error(`API流量限制: ${errorMessage}`) as RateLimitError
+      rateLimitError.isRateLimit = true
+      rateLimitError.status = status || 429
+      rateLimitError.retryAfter = 10 // 默认等待10秒
+      rateLimitError.code = 'token_quota_exceeded'
+      
+      return rateLimitError
+    }
+    
+    return null
+  }
+
+  // 等待指定时间
+  private async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  }
+
+  // 带重试的API请求包装器
+  private async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    context?: any
+  ): Promise<T> {
+    let lastError: any = null
+    
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        console.log(`[AI服务] ${operationName} - 尝试第 ${attempt} 次`)
+        const result = await operation()
+        
+        if (attempt > 1) {
+          console.log(`[AI服务] ${operationName} - 第 ${attempt} 次尝试成功`)
+        }
+        
+        return result
+      } catch (error: any) {
+        lastError = error
+        
+        // 尝试识别流量限制错误
+        const rateLimitError = this.identifyRateLimitError(
+          error,
+          error?.status,
+          error?.body || error?.message
+        )
+        
+        if (rateLimitError && attempt < this.maxRetries) {
+          // 优先使用配置的baseRetryDelay，如果API返回了retryAfter则使用其中较大的值
+          const retryAfterTime = (rateLimitError.retryAfter || 10) * 1000
+          const actualWaitTime = Math.max(this.baseRetryDelay, retryAfterTime)
+          
+          console.warn(`[AI服务] ${operationName} - 检测到流量限制，等待 ${actualWaitTime/1000} 秒后重试`, {
+            attempt,
+            maxRetries: this.maxRetries,
+            waitTime: actualWaitTime,
+            errorCode: rateLimitError.code,
+            errorStatus: rateLimitError.status,
+            errorMessage: rateLimitError.message,
+            context
+          })
+          
+          await this.sleep(actualWaitTime)
+          continue
+        }
+        
+        // 如果不是流量限制错误或已达到最大重试次数，抛出错误
+        if (rateLimitError) {
+          console.error(`[AI服务] ${operationName} - 流量限制重试失败，已达到最大重试次数`, {
+            attempt,
+            maxRetries: this.maxRetries,
+            finalError: rateLimitError.message,
+            context
+          })
+        } else {
+          console.error(`[AI服务] ${operationName} - 发生非流量限制错误`, {
+            attempt,
+            error: error?.message || error,
+            context
+          })
+        }
+        
+        throw error
+      }
+    }
+    
+    // 理论上不会到达这里，但为了类型安全
+    throw lastError
   }
 
   async summarizeChapter(title: string, content: string, bookType: 'fiction' | 'non-fiction' = 'non-fiction', outputLanguage: SupportedLanguage = 'en', customPrompt?: string): Promise<string> {
@@ -386,94 +535,156 @@ export class AIService {
     const language = outputLanguage || 'en'
     const systemPrompt = getLanguageInstruction(language)
     
-    if (config.provider === 'gemini') {
-      // Gemini API 不直接支持系统提示，将系统提示合并到用户提示前面
-      const finalPrompt = `${prompt}\n\n**${systemPrompt}**`
-      
-      // 如果启用代理，使用代理请求 Gemini API
-      if (config.proxyEnabled && config.proxyUrl) {
-        return await this.generateGeminiWithProxy(finalPrompt, config)
-      } else {
-        const result = await this.model.generateContent(finalPrompt, {
-          generationConfig: {
-            temperature: config.temperature || 0.7
+    return this.executeWithRetry(
+      async () => {
+        if (config.provider === 'gemini') {
+          // Gemini API 不直接支持系统提示，将系统提示合并到用户提示前面
+          const finalPrompt = `${prompt}\n\n**${systemPrompt}**`
+          
+          // 如果启用代理，使用代理请求 Gemini API
+          if (config.proxyEnabled && config.proxyUrl) {
+            return await this.generateGeminiWithProxy(finalPrompt, config)
+          } else {
+            const result = await this.model.generateContent(finalPrompt, {
+              generationConfig: {
+                temperature: config.temperature || 0.7
+              }
+            })
+            const response = await result.response
+            
+            // 统计token使用量（Gemini API返回使用情况）
+            try {
+              const usage = (result as any).response?.usageMetadata
+              if (usage?.totalTokenCount) {
+                this.recordTokenUsage(usage.totalTokenCount)
+              }
+            } catch (error) {
+              // 如果无法获取token使用量，忽略错误
+            }
+            
+            return response.text()
           }
-        })
-        const response = await result.response
-        return response.text()
-      }
-    } else if (config.provider === 'openai' || config.provider === '302.ai') {
-      const messages: Array<{role: 'system' | 'user', content: string}> = [
-        {
-          role: 'user',
-          content: prompt + '\n\n' + systemPrompt
-        }
-      ]
-      
-      const response = await proxyFetch(`${this.model.apiUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.model.apiKey}`
-        },
-        body: JSON.stringify({
-          model: this.model.model,
-          messages,
-          temperature: config.temperature || 0.7
-        })
-      }, config.proxyEnabled ? config.proxyUrl : undefined)
+        } else if (config.provider === 'openai' || config.provider === '302.ai') {
+          const messages: Array<{role: 'system' | 'user', content: string}> = [
+            {
+              role: 'user',
+              content: prompt + '\n\n' + systemPrompt
+            }
+          ]
+          
+          const response = await proxyFetch(`${this.model.apiUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.model.apiKey}`
+            },
+            body: JSON.stringify({
+              model: this.model.model,
+              messages,
+              temperature: config.temperature || 0.7
+            })
+          }, config.proxyEnabled ? config.proxyUrl : undefined)
 
-      if (!response.ok) {
-        const errorBody = await response.text()
-        throw new Error(`OpenAI API请求失败: ${response.status} ${response.statusText} - ${errorBody}`)
-      }
-
-      const data = await response.json()
-      return data.choices[0]?.message?.content || ''
-    } else if (config.provider === 'ollama') {
-      // Ollama API 调用
-      const messages: Array<{role: 'system' | 'user', content: string}> = [
-        {
-          role: 'system',
-          content: systemPrompt
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]
-      
-      const requestHeaders: Record<string, string> = {
-        'Content-Type': 'application/json'
-      }
-      
-      // 如果提供了API密钥，则添加Authorization头
-      if (this.model.apiKey) {
-        requestHeaders['Authorization'] = `Bearer ${this.model.apiKey}`
-      }
-      
-      const response = await proxyFetch(`${this.model.apiUrl}/api/chat`, {
-        method: 'POST',
-        headers: requestHeaders,
-        body: JSON.stringify({
-          model: this.model.model,
-          messages,
-          stream: false,
-          options: {
-            temperature: config.temperature || 0.7
+          if (!response.ok) {
+            const errorBody = await response.text()
+            const error = new Error(`OpenAI API请求失败: ${response.status} ${response.statusText} - ${errorBody}`) as any
+            error.status = response.status
+            error.body = errorBody
+            
+            console.error('OpenAI API错误详情:', {
+              status: response.status,
+              statusText: response.statusText,
+              body: errorBody,
+              url: `${this.model.apiUrl}/chat/completions`,
+              model: this.model.model,
+              provider: config.provider,
+              proxyEnabled: config.proxyEnabled,
+              proxyUrl: config.proxyUrl
+            })
+            throw error
           }
-        })
-      }, config.proxyEnabled ? config.proxyUrl : undefined)
 
-      if (!response.ok) {
-        throw new Error(`Ollama API请求失败: ${response.status} ${response.statusText}`)
+          const data = await response.json()
+          
+          // 统计token使用量（OpenAI API返回使用情况）
+          try {
+            if (data.usage?.total_tokens) {
+              this.recordTokenUsage(data.usage.total_tokens)
+            }
+          } catch (error) {
+            // 如果无法获取token使用量，忽略错误
+          }
+          
+          return data.choices[0]?.message?.content || ''
+        } else if (config.provider === 'ollama') {
+          // Ollama API 调用
+          const messages: Array<{role: 'system' | 'user', content: string}> = [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+          
+          const requestHeaders: Record<string, string> = {
+            'Content-Type': 'application/json'
+          }
+          
+          // 如果提供了API密钥，则添加Authorization头
+          if (this.model.apiKey) {
+            requestHeaders['Authorization'] = `Bearer ${this.model.apiKey}`
+          }
+          
+          const response = await proxyFetch(`${this.model.apiUrl}/api/chat`, {
+            method: 'POST',
+            headers: requestHeaders,
+            body: JSON.stringify({
+              model: this.model.model,
+              messages,
+              stream: false,
+              options: {
+                temperature: config.temperature || 0.7
+              }
+            })
+          }, config.proxyEnabled ? config.proxyUrl : undefined)
+
+          if (!response.ok) {
+            const errorBody = await response.text()
+            const error = new Error(`Ollama API请求失败: ${response.status} ${response.statusText} - ${errorBody}`) as any
+            error.status = response.status
+            error.body = errorBody
+            
+            console.error('Ollama API错误详情:', {
+              status: response.status,
+              statusText: response.statusText,
+              body: errorBody,
+              url: `${this.model.apiUrl}/api/chat`,
+              model: this.model.model,
+              provider: config.provider,
+              proxyEnabled: config.proxyEnabled,
+              proxyUrl: config.proxyUrl
+            })
+            throw error
+          }
+
+          const data = await response.json()
+          return data.message?.content || ''
+        }
+        
+        throw new Error(`不支持的AI提供商: ${config.provider}`)
+      },
+      '内容生成',
+      {
+        provider: config.provider,
+        model: config.model,
+        promptLength: prompt.length,
+        outputLanguage: language,
+        timestamp: new Date().toISOString()
       }
-
-      const data = await response.json()
-      return data.message?.content || ''
-    }
-    
-    throw new Error(`不支持的AI提供商: ${config.provider}`)
+    )
   }
 
   // Gemini API 代理请求方法
@@ -490,105 +701,129 @@ export class AIService {
       return response.text()
     }
 
-    try {
-      // 动态获取 HttpsProxyAgent
-      const HttpsProxyAgent = await getHttpsProxyAgent();
-      if (!HttpsProxyAgent) {
-        console.warn('代理模块不可用，使用直接连接');
-        const result = await this.model.generateContent(prompt, {
+    return this.executeWithRetry(
+      async () => {
+        // 动态获取 HttpsProxyAgent
+        const HttpsProxyAgent = await getHttpsProxyAgent();
+        if (!HttpsProxyAgent) {
+          console.warn('代理模块不可用，使用直接连接');
+          const result = await this.model.generateContent(prompt, {
+            generationConfig: {
+              temperature: config.temperature || 0.7
+            }
+          })
+          const response = await result.response
+          return response.text()
+        }
+
+        const https = require('https')
+        const { URL } = require('url')
+        
+        // 构建请求 URL
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model || 'gemini-1.5-flash'}:generateContent?key=${config.apiKey}`
+        const parsedUrl = new URL(url)
+        
+        // 创建代理 agent
+        const agent = new HttpsProxyAgent(config.proxyUrl!)
+        
+        // 构建请求体
+        const postData = JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
           generationConfig: {
             temperature: config.temperature || 0.7
           }
         })
-        const response = await result.response
-        return response.text()
-      }
-
-      const https = require('https')
-      const { URL } = require('url')
-      
-      // 构建请求 URL
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model || 'gemini-1.5-flash'}:generateContent?key=${config.apiKey}`
-      const parsedUrl = new URL(url)
-      
-      // 创建代理 agent
-      const agent = new HttpsProxyAgent(config.proxyUrl!)
-      
-      // 构建请求体
-      const postData = JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: config.temperature || 0.7
+        
+        // 构建请求选项
+        const requestOptions: any = {
+          hostname: parsedUrl.hostname,
+          port: parsedUrl.port || 443,
+          path: parsedUrl.pathname + parsedUrl.search,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData),
+            'User-Agent': 'ebook-to-mindmap/1.0'
+          },
+          agent: agent,
+          timeout: 30000
         }
-      })
-      
-      // 构建请求选项
-      const requestOptions: any = {
-        hostname: parsedUrl.hostname,
-        port: parsedUrl.port || 443,
-        path: parsedUrl.pathname + parsedUrl.search,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(postData),
-          'User-Agent': 'ebook-to-mindmap/1.0'
-        },
-        agent: agent,
-        timeout: 30000
-      }
-      
-      return new Promise((resolve, reject) => {
-        const req = https.request(requestOptions, (res: any) => {
-          const chunks: Buffer[] = []
-          
-          res.on('data', (chunk: Buffer) => {
-            chunks.push(chunk)
-          })
-          
-          res.on('end', () => {
-            const body = Buffer.concat(chunks).toString()
+        
+        return new Promise((resolve, reject) => {
+          const req = https.request(requestOptions, (res: any) => {
+            const chunks: Buffer[] = []
             
-            if (res.statusCode === 200) {
-              try {
-                const response = JSON.parse(body)
-                const text = response.candidates?.[0]?.content?.parts?.[0]?.text || ''
-                resolve(text)
-              } catch (parseError) {
-                reject(new Error('Gemini API 响应解析失败'))
+            res.on('data', (chunk: Buffer) => {
+              chunks.push(chunk)
+            })
+            
+            res.on('end', () => {
+              const body = Buffer.concat(chunks).toString()
+              
+              if (res.statusCode === 200) {
+                try {
+                  const response = JSON.parse(body)
+                  const text = response.candidates?.[0]?.content?.parts?.[0]?.text || ''
+                  resolve(text)
+                } catch (parseError) {
+                  console.error('Gemini API响应解析失败:', {
+                    parseError: parseError.message,
+                    responseBody: body.substring(0, 500) + (body.length > 500 ? '...' : ''),
+                    statusCode: res.statusCode,
+                    provider: config.provider
+                  })
+                  reject(new Error('Gemini API 响应解析失败'))
+                }
+              } else {
+                const error = new Error(`Gemini API 请求失败: ${res.statusCode} ${res.statusMessage} - ${body}`) as any
+                error.status = res.statusCode
+                error.body = body
+                
+                console.error('Gemini API错误详情:', {
+                  statusCode: res.statusCode,
+                  statusMessage: res.statusMessage,
+                  body: body,
+                  url: `https://generativelanguage.googleapis.com/v1beta/models/${config.model || 'gemini-1.5-flash'}:generateContent`,
+                  model: config.model || 'gemini-1.5-flash',
+                  provider: config.provider,
+                  proxyEnabled: config.proxyEnabled,
+                  proxyUrl: config.proxyUrl
+                })
+                reject(error)
               }
-            } else {
-              reject(new Error(`Gemini API 请求失败: ${res.statusCode} ${res.statusMessage} - ${body}`))
-            }
+            })
+            
+            res.on('error', (error: Error) => {
+              reject(error)
+            })
           })
           
-          res.on('error', (error: Error) => {
-            reject(error)
+          req.on('error', (error: Error) => {
+            reject(new Error(`代理连接失败: ${error.message}`))
           })
+          
+          req.on('timeout', () => {
+            req.destroy()
+            reject(new Error('代理请求超时'))
+          })
+          
+          req.write(postData)
+          req.end()
         })
-        
-        req.on('error', (error: Error) => {
-          reject(new Error(`代理连接失败: ${error.message}`))
-        })
-        
-        req.on('timeout', () => {
-          req.destroy()
-          reject(new Error('代理请求超时'))
-        })
-        
-        req.write(postData)
-        req.end()
-      })
-      
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Gemini 代理请求失败: ${error.message}`)
+      },
+      'Gemini代理请求',
+      {
+        provider: config.provider,
+        model: config.model,
+        promptLength: prompt.length,
+        proxyUrl: config.proxyUrl,
+        timestamp: new Date().toISOString()
       }
-      throw new Error('Gemini 代理请求失败: 未知错误')
-    }
+    )
   }
 
   // 辅助方法：检查API连接
@@ -780,6 +1015,13 @@ export class AIService {
         success: false,
         message: `代理测试异常: ${error instanceof Error ? error.message : '未知错误'}`
       }
+    }
+  }
+
+  // 记录token使用量的私有方法
+  private recordTokenUsage(tokens: number): void {
+    if (this.onTokenUsage && tokens > 0) {
+      this.onTokenUsage(tokens)
     }
   }
 }

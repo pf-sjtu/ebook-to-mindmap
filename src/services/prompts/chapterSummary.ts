@@ -1,19 +1,11 @@
 // 章节总结相关的prompt模板
 import { usePromptConfig } from '../../stores/configStore'
+import { getChapterSummaryPrompt } from './config/promptLoader'
 
 export const getFictionChapterSummaryPrompt = (title: string, content: string, customPrompt?: string) => {
-  const template = customPrompt || `请为以下章节内容生成一个详细总结：
-
-章节标题：{{title}}
-
-章节内容：
-{{content}}
-
-请用自然流畅的语言总结本章内容，包括主要情节发展、重要人物表现、关键观点或转折，以及本章在整个故事中的作用和意义。
-
-注意：如果内容是致谢、目录、前言、序言等无实质故事内容的页面，请直接回复"无需总结"。
-
-重要：请保持原文的段落结构和换行，不要删除或合并段落。`
+  // 从YAML配置加载默认模板
+  const defaultTemplate = getChapterSummaryPrompt('v1', 'fiction')
+  const template = customPrompt || defaultTemplate
   
   return template
     .replace('{{title}}', title)
@@ -21,21 +13,9 @@ export const getFictionChapterSummaryPrompt = (title: string, content: string, c
 }
 
 export const getNonFictionChapterSummaryPrompt = (title: string, content: string, customPrompt?: string) => {
-  const template = customPrompt || `请为以下社科类书籍章节内容生成一个详细总结：
-
-章节标题：{{title}}
-
-章节内容：
-{{content}}
-
-请用自然流畅的语言总结本章内容，包括：
-
-- 主要观点，以及支持这个观点的案例或研究发现
-- 关键概念
-- 保留几句有洞见的观点原文
-- 给出指导实际生活的建议或应用（必须与此章节内容强关联）
-
-重要：请保持原文的段落结构和换行，不要删除或合并段落。`
+  // 从YAML配置加载默认模板
+  const defaultTemplate = getChapterSummaryPrompt('v1', 'nonFiction')
+  const template = customPrompt || defaultTemplate
   
   return template
     .replace('{{title}}', title)

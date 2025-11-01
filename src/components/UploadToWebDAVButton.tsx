@@ -25,12 +25,14 @@ interface UploadToWebDAVButtonProps {
   bookSummary: any
   file: File | null
   className?: string
+  chapterNamingMode?: 'auto' | 'numbered'
 }
 
 export const UploadToWebDAVButton: React.FC<UploadToWebDAVButtonProps> = ({
   bookSummary,
   file,
-  className = ""
+  className = "",
+  chapterNamingMode = 'auto'
 }) => {
   const { t } = useTranslation()
   const webdavConfig = useWebDAVConfig()
@@ -49,7 +51,15 @@ export const UploadToWebDAVButton: React.FC<UploadToWebDAVButtonProps> = ({
     
     // 添加章节总结
     bookSummary.chapters.forEach((chapter: any, index: number) => {
-      markdownContent += `## ${index + 1}. ${chapter.title}\n\n`
+      // 根据章节命名模式生成标题
+      let chapterTitle: string
+      if (chapterNamingMode === 'numbered') {
+        chapterTitle = `第${String(index + 1).padStart(2, '0')}章`
+      } else {
+        chapterTitle = chapter.title || `第${index + 1}章`
+      }
+      
+      markdownContent += `## ${chapterTitle}\n\n`
       if (chapter.summary) {
         markdownContent += `${chapter.summary}\n\n`
       }

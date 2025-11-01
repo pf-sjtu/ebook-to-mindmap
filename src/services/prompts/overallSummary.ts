@@ -1,13 +1,10 @@
 // 全书总结相关的prompt模板
+import { getOverallSummaryPrompt } from './config/promptLoader'
 
 export const getOverallSummaryPrompt = (bookTitle: string, chapterInfo: string, connections: string, customPrompt?: string) => {
-  const template = customPrompt || `书籍章节结构：
-{{chapterInfo}}
-
-章节关联分析：
-{{connections}}
-
-以上是《{{bookTitle}}》这本书的重点内容，请生成一个全面的总结报告，帮助读者快速掌握全书精髓。`
+  // 从YAML配置加载默认模板
+  const defaultTemplate = getOverallSummaryPrompt('v1')
+  const template = customPrompt || defaultTemplate
   
   return template
     .replace('{{chapterInfo}}', chapterInfo)

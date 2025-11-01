@@ -8,6 +8,13 @@ if (typeof window !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 }
 
+// 格式化章节编号，支持补零
+const formatChapterNumber = (index: number, total: number = 99): string => {
+  // 根据总数确定位数
+  const digits = total >= 100 ? 3 : 2
+  return index.toString().padStart(digits, '0')
+}
+
 export interface ChapterData {
   id: string
   title: string
@@ -85,7 +92,9 @@ export class PdfProcessor {
         console.log(`📚 [DEBUG] 获取到PDF目录:`, outline)
         if (outline && outline.length > 0) {
           // 获取章节信息
-          const chapterInfos = await this.extractChaptersFromOutline(pdf, outline, 0, maxSubChapterDepth, chapterNamingMode)
+          // 估算总章节数，用于补零格式化
+          const estimatedTotal = Math.max(outline.length, 50) // 至少估算50个章节
+          const chapterInfos = await this.extractChaptersFromOutline(pdf, outline, 0, maxSubChapterDepth, chapterNamingMode, estimatedTotal)
           console.log(chapterInfos, 'chapterInfos')
           if (chapterInfos.length > 0) {
             // 根据章节信息提取内容
@@ -159,7 +168,7 @@ export class PdfProcessor {
         
         if (shouldUseSmartDetection) {
           console.log(`🧠 [DEBUG] 启用智能章节检测 (模式: ${chapterDetectionMode})`)
-          detectedChapters = this.detectChapters(allPageTexts)
+          detectedChapters = this.detectChapters(allPageTexts, chapterNamingMode)
         }
 
         if (detectedChapters.length === 0) {
@@ -202,20 +211,20 @@ export class PdfProcessor {
     }
   }
 
-  private async extractChaptersFromOutline(pdf: any, outline: any[], currentDepth: number = 0, maxDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto'): Promise<{ title: string, pageIndex: number }[]> {
+  private async extractChaptersFromOutline(pdf: any, outline: any[], currentDepth: number = 0, maxDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto', totalChapters: number = 99): Promise<{ title: string, pageIndex: number }[]> {
     const chapterInfos: { title: string, pageIndex: number }[] = []
 
     for (let i = 0; i < outline.length; i++) {
       const item = outline[i]
       try {
         if (item.items && item.items.length > 0 && maxDepth > 0 && currentDepth < maxDepth) {
-          const subChapters = await this.extractChaptersFromOutline(pdf, item.items, currentDepth + 1, maxDepth, chapterNamingMode)
+          const subChapters = await this.extractChaptersFromOutline(pdf, item.items, currentDepth + 1, maxDepth, chapterNamingMode, totalChapters)
           chapterInfos.push(...subChapters)
         } else if (item.dest) {
           // 根据章节命名模式生成标题
           let chapterTitle: string
           if (chapterNamingMode === 'numbered') {
-            chapterTitle = `第${chapterInfos.length + 1}章`
+            chapterTitle = `第${formatChapterNumber(chapterInfos.length + 1, totalChapters)}章`
           } else {
             chapterTitle = item.title || `第${chapterInfos.length + 1}章`
           }
@@ -287,7 +296,7 @@ export class PdfProcessor {
     return pageTexts.join('\n\n')
   }
 
-  private detectChapters(pageTexts: string[]): ChapterData[] {
+  private detectChapters(pageTexts: string[], chapterNamingMode: 'auto' | 'numbered' = 'auto'): ChapterData[] {
     const chapters: ChapterData[] = []
     const chapterPatterns = [
       /^第[一二三四五六七八九十\d]+章[\s\S]*$/m,
@@ -313,7 +322,10 @@ export class PdfProcessor {
         if (match) {
           // 提取章节标题（取前100个字符作为标题）
           const titleMatch = pageText.match(/^(.{1,100})/)
-          chapterTitle = titleMatch ? titleMatch[1].trim() : `章节 ${chapterCount + 1}`
+          const fallbackTitle = chapterNamingMode === 'numbered' 
+            ? `第${formatChapterNumber(chapterCount + 1, pageTexts.length)}章`
+            : `章节 ${chapterCount + 1}`
+          chapterTitle = titleMatch ? titleMatch[1].trim() : fallbackTitle
           isNewChapter = true
           break
         }

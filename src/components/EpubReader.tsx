@@ -262,6 +262,45 @@ export function EpubReader({
       em, i {
         font-style: italic;
       }
+      
+      /* 下划线样式 */
+      u, ins {
+        text-decoration: underline;
+        color: ${isDarkMode ? '#e2e8f0' : '#1f2937'};
+      }
+      
+      /* 删除线样式 */
+      del, s, strikethrough {
+        text-decoration: line-through;
+        color: ${isDarkMode ? '#94a3b8' : '#6b7280'};
+      }
+      
+      /* 标记样式 */
+      mark {
+        background-color: ${isDarkMode ? '#713f12' : '#fef3c7'};
+        color: ${isDarkMode ? '#fde68a' : '#92400e'};
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+      }
+      
+      /* 上标和下标 */
+      sub {
+        font-size: 0.75em;
+        vertical-align: sub;
+        line-height: 0;
+      }
+      
+      sup {
+        font-size: 0.75em;
+        vertical-align: super;
+        line-height: 0;
+      }
+      
+      /* 小号文本 */
+      small {
+        font-size: 0.875em;
+        color: ${isDarkMode ? '#94a3b8' : '#6b7280'};
+      }
     `
     
     // 清除之前的内容

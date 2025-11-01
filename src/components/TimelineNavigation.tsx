@@ -8,6 +8,7 @@ interface TimelineNavigationProps {
   chapters: Array<{
     id: string
     title: string
+    content?: string // 章节原始内容，用于预览
     processed: boolean
     processing?: boolean
   }>
@@ -101,6 +102,12 @@ export function TimelineNavigation({
                       <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
                         {index + 1}. {chapter.title}
                       </div>
+                      {/* 添加内容预览 */}
+                      {chapter.content && (
+                        <div className="text-gray-500 dark:text-gray-400 text-xs truncate mt-1">
+                          {chapter.content.substring(0, 20)}...
+                        </div>
+                      )}
                       {status === 'processing' && (
                         <div className="text-blue-600 dark:text-blue-400 text-xs">
                           处理中...

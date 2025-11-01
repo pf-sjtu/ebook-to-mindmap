@@ -32,7 +32,7 @@ import { UploadToWebDAVButton } from './components/UploadToWebDAVButton'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { scrollToTop, openInMindElixir, downloadMindMap } from './utils/index'
-import { useWebDAVConfig, useConfigStore, useAIConfig, useProcessingOptions, usePromptConfig } from './stores/configStore'
+import { useWebDAVConfig, useConfigStore, useAIConfig, useProcessingOptions, usePromptConfig, useAIServiceOptions } from './stores/configStore'
 
 
 const options = { direction: 1, alignment: 'nodes' } as Options
@@ -112,10 +112,12 @@ function App() {
   const aiConfig = useAIConfig()
   const processingOptions = useProcessingOptions()
   const promptConfig = usePromptConfig()
+  const aiServiceOptions = useAIServiceOptions()
   const { apiKey } = aiConfig
   const { processingMode, bookType, useSmartDetection, skipNonEssentialChapters } = processingOptions
 
-  // zustand的persist中间件会自动处理配置的加载和保存
+  // 创建动态获取提示词配置的函数
+  const getPromptConfig = () => useConfigStore.getState().promptConfig
 
   // WebDAV自动连接测试
   useEffect(() => {
@@ -542,7 +544,15 @@ function App() {
     
     // 添加章节总结
     bookSummary.chapters.forEach((chapter, index) => {
-      markdownContent += `## ${index + 1}. ${chapter.title}\n\n`
+      // 根据章节命名模式生成标题
+      let chapterTitle: string
+      if (processingOptions.chapterNamingMode === 'numbered') {
+        chapterTitle = `第${String(index + 1).padStart(2, '0')}章`
+      } else {
+        chapterTitle = chapter.title || `第${index + 1}章`
+      }
+      
+      markdownContent += `## ${chapterTitle}\n\n`
       if (chapter.summary) {
         markdownContent += `${chapter.summary}\n\n`
       }
@@ -585,7 +595,13 @@ function App() {
     setCurrentStepIndex(2)
 
     try {
-      const aiService = new AIService(aiConfig, promptConfig)
+      // 重置当前图书的token使用量
+      resetTokenUsage()
+      
+      const aiService = new AIService(aiConfig, getPromptConfig, {
+        onTokenUsage: addTokenUsage,
+        ...aiServiceOptions
+      })
       const selectedChapterData = extractedChapters.filter(ch => selectedChapters.has(ch.id))
       
       if (processingMode === 'summary') {
@@ -689,7 +705,7 @@ function App() {
         // 自动同步到WebDAV
         try {
           const fileName = file.name.replace(/\.[^/.]+$/, '') // 移除文件扩展名
-          await autoSyncService.syncSummary(summary, fileName)
+          await autoSyncService.syncSummary(summary, fileName, processingOptions.chapterNamingMode)
         } catch (error) {
           console.error('自动同步失败:', error)
           // 同步失败不影响主流程，只记录错误
@@ -1267,6 +1283,7 @@ function App() {
                             <UploadToWebDAVButton 
                               bookSummary={bookSummary}
                               file={file}
+                              chapterNamingMode={processingOptions.chapterNamingMode}
                             />
                           )}
                         </div>

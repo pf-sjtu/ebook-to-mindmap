@@ -1,29 +1,101 @@
 // 提示词模板索引
-import { CHAPTER_SUMMARY_TEMPLATES } from './chapterSummary'
-import { MINDMAP_TEMPLATES } from './mindmap'
-import { CONNECTION_ANALYSIS_TEMPLATES } from './connectionAnalysis'
-import { OVERALL_SUMMARY_TEMPLATES } from './overallSummary'
 import { 
-  CHAPTER_SUMMARY_TEMPLATES_V2, 
-  MINDMAP_TEMPLATES_V2, 
-  CONNECTION_ANALYSIS_TEMPLATES_V2, 
-  OVERALL_SUMMARY_TEMPLATES_V2,
-  DEFAULT_PROMPT_CONFIG_V2 
-} from './v2'
+  loadPromptConfig,
+  getChapterSummaryPrompt,
+  getMindmapPrompt,
+  getConnectionAnalysisPrompt,
+  getOverallSummaryPrompt 
+} from '../config/promptLoader'
 
-export {
-  CHAPTER_SUMMARY_TEMPLATES,
-  MINDMAP_TEMPLATES,
-  CONNECTION_ANALYSIS_TEMPLATES,
-  OVERALL_SUMMARY_TEMPLATES,
-  CHAPTER_SUMMARY_TEMPLATES_V2,
-  MINDMAP_TEMPLATES_V2,
-  CONNECTION_ANALYSIS_TEMPLATES_V2,
-  OVERALL_SUMMARY_TEMPLATES_V2,
-  DEFAULT_PROMPT_CONFIG_V2
-}
+// 加载v1版本的配置
+const v1Config = loadPromptConfig('v1')
 
-// 默认提示词配置
+// 导出v1版本的模板（保持向后兼容）
+export const CHAPTER_SUMMARY_TEMPLATES = {
+  fiction: {
+    name: '小说类章节总结',
+    template: v1Config.chapterSummary.fiction
+  },
+  nonFiction: {
+    name: '社科类章节总结',
+    template: v1Config.chapterSummary.nonFiction
+  }
+} as const
+
+export const MINDMAP_TEMPLATES = {
+  chapter: {
+    name: '章节思维导图',
+    template: v1Config.mindmap.chapter
+  },
+  arrow: {
+    name: '思维导图箭头连接',
+    template: v1Config.mindmap.arrow
+  },
+  combined: {
+    name: '整书思维导图',
+    template: v1Config.mindmap.combined
+  }
+} as const
+
+export const CONNECTION_ANALYSIS_TEMPLATES = {
+  standard: {
+    name: '标准章节关联分析',
+    template: v1Config.connectionAnalysis
+  }
+} as const
+
+export const OVERALL_SUMMARY_TEMPLATES = {
+  standard: {
+    name: '标准全书总结',
+    template: v1Config.overallSummary
+  }
+} as const
+
+// 导出v2版本的模板（从YAML加载）
+import { loadPromptConfig as loadV2Config } from '../config/promptLoader'
+const v2Config = loadPromptConfig('v2')
+
+export const CHAPTER_SUMMARY_TEMPLATES_V2 = {
+  fiction: {
+    name: '小说类章节总结 V2',
+    template: v2Config.chapterSummary.fiction
+  },
+  nonFiction: {
+    name: '社科类章节总结 V2',
+    template: v2Config.chapterSummary.nonFiction
+  }
+} as const
+
+export const MINDMAP_TEMPLATES_V2 = {
+  chapter: {
+    name: '章节思维导图 V2',
+    template: v2Config.mindmap.chapter
+  },
+  arrow: {
+    name: '思维导图箭头连接 V2',
+    template: v2Config.mindmap.arrow
+  },
+  combined: {
+    name: '整书思维导图 V2',
+    template: v2Config.mindmap.combined
+  }
+} as const
+
+export const CONNECTION_ANALYSIS_TEMPLATES_V2 = {
+  standard: {
+    name: '标准章节关联分析 V2',
+    template: v2Config.connectionAnalysis
+  }
+} as const
+
+export const OVERALL_SUMMARY_TEMPLATES_V2 = {
+  standard: {
+    name: '标准全书总结 V2',
+    template: v2Config.overallSummary
+  }
+} as const
+
+// 默认提示词配置（保持向后兼容）
 export const DEFAULT_PROMPT_CONFIG = {
   chapterSummary: {
     fiction: CHAPTER_SUMMARY_TEMPLATES.fiction.template,
@@ -36,6 +108,21 @@ export const DEFAULT_PROMPT_CONFIG = {
   },
   connectionAnalysis: CONNECTION_ANALYSIS_TEMPLATES.standard.template,
   overallSummary: OVERALL_SUMMARY_TEMPLATES.standard.template
+} as const
+
+// 第二版默认提示词配置
+export const DEFAULT_PROMPT_CONFIG_V2 = {
+  chapterSummary: {
+    fiction: CHAPTER_SUMMARY_TEMPLATES_V2.fiction.template,
+    nonFiction: CHAPTER_SUMMARY_TEMPLATES_V2.nonFiction.template
+  },
+  mindmap: {
+    chapter: MINDMAP_TEMPLATES_V2.chapter.template,
+    arrow: MINDMAP_TEMPLATES_V2.arrow.template,
+    combined: MINDMAP_TEMPLATES_V2.combined.template
+  },
+  connectionAnalysis: CONNECTION_ANALYSIS_TEMPLATES_V2.standard.template,
+  overallSummary: OVERALL_SUMMARY_TEMPLATES_V2.standard.template
 } as const
 
 // 提示词类型定义

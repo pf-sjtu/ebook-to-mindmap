@@ -1,4 +1,5 @@
 // Prompt模板统一导出文件
+import { getSystemPrompt } from './config/promptLoader'
 
 export {
   getFictionChapterSummaryPrompt,
@@ -13,8 +14,8 @@ export {
   getOverallSummaryPrompt
 } from './overallSummary'
 
-// 测试连接的prompt
-export const getTestConnectionPrompt = () => '这是一个连接测试。请简单回复"OK"，不要添加任何其他文字、标点符号或格式。'
+// 测试连接的prompt - 从YAML配置加载
+export const getTestConnectionPrompt = () => getSystemPrompt('testConnection')
 
 export {
   getChapterMindMapPrompt,

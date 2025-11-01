@@ -40,8 +40,8 @@ export class NotificationService {
     }
 
     const defaultOptions: NotificationOptions = {
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
+      icon: '/favicon.svg',
+      badge: '/favicon.svg',
       tag: 'ebook-to-mindmap',
       requireInteraction: false,
       ...options
@@ -74,7 +74,7 @@ export class NotificationService {
 
     await this.sendNotification(title, {
       body: message,
-      icon: '/favicon.ico'
+      icon: '/favicon.svg'
     })
   }
 
@@ -85,7 +85,7 @@ export class NotificationService {
 
     await this.sendNotification(title, {
       body: message,
-      icon: '/favicon.ico'
+      icon: '/favicon.svg'
     })
   }
 
@@ -96,7 +96,7 @@ export class NotificationService {
 
     await this.sendNotification(title, {
       body: message,
-      icon: '/favicon.ico'
+      icon: '/favicon.svg'
     })
   }
 

@@ -54,27 +54,28 @@ export class AutoSyncService {
   /**
    * 同步摘要文件到WebDAV
    */
-  async syncSummary(bookSummary: BookSummary, fileName: string): Promise<boolean> {
+  async syncSummary(bookSummary: BookSummary, fileName: string, chapterNamingMode: 'auto' | 'numbered' = 'auto'): Promise<boolean> {
     try {
       // 检查是否启用自动同步
-      const config = useConfigStore.getState().webdavConfig
-      if (!config.enabled || !config.autoSync) {
-        console.log('自动同步未启用，跳过同步')
-        return true
-      }
-
-      // 初始化WebDAV服务
-      const initResult = await this.webdavService.initialize(config)
-      if (!initResult.success) {
-        console.error('WebDAV初始化失败:', initResult.error)
+      const webdavConfig = useConfigStore.getState().webdavConfig
+      if (!webdavConfig.enabled || !webdavConfig.autoSync) {
         return false
       }
 
-      // 准备同步文件
+      // 初始化WebDAV服务
+      await this.webdavService.init(webdavConfig)
+
+      // 检查连接
+      const connectionTest = await this.webdavService.testConnection()
+      if (!connectionTest.success) {
+        console.error('WebDAV连接失败:', connectionTest.error)
+        return false
+      }
+
       const syncFiles: SyncFileInfo[] = []
 
       // 添加全书摘要
-      const summaryContent = this.formatSummaryAsMarkdown(bookSummary)
+      const summaryContent = this.formatSummaryAsMarkdown(bookSummary, chapterNamingMode)
       syncFiles.push({
         name: `${fileName}_summary.md`,
         content: summaryContent,
@@ -84,7 +85,7 @@ export class AutoSyncService {
 
       // 添加各章节摘要
       bookSummary.chapters.forEach((chapter, index) => {
-        const chapterSummary = this.formatChapterSummary(chapter, index + 1)
+        const chapterSummary = this.formatChapterSummary(chapter, index + 1, chapterNamingMode)
         syncFiles.push({
           name: `${fileName}_chapter_${index + 1}_summary.md`,
           content: chapterSummary,
@@ -178,7 +179,7 @@ export class AutoSyncService {
   /**
    * 格式化摘要为Markdown
    */
-  private formatSummaryAsMarkdown(bookSummary: BookSummary): string {
+  private formatSummaryAsMarkdown(bookSummary: BookSummary, chapterNamingMode: 'auto' | 'numbered' = 'auto'): string {
     let markdown = `# ${bookSummary.title}\n\n`
     
     if (bookSummary.author) {
@@ -194,7 +195,15 @@ export class AutoSyncService {
     markdown += `## 章节摘要\n\n`
     
     bookSummary.chapters.forEach((chapter, index) => {
-      markdown += `### 第${index + 1}章: ${chapter.title}\n\n`
+      // 根据章节命名模式生成标题
+      let chapterTitle: string
+      if (chapterNamingMode === 'numbered') {
+        chapterTitle = `第${String(index + 1).padStart(2, '0')}章`
+      } else {
+        chapterTitle = chapter.title || `第${index + 1}章`
+      }
+      
+      markdown += `### ${chapterTitle}\n\n`
       markdown += `${chapter.summary}\n\n---\n\n`
     })
 
@@ -206,8 +215,16 @@ export class AutoSyncService {
   /**
    * 格式化章节摘要
    */
-  private formatChapterSummary(chapter: any, chapterNumber: number): string {
-    let markdown = `# 第${chapterNumber}章: ${chapter.title}\n\n`
+  private formatChapterSummary(chapter: any, chapterNumber: number, chapterNamingMode: 'auto' | 'numbered' = 'auto'): string {
+    // 根据章节命名模式生成标题
+    let chapterTitle: string
+    if (chapterNamingMode === 'numbered') {
+      chapterTitle = `第${String(chapterNumber).padStart(2, '0')}章`
+    } else {
+      chapterTitle = chapter.title || `第${chapterNumber}章`
+    }
+    
+    let markdown = `# ${chapterTitle}\n\n`
     markdown += `${chapter.summary}\n\n`
     markdown += `---\n*由 fastReader 自动生成于 ${new Date().toLocaleString('zh-CN')}*`
     
