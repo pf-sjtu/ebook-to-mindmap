@@ -916,7 +916,6 @@ function App() {
       <div className="max-w-full xl:max-w-7xl space-y-4 w-full flex-1">
         <div className="text-center space-y-2 relative">
           <div className="absolute top-0 right-0 flex items-center gap-2">
-            <FontSizeControl variant="compact" showLabel={false} />
             <LanguageSwitcher />
             <DarkModeToggle />
           </div>
@@ -1270,6 +1269,7 @@ function App() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
+                          <FontSizeControl variant="compact" showLabel={false} />
                           {processingMode === 'summary' && bookSummary && (
                             <Button
                               variant="outline"

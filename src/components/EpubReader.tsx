@@ -509,7 +509,7 @@ export function EpubReader({
             ref={scrollAreaRef} 
             className={showHeader ? "h-[80vh]" : "h-[60vh]"}
           >
-            <div className="prose prose-sm max-w-none">
+            <div className="epub-reader-content prose prose-sm">
               {isLoadingHtml ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin mr-2" />

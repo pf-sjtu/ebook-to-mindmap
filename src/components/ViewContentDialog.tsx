@@ -21,7 +21,7 @@ export function ViewContentDialog({ title, content, chapterIndex, contentType = 
     switch (contentType) {
       case 'markdown':
         return (
-          <div className="text-gray-700 dark:text-gray-200 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-200 prose-li:text-gray-700 dark:prose-li:text-gray-200 prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-em:text-gray-900 dark:prose-em:text-gray-100 prose-code:text-gray-800 dark:prose-code:text-gray-100 prose-pre:text-gray-200 dark:prose-pre:text-gray-200 prose-blockquote:text-gray-600 dark:prose-blockquote:text-gray-300 prose-hr:border-gray-300 dark:prose-hr:border-gray-600 prose-u:underline prose-u:text-gray-700 dark:prose-u:text-gray-200 prose-ins:underline prose-ins:text-gray-700 dark:prose-ins:text-gray-200 prose-mark:bg-yellow-200 dark:prose-mark:bg-yellow-800 prose-del:line-through prose-strikethrough:line-through prose-sub:text-sm prose-sup:text-sm w-full break-words">
+          <div className="markdown-card-content prose prose-sm">
             <ReactMarkdown remarkPlugins={[remarkGfm, remarkCjkFriendly]}>
               {content || ''}
             </ReactMarkdown>
