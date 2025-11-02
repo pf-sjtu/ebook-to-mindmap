@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkCjkFriendly from "remark-cjk-friendly";
@@ -6,11 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { DarkModeToggle } from './dark-mode-toggle';
 import { FontSizeControl } from './font-size-control';
-import { Upload, FileText, Eye } from 'lucide-react';
+import { Upload, FileText, Eye, AlertCircle, X, Clock } from 'lucide-react';
 
 interface MarkdownReaderProps {
   initialContent?: string;
   title?: string;
+}
+
+interface RecentFile {
+  name: string;
+  content: string;
+  timestamp: number;
 }
 
 export const MarkdownReader: React.FC<MarkdownReaderProps> = ({
@@ -20,17 +26,155 @@ export const MarkdownReader: React.FC<MarkdownReaderProps> = ({
   const [content, setContent] = useState(initialContent);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(initialContent);
+  const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load recent files from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('recentMarkdownFiles');
+    if (stored) {
+      try {
+        setRecentFiles(JSON.parse(stored));
+      } catch (e) {
+        console.error('Failed to load recent files:', e);
+      }
+    }
+  }, []);
+
+  // Save recent files to localStorage when they change
+  useEffect(() => {
+    if (recentFiles.length > 0) {
+      localStorage.setItem('recentMarkdownFiles', JSON.stringify(recentFiles));
+    }
+  }, [recentFiles]);
+
+  const addToRecentFiles = useCallback((name: string, fileContent: string) => {
+    const newFile: RecentFile = {
+      name,
+      content: fileContent,
+      timestamp: Date.now()
+    };
+
+    setRecentFiles(prev => {
+      // Remove existing file with same name if it exists
+      const filtered = prev.filter(f => f.name !== name);
+      // Add new file at the beginning and keep only last 5
+      return [newFile, ...filtered].slice(0, 5);
+    });
+  }, []);
+
+  const validateFile = (file: File): boolean => {
+    // Check file extension
+    const validExtensions = ['.md', '.markdown', '.txt'];
+    const hasValidExtension = validExtensions.some(ext => 
+      file.name.toLowerCase().endsWith(ext)
+    );
+    
+    if (!hasValidExtension) {
+      setError('请选择有效的 Markdown 文件 (.md, .markdown, .txt)');
+      return false;
+    }
+
+    // Check file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('文件大小不能超过 10MB');
+      return false;
+    }
+
+    return true;
+  };
+
+  const processFile = useCallback((file: File) => {
+    setError(null);
+    
+    if (!validateFile(file)) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      setContent(text);
+      setEditContent(text);
+      setFileName(file.name);
+      addToRecentFiles(file.name, text);
+    };
+    
+    reader.onerror = () => {
+      setError('文件读取失败，请重试');
+    };
+    
+    reader.readAsText(file);
+  }, [addToRecentFiles]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === 'text/markdown') {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        setContent(text);
-        setEditContent(text);
-      };
-      reader.readAsText(file);
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      processFile(files[0]);
+    }
+  }, [processFile]);
+
+  const clearError = () => {
+    setError(null);
+  };
+
+  const clearFile = () => {
+    setContent('');
+    setEditContent('');
+    setFileName(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const loadRecentFile = (file: RecentFile) => {
+    setContent(file.content);
+    setEditContent(file.content);
+    setFileName(file.name);
+    setError(null);
+  };
+
+  const formatTimestamp = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffHours < 1) {
+      return '刚刚';
+    } else if (diffHours < 24) {
+      return `${diffHours}小时前`;
+    } else {
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays}天前`;
     }
   };
 
@@ -54,6 +198,11 @@ export const MarkdownReader: React.FC<MarkdownReaderProps> = ({
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 {title}
+                {fileName && (
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    - {fileName}
+                  </span>
+                )}
               </CardTitle>
               <div className="flex items-center gap-2">
                 <FontSizeControl variant="compact" />
@@ -72,27 +221,59 @@ export const MarkdownReader: React.FC<MarkdownReaderProps> = ({
                 </Button>
                 <input
                   id="file-upload"
+                  ref={fileInputRef}
                   type="file"
-                  accept=".md,.markdown"
+                  accept=".md,.markdown,.txt"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
               </label>
               
               {content && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="flex items-center gap-2"
-                >
-                  <Eye className="h-4 w-4" />
-                  {isEditing ? '预览' : '编辑'}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="flex items-center gap-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    {isEditing ? '预览' : '编辑'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearFile}
+                    className="flex items-center gap-2"
+                  >
+                    <X className="h-4 w-4" />
+                    清除文件
+                  </Button>
+                </>
               )}
             </div>
           </CardContent>
         </Card>
+
+        {/* 错误提示 */}
+        {error && (
+          <Card className="border-destructive">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm">{error}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearError}
+                  className="ml-auto h-6 w-6 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 内容区域 */}
         {content ? (
@@ -127,12 +308,26 @@ export const MarkdownReader: React.FC<MarkdownReaderProps> = ({
             </CardContent>
           </Card>
         ) : (
-          <Card>
+          <Card 
+            className={`transition-all duration-200 ${
+              isDragging 
+                ? 'border-primary border-2 bg-primary/5' 
+                : 'border-dashed border-2'
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <CardContent className="p-12 text-center">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">欢迎使用 Markdown 阅读器</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {isDragging ? '释放文件以打开' : '欢迎使用 Markdown 阅读器'}
+              </h3>
               <p className="text-muted-foreground mb-4">
-                上传 Markdown 文件或直接编辑内容开始使用
+                {isDragging 
+                  ? '拖拽 Markdown 文件到这里' 
+                  : '上传 Markdown 文件、拖拽文件到此处或直接编辑内容开始使用'
+                }
               </p>
               <div className="text-sm text-muted-foreground space-y-1">
                 <p>支持的功能：</p>
@@ -140,6 +335,41 @@ export const MarkdownReader: React.FC<MarkdownReaderProps> = ({
                 <p>• 📝 字体大小调节</p>
                 <p>• 📄 Markdown 实时预览</p>
                 <p>• 🎨 优雅的样式和高亮</p>
+                <p>• 🖱️ 拖拽文件支持</p>
+                <p>• 🕐 最近文件历史</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 最近打开的文件 */}
+        {!content && recentFiles.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                最近打开的文件
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {recentFiles.map((file, index) => (
+                  <div
+                    key={`${file.name}-${file.timestamp}`}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => loadRecentFile(file)}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm font-medium truncate">
+                        {file.name}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {formatTimestamp(file.timestamp)}
+                    </span>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
