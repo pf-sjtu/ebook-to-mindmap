@@ -267,12 +267,33 @@ export function WebDAVFileBrowser({
 
   // 导航到上级目录
   const navigateUp = () => {
-    const parentPath = currentPath.split('/').slice(0, -2).join('/') + '/'
-    const targetPath = parentPath || '/'
-    setCurrentPath(targetPath)
+    console.log('当前路径:', currentPath)
+    
+    // 如果已经是根目录，不能向上导航
+    if (currentPath === '/' || currentPath === '') {
+      return
+    }
+    
+    // 处理路径分割
+    const pathParts = currentPath.split('/').filter(part => part !== '')
+    console.log('路径分割:', pathParts)
+    
+    // 移除最后一部分（当前目录）
+    pathParts.pop()
+    
+    // 构建上级目录路径
+    let parentPath: string
+    if (pathParts.length === 0) {
+      parentPath = '/' // 回到根目录
+    } else {
+      parentPath = '/' + pathParts.join('/') + '/'
+    }
+    
+    console.log('上级目录路径:', parentPath)
+    setCurrentPath(parentPath)
     
     const newHistory = pathHistory.slice(0, historyIndex + 1)
-    newHistory.push(targetPath)
+    newHistory.push(parentPath)
     setPathHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
   }

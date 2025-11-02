@@ -443,6 +443,129 @@ export class WebDAVService {
   }
 
   /**
+   * 上传文件到WebDAV
+   * @param filePath 目标文件路径
+   * @param data 文件数据
+   * @param overwrite 是否覆盖现有文件
+   */
+  async putFileContents(
+    filePath: string,
+    data: string | ArrayBuffer | Blob,
+    overwrite: boolean = true
+  ): Promise<WebDAVOperationResult<boolean>> {
+    if (!this.client) {
+      return { success: false, error: 'WebDAV客户端未初始化' }
+    }
+
+    try {
+      console.log('上传文件到WebDAV:', filePath)
+      
+      // 标准化路径
+      let normalizedPath = filePath
+      if (normalizedPath.startsWith('../dav/')) {
+        normalizedPath = normalizedPath.replace('../dav/', '/')
+      }
+      if (!normalizedPath.startsWith('/')) {
+        normalizedPath = '/' + normalizedPath
+      }
+      
+      // 如果使用代理且是坚果云，需要特殊处理
+      if (this.config?.useProxy && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
+        // 代理模式下需要直接上传到原始服务器
+        console.log('代理模式下上传到原始服务器:', normalizedPath)
+        return await this.uploadViaProxy(normalizedPath, data)
+      }
+      
+      const result = await this.client.putFileContents(normalizedPath, data, { overwrite })
+      
+      console.log('WebDAV上传成功:', result)
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('WebDAV上传失败:', error)
+      return {
+        success: false,
+        error: `上传文件失败: ${error instanceof Error ? error.message : '未知错误'}`
+      }
+    }
+  }
+
+  /**
+   * 通过代理上传文件
+   * @param filePath 文件路径
+   * @param data 文件数据
+   */
+  private async uploadViaProxy(
+    filePath: string,
+    data: string | ArrayBuffer | Blob
+  ): Promise<WebDAVOperationResult<boolean>> {
+    if (!this.config) {
+      return { success: false, error: 'WebDAV配置未找到' }
+    }
+
+    try {
+      console.log('通过代理上传文件:', filePath)
+      
+      // 对路径进行 URL 编码，但保留 / 分隔符
+      const encodedPath = filePath.split('/').map(segment => 
+        segment ? encodeURIComponent(segment) : ''
+      ).join('/')
+      
+      // 构建代理URL
+      const proxyUrl = `/webdav${encodedPath}`
+      console.log('代理上传URL:', proxyUrl)
+      
+      // 准备上传数据
+      let body: BodyInit
+      if (typeof data === 'string') {
+        body = data
+      } else if (data instanceof ArrayBuffer) {
+        body = new Blob([data])
+      } else {
+        body = data
+      }
+      
+      // 使用fetch上传
+      const response = await fetch(proxyUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
+          'User-Agent': 'md-reader/1.0',
+          'Content-Type': 'text/markdown'
+        },
+        body
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      console.log('代理上传成功:', response.status, response.statusText)
+      return { success: true, data: true }
+      
+    } catch (error) {
+      console.error('代理上传失败:', error)
+      return {
+        success: false,
+        error: `代理上传失败: ${error instanceof Error ? error.message : '未知错误'}`
+      }
+    }
+  }
+
+  /**
+   * 上传文件（putFileContents的别名方法）
+   * @param filePath 文件路径
+   * @param data 文件内容
+   * @param overwrite 是否覆盖现有文件
+   */
+  async uploadFile(
+    filePath: string,
+    data: string | ArrayBuffer | Blob,
+    overwrite: boolean = true
+  ): Promise<WebDAVOperationResult<boolean>> {
+    return this.putFileContents(filePath, data, overwrite)
+  }
+
+  /**
    * 检查文件是否存在
    * @param filePath 文件路径
    */

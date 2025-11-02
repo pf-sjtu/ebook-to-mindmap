@@ -1,11 +1,11 @@
 import React from 'react';
 import { ThemeProvider } from './components/theme-provider';
-import { MarkdownReader } from './components/markdown-reader';
+import { MarkdownReaderEnhanced } from './components/markdown-reader-enhanced';
 
 function App() {
   return (
     <ThemeProvider defaultTheme="system">
-      <MarkdownReader />
+      <MarkdownReaderEnhanced />
     </ThemeProvider>
   );
 }

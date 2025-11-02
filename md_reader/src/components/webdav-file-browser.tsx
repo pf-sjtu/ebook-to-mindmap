@@ -26,7 +26,7 @@ import { webdavService, type WebDAVFileInfo } from '../services/webdavService'
 interface WebDAVFileBrowserProps {
   isOpen: boolean
   onClose: () => void
-  onFileSelect: (file: File) => void
+  onFileSelect: (file: File, filePath?: string) => void
   allowedExtensions?: string[]
 }
 
@@ -73,26 +73,19 @@ export function WebDAVFileBrowser({
         setHasAttemptedInit(true)
         console.log('WebDAVFileBrowser: 尝试初始化WebDAV服务...')
         
-        try {
-          const initResult = await webdavService.initialize(webdavConfig)
-          if (initResult.success) {
-            console.log('WebDAVFileBrowser: 初始化成功，加载根目录')
-            setWebDAVConnectionStatus('connected')
-            if (isOpen) {
-              loadDirectory('/')
-            }
-          } else {
-            console.error('WebDAVFileBrowser: 初始化失败:', initResult.error)
-            setError(`WebDAV初始化失败: ${initResult.error}`)
-            setWebDAVConnectionStatus('error')
+        const initResult = await webdavService.initialize(webdavConfig)
+        
+        if (initResult.success) {
+          console.log('WebDAVFileBrowser: WebDAV服务初始化成功')
+          setWebDAVConnectionStatus('connected')
+          if (isOpen) {
+            loadDirectory('/')
           }
-        } catch (error) {
-          console.error('WebDAVFileBrowser: 初始化异常:', error)
-          setError(`WebDAV初始化异常: ${error instanceof Error ? error.message : '未知错误'}`)
+        } else {
+          console.error('WebDAVFileBrowser: WebDAV服务初始化失败:', initResult.error)
           setWebDAVConnectionStatus('error')
+          setError(initResult.error || 'WebDAV服务初始化失败')
         }
-      } else if (!webdavConfig.enabled) {
-        setError('WebDAV功能未启用，请在设置中启用并配置连接')
       } else if (!webdavConfig.serverUrl || !webdavConfig.username || !webdavConfig.password) {
         setError('WebDAV配置不完整，请完成配置')
       }
@@ -152,22 +145,11 @@ export function WebDAVFileBrowser({
         setError('WebDAV配置不完整，请先完成配置')
         return
       }
-
-      try {
-        const initResult = await webdavService.initialize(webdavConfig)
-        if (!initResult.success) {
-          setError(`WebDAV初始化失败: ${initResult.error}`)
-          return
-        }
-      } catch (error) {
-        setError(`WebDAV初始化异常: ${error instanceof Error ? error.message : '未知错误'}`)
-        return
-      }
     }
 
     setIsLoading(true)
     setError(null)
-
+    
     try {
       console.log('WebDAVFileBrowser: 加载目录:', path)
       const result = await webdavService.getDirectoryContents(path)
@@ -176,11 +158,21 @@ export function WebDAVFileBrowser({
         setFiles(result.data)
         setCurrentPath(path)
         
-        // 更新路径历史
-        if (!pathHistory.includes(path)) {
-          setPathHistory([...pathHistory.slice(0, historyIndex + 1), path])
-          setHistoryIndex(historyIndex + 1)
-        }
+        // 更新路径历史 - 简化逻辑，避免重复路径
+        setPathHistory(prev => {
+          const newHistory = prev.slice(0, historyIndex + 1);
+          if (!newHistory.includes(path)) {
+            newHistory.push(path);
+          }
+          return newHistory;
+        });
+        setHistoryIndex(prev => {
+          const newHistory = pathHistory.slice(0, prev + 1);
+          if (!newHistory.includes(path)) {
+            return prev + 1;
+          }
+          return newHistory.findIndex(p => p === path);
+        });
       } else {
         setError(result.error || '加载目录失败')
         setFiles([])
@@ -250,8 +242,8 @@ export function WebDAVFileBrowser({
           return
         }
         
-        // 传递下载的File对象给父组件
-        onFileSelect(downloadResult.data)
+        // 传递下载的File对象和文件路径给父组件
+        onFileSelect(downloadResult.data, selectedFile.filename)
         onClose()
       } catch (error) {
         console.error('文件选择失败:', error)
@@ -262,14 +254,44 @@ export function WebDAVFileBrowser({
     }
   }
 
+  // 直接返回根目录
+  const navigateToRoot = () => {
+    console.log('直接返回根目录');
+    setCurrentPath('/');
+    setPathHistory(['/']);
+    setHistoryIndex(0);
+    loadDirectory('/');
+  };
+
   // 导航到上级目录
   const navigateUp = () => {
-    const parentPath = currentPath.split('/').slice(0, -2).join('/') + '/'
-    const targetPath = parentPath || '/'
-    setCurrentPath(targetPath)
+    console.log('当前路径:', currentPath)
+    
+    // 如果已经是根目录，不能向上导航
+    if (currentPath === '/' || currentPath === '') {
+      return
+    }
+    
+    // 处理路径分割
+    const pathParts = currentPath.split('/').filter(part => part !== '')
+    console.log('路径分割:', pathParts)
+    
+    // 移除最后一部分（当前目录）
+    pathParts.pop()
+    
+    // 构建上级目录路径
+    let parentPath: string
+    if (pathParts.length === 0) {
+      parentPath = '/' // 回到根目录
+    } else {
+      parentPath = '/' + pathParts.join('/') + '/'
+    }
+    
+    console.log('上级目录路径:', parentPath)
+    setCurrentPath(parentPath)
     
     const newHistory = pathHistory.slice(0, historyIndex + 1)
-    newHistory.push(targetPath)
+    newHistory.push(parentPath)
     setPathHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
   }
@@ -357,6 +379,15 @@ export function WebDAVFileBrowser({
               >
                 <ChevronUp className="h-4 w-4" />
                 上级
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={navigateToRoot}
+                disabled={currentPath === '/'}
+              >
+                <FileText className="h-4 w-4" />
+                根目录
               </Button>
             </div>
 
