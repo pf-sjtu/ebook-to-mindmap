@@ -98,7 +98,7 @@ export function WebDAVFileBrowser({
 
   // 路径变化时加载目录
   useEffect(() => {
-    if (isOpen && webdavService.isInitialized() && currentPath !== '/') {
+    if (isOpen && webdavService.isInitialized()) {
       loadDirectory(currentPath)
     }
   }, [currentPath, isOpen])
@@ -158,21 +158,23 @@ export function WebDAVFileBrowser({
         setFiles(result.data)
         setCurrentPath(path)
         
-        // 更新路径历史 - 简化逻辑，避免重复路径
-        setPathHistory(prev => {
-          const newHistory = prev.slice(0, historyIndex + 1);
-          if (!newHistory.includes(path)) {
-            newHistory.push(path);
-          }
-          return newHistory;
-        });
-        setHistoryIndex(prev => {
-          const newHistory = pathHistory.slice(0, prev + 1);
-          if (!newHistory.includes(path)) {
-            return prev + 1;
-          }
-          return newHistory.findIndex(p => p === path);
-        });
+        // 只有在路径实际变化时才更新历史记录
+        if (path !== pathHistory[historyIndex]) {
+          setPathHistory(prev => {
+            const newHistory = prev.slice(0, historyIndex + 1)
+            if (!newHistory.includes(path)) {
+              newHistory.push(path)
+            }
+            return newHistory
+          })
+          setHistoryIndex(prev => {
+            const newHistory = pathHistory.slice(0, prev + 1)
+            if (!newHistory.includes(path)) {
+              return prev + 1
+            }
+            return newHistory.findIndex(p => p === path)
+          })
+        }
       } else {
         setError(result.error || '加载目录失败')
         setFiles([])
@@ -211,13 +213,15 @@ export function WebDAVFileBrowser({
       }
       
       console.log('设置新路径:', newPath)
-      setCurrentPath(newPath)
       
       // 更新历史记录
       const newHistory = pathHistory.slice(0, historyIndex + 1)
       newHistory.push(newPath)
       setPathHistory(newHistory)
       setHistoryIndex(newHistory.length - 1)
+      
+      // 设置路径（useEffect会自动加载目录）
+      setCurrentPath(newPath)
     }
   }
 
@@ -257,10 +261,15 @@ export function WebDAVFileBrowser({
   // 直接返回根目录
   const navigateToRoot = () => {
     console.log('直接返回根目录');
+    
+    // 更新历史记录
+    const newHistory = pathHistory.slice(0, historyIndex + 1)
+    newHistory.push('/')
+    setPathHistory(newHistory)
+    setHistoryIndex(newHistory.length - 1)
+    
+    // 设置路径（useEffect会自动加载目录）
     setCurrentPath('/');
-    setPathHistory(['/']);
-    setHistoryIndex(0);
-    loadDirectory('/');
   };
 
   // 导航到上级目录
@@ -288,12 +297,15 @@ export function WebDAVFileBrowser({
     }
     
     console.log('上级目录路径:', parentPath)
-    setCurrentPath(parentPath)
     
+    // 更新历史记录
     const newHistory = pathHistory.slice(0, historyIndex + 1)
     newHistory.push(parentPath)
     setPathHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
+    
+    // 设置路径（useEffect会自动加载目录）
+    setCurrentPath(parentPath)
   }
 
   // 历史导航
@@ -301,6 +313,7 @@ export function WebDAVFileBrowser({
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1
       setHistoryIndex(newIndex)
+      // 设置路径（useEffect会自动加载目录）
       setCurrentPath(pathHistory[newIndex])
     }
   }
@@ -309,6 +322,7 @@ export function WebDAVFileBrowser({
     if (historyIndex < pathHistory.length - 1) {
       const newIndex = historyIndex + 1
       setHistoryIndex(newIndex)
+      // 设置路径（useEffect会自动加载目录）
       setCurrentPath(pathHistory[newIndex])
     }
   }
