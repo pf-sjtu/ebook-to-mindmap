@@ -57,6 +57,13 @@ interface TocItem {
   isCollapsed?: boolean;
 }
 
+interface HeadingInfo {
+  id: string;
+  line: number;
+  level: number;
+  title: string;
+}
+
 export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
   initialContent = '',
   title = 'Markdown 阅读器'
@@ -81,6 +88,9 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
   const [isSyncing, setIsSyncing] = useState(false);
   const [webdavFilePath, setWebdavFilePath] = useState<string | null>(null);
   
+  // 标题ID映射状态
+  const [headingsMap, setHeadingsMap] = useState<Map<string, HeadingInfo>>(new Map());
+  
   // 撤回功能相关状态
   const [editHistory, setEditHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -96,6 +106,216 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
     editedWords: 0,
     currentTime: new Date().toLocaleTimeString('zh-CN')
   });
+
+  // 生成简单哈希函数
+  const generateSimpleHash = (str: string): string => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(36);
+  };
+
+  // 预处理Markdown内容，将跨行标题转换为标准格式
+  const preprocessMarkdown = useCallback((markdownContent: string): string => {
+    const lines = markdownContent.split('\n');
+    const processedLines: string[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const headingMatch = line.match(/^(#{1,6})\s*$/);
+      
+      if (headingMatch) {
+        // 当前行是只有 # 符号的标题行
+        const level = headingMatch[1].length;
+        
+        // 检查下一行是否有内容
+        if (i + 1 < lines.length) {
+          const nextLine = lines[i + 1];
+          const trimmedNextLine = nextLine.trim();
+          
+          // 如果下一行不是空行且不是标题，则合并
+          if (trimmedNextLine && !trimmedNextLine.startsWith('#')) {
+            processedLines.push(`${headingMatch[1]} ${trimmedNextLine}`);
+            i++; // 跳过下一行，因为已经合并了
+            continue;
+          }
+          
+          // 如果下一行是空行，检查下下行
+          if (!trimmedNextLine && i + 2 < lines.length) {
+            const nextNextLine = lines[i + 2];
+            const trimmedNextNextLine = nextNextLine.trim();
+            
+            if (trimmedNextNextLine && !trimmedNextNextLine.startsWith('#')) {
+              processedLines.push(`${headingMatch[1]} ${trimmedNextNextLine}`);
+              i += 2; // 跳过下两行
+              continue;
+            }
+          }
+        }
+      }
+      
+      processedLines.push(line);
+    }
+    
+    return processedLines.join('\n');
+  }, []);
+
+  // 扫描Markdown内容并生成标题ID映射
+  const scanAndEncodeHeadings = useCallback((markdownContent: string): Map<string, HeadingInfo> => {
+    const lines = markdownContent.split('\n');
+    const headingsMap = new Map<string, HeadingInfo>();
+    
+    lines.forEach((line, index) => {
+      // 支持跨行标题 - 检查当前行是否只有 # 符号
+      const headingMatch = line.match(/^(#{1,6})\s*(.*)$/);
+      
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        let title = headingMatch[2].trim();
+        
+        // 如果当前行只有 # 符号，检查下一行是否有标题内容
+        if (!title && index + 1 < lines.length) {
+          const nextLine = lines[index + 1].trim();
+          if (nextLine && !nextLine.startsWith('#')) {
+            title = nextLine;
+          }
+        }
+        
+        // 如果当前行只有 # 符号且下一行是空行，检查下下行是否有标题内容
+        if (!title && index + 2 < lines.length) {
+          const nextLine = lines[index + 1].trim();
+          const nextNextLine = lines[index + 2].trim();
+          if (!nextLine && nextNextLine && !nextNextLine.startsWith('#')) {
+            title = nextNextLine;
+          }
+        }
+        
+        // 如果仍然没有标题，跳过
+        if (!title) {
+          return;
+        }
+        
+        // 去除标题中的格式标记（加粗、斜体、下划线等）
+        const cleanTitle = title
+          .replace(/\*\*(.*?)\*\*/g, '$1') // 去除加粗
+          .replace(/\*(.*?)\*/g, '$1') // 去除斜体
+          .replace(/_(.*?)_/g, '$1') // 去除下划线
+          .replace(/`(.*?)`/g, '$1') // 去除行内代码
+          .replace(/\[(.*?)\]\(.*?\)/g, '$1') // 去除链接，保留文本
+          .trim();
+
+        // 生成唯一的ID，使用行号和标题文本哈希
+        const titleHash = generateSimpleHash(cleanTitle);
+        const id = `heading-${index}-${titleHash}`;
+
+        const headingInfo: HeadingInfo = {
+          id,
+          line: index,
+          level,
+          title: cleanTitle
+        };
+
+        headingsMap.set(id, headingInfo);
+      }
+    });
+
+    return headingsMap;
+  }, []);
+
+  // 基于标题映射生成目录
+  const generateTocFromMap = useCallback((headingsMap: Map<string, HeadingInfo>): TocItem[] => {
+    const items: TocItem[] = [];
+    const stack: TocItem[] = [];
+
+    // 按行号排序标题
+    const sortedHeadings = Array.from(headingsMap.values()).sort((a, b) => a.line - b.line);
+
+    sortedHeadings.forEach(heading => {
+      // 只显示一级（#）和二级（##）标题，忽略三级（###）及以下级别的标题
+      if (heading.level > 2) {
+        return;
+      }
+
+      // 设置默认折叠状态：二级标题默认展开
+      const isCollapsed = heading.level >= 3; // 虽然不会显示三级，但保留逻辑
+
+      const item: TocItem = {
+        id: heading.id,
+        title: heading.title,
+        level: heading.level,
+        children: [],
+        isCollapsed
+      };
+
+      // 构建树形结构
+      while (stack.length > 0 && stack[stack.length - 1].level >= heading.level) {
+        stack.pop();
+      }
+
+      if (stack.length === 0) {
+        items.push(item);
+      } else {
+        stack[stack.length - 1].children.push(item);
+      }
+
+      stack.push(item);
+    });
+
+    return items;
+  }, []);
+
+  // 自定义标题组件
+  const CustomHeading = ({ level, children, ...props }: any) => {
+    const Component = level === 1 ? 'h1' : level === 2 ? 'h2' : level === 3 ? 'h3' : level === 4 ? 'h4' : level === 5 ? 'h5' : 'h6';
+    
+    // 从children中提取纯文本内容用于查找对应的标题
+    const textContent = React.Children.toArray(children)
+      .map(child => typeof child === 'string' ? child : '')
+      .join('')
+      .trim();
+
+    // 在标题映射中查找对应的标题信息
+    let headingInfo: HeadingInfo | undefined;
+    for (const info of headingsMap.values()) {
+      if (info.title === textContent) {
+        headingInfo = info;
+        break;
+      }
+    }
+
+    // 如果没找到精确匹配，尝试包含匹配
+    if (!headingInfo) {
+      for (const info of headingsMap.values()) {
+        if (textContent.includes(info.title) || info.title.includes(textContent)) {
+          headingInfo = info;
+          break;
+        }
+      }
+    }
+
+    return (
+      <Component 
+        id={headingInfo?.id} 
+        className={`heading-${level} ${headingInfo?.id ? 'has-toc-id' : ''}`}
+        {...props}
+      >
+        {children}
+      </Component>
+    );
+  };
+
+  // 自定义组件映射
+  const components = {
+    h1: (props: any) => <CustomHeading level={1} {...props} />,
+    h2: (props: any) => <CustomHeading level={2} {...props} />,
+    h3: (props: any) => <CustomHeading level={3} {...props} />,
+    h4: (props: any) => <CustomHeading level={4} {...props} />,
+    h5: (props: any) => <CustomHeading level={5} {...props} />,
+    h6: (props: any) => <CustomHeading level={6} {...props} />,
+  };
 
   // Load recent files from localStorage on mount
   useEffect(() => {
@@ -123,93 +343,14 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
   // 更新统计信息
   useEffect(() => {
     const totalWords = content.length;
-    const editedWords = Math.abs(content.length - originalContent.length);
+    // 使用editContent与originalContent比较，因为content是预处理后的
+    const editedWords = Math.abs(editContent.length - originalContent.length);
     setStats(prev => ({
       ...prev,
       totalWords,
       editedWords
     }));
-  }, [content, originalContent]);
-
-  // 生成目录
-  useEffect(() => {
-    const generateToc = () => {
-      const lines = content.split('\n');
-      const items: TocItem[] = [];
-      const stack: TocItem[] = [];
-
-      lines.forEach((line, index) => {
-        // 支持跨行标题 - 检查当前行是否只有 # 符号
-        const headingMatch = line.match(/^(#{1,6})\s*(.*)$/);
-        
-        if (headingMatch) {
-          const level = headingMatch[1].length;
-          let title = headingMatch[2].trim();
-          
-          // 如果当前行只有 # 符号，检查下一行是否有标题内容
-          if (!title && index + 1 < lines.length) {
-            const nextLine = lines[index + 1].trim();
-            if (nextLine && !nextLine.startsWith('#')) {
-              title = nextLine;
-            }
-          }
-          
-          // 如果仍然没有标题，跳过
-          if (!title) {
-            return;
-          }
-          
-          // 去除标题中的格式标记（加粗、斜体、下划线等）
-          title = title
-            .replace(/\*\*(.*?)\*\*/g, '$1') // 去除加粗
-            .replace(/\*(.*?)\*/g, '$1') // 去除斜体
-            .replace(/_(.*?)_/g, '$1') // 去除下划线
-            .replace(/`(.*?)`/g, '$1') // 去除行内代码
-            .replace(/\[(.*?)\]\(.*?\)/g, '$1') // 去除链接，保留文本
-            .trim();
-
-          // 生成唯一的ID，使用行号和标题文本
-          const id = `heading-${index}-${title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '-')}`;
-
-          // 设置默认折叠状态：三级及之后标题默认折叠，二级标题默认展开
-          const isCollapsed = level >= 3;
-
-          const item: TocItem = {
-            id,
-            title,
-            level,
-            children: [],
-            isCollapsed
-          };
-
-          // 构建树形结构
-          while (stack.length > 0 && stack[stack.length - 1].level >= level) {
-            stack.pop();
-          }
-
-          if (stack.length === 0) {
-            items.push(item);
-          } else {
-            stack[stack.length - 1].children.push(item);
-          }
-
-          stack.push(item);
-        }
-      });
-
-      const applyDefaultCollapseState = (items: TocItem[]): TocItem[] => {
-        return items.map(item => ({
-          ...item,
-          isCollapsed: item.level >= 3,
-          children: applyDefaultCollapseState(item.children)
-        }));
-      };
-
-      setTocItems(applyDefaultCollapseState(items));
-    };
-
-    generateToc();
-  }, [content]);
+  }, [content, editContent, originalContent]);
 
   // 键盘快捷键
   useEffect(() => {
@@ -351,8 +492,12 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      setContent(text);
-      setEditContent(text);
+      
+      // 预处理Markdown内容，将跨行标题转换为标准格式
+      const processedText = preprocessMarkdown(text);
+      
+      setContent(processedText);
+      setEditContent(text); // 编辑时仍使用原始内容
       setOriginalContent(text);
       setFileName(file.name);
       setWebdavFilePath(filePath || null);
@@ -361,6 +506,16 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
       // 初始化编辑历史
       setEditHistory([text]);
       setHistoryIndex(0);
+      
+      // 扫描并编码标题ID（使用预处理后的内容）
+      const headingsMap = scanAndEncodeHeadings(processedText);
+      setHeadingsMap(headingsMap);
+      
+      // 生成目录
+      const tocItems = generateTocFromMap(headingsMap);
+      setTocItems(tocItems);
+      
+      clearError();
     };
     
     reader.onerror = () => {
@@ -418,14 +573,22 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
     setError(null);
     setEditHistory([]);
     setHistoryIndex(-1);
+    
+    // 清空标题映射和目录
+    setHeadingsMap(new Map());
+    setTocItems([]);
+    
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
   const loadRecentFile = (file: RecentFile) => {
-    setContent(file.content);
-    setEditContent(file.content);
+    // 预处理Markdown内容，将跨行标题转换为标准格式
+    const processedText = preprocessMarkdown(file.content);
+    
+    setContent(processedText);
+    setEditContent(file.content); // 编辑时仍使用原始内容
     setOriginalContent(file.content);
     setFileName(file.name);
     setWebdavFilePath(null);
@@ -434,6 +597,14 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
     // 初始化编辑历史
     setEditHistory([file.content]);
     setHistoryIndex(0);
+    
+    // 扫描并编码标题ID（使用预处理后的内容）
+    const headingsMap = scanAndEncodeHeadings(processedText);
+    setHeadingsMap(headingsMap);
+    
+    // 生成目录
+    const tocItems = generateTocFromMap(headingsMap);
+    setTocItems(tocItems);
   };
 
   const formatTimestamp = (timestamp: number): string => {
@@ -452,24 +623,6 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
     }
   };
 
-  const handleSaveEdit = () => {
-    setContent(editContent);
-    setIsEditing(false);
-    // 保存后重置历史记录
-    setEditHistory([editContent]);
-    setHistoryIndex(0);
-    console.log('保存编辑，重置历史记录');
-  };
-
-  const handleCancelEdit = () => {
-    setEditContent(content);
-    setIsEditing(false);
-    // 取消后重置历史记录
-    setEditHistory([content]);
-    setHistoryIndex(0);
-    console.log('取消编辑，重置历史记录');
-  };
-
   // 开始编辑时初始化历史记录
   const handleStartEdit = () => {
     setIsEditing(true);
@@ -479,15 +632,81 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
     console.log('开始编辑，初始化历史记录');
   };
 
+  // 保存编辑
+  const handleSaveEdit = () => {
+    // 预处理编辑后的内容
+    const processedText = preprocessMarkdown(editContent);
+    
+    setContent(processedText);
+    setIsEditing(false);
+    // 保存后重置历史记录
+    setEditHistory([editContent]);
+    setHistoryIndex(0);
+    console.log('保存编辑，重置历史记录');
+    
+    // 重新扫描并编码标题ID（使用预处理后的内容）
+    const headingsMap = scanAndEncodeHeadings(processedText);
+    setHeadingsMap(headingsMap);
+    
+    // 重新生成目录
+    const tocItems = generateTocFromMap(headingsMap);
+    setTocItems(tocItems);
+    
+    // 更新最近文件记录
+    if (fileName) {
+      addToRecentFiles(fileName, editContent);
+    }
+  };
+
+  // 取消编辑
+  const handleCancelEdit = () => {
+    setEditContent(content);
+    setIsEditing(false);
+  };
+
+  // 组件卸载时清理全局定时器
+  useEffect(() => {
+    return () => {
+      if ((window as any).editTimeout) {
+        clearTimeout((window as any).editTimeout);
+        (window as any).editTimeout = null;
+      }
+      if ((window as any).reencodeTimeout) {
+        clearTimeout((window as any).reencodeTimeout);
+        (window as any).reencodeTimeout = null;
+      }
+    };
+  }, []);
+
   // 处理编辑内容变化
   const handleEditContentChange = (newContent: string) => {
     setEditContent(newContent);
-    // 添加到历史记录（防抖处理）
-    const timeoutId = setTimeout(() => {
-      addToHistory(newContent);
-    }, 500);
     
-    return () => clearTimeout(timeoutId);
+    // 清理之前的定时器
+    if ((window as any).editTimeout) {
+      clearTimeout((window as any).editTimeout);
+    }
+    
+    // 防抖处理
+    (window as any).editTimeout = setTimeout(() => {
+      addToHistory(newContent);
+    }, 1000);
+    
+    // 清理之前的重新编码定时器
+    if ((window as any).reencodeTimeout) {
+      clearTimeout((window as any).reencodeTimeout);
+    }
+    
+    // 防抖重新编码标题ID
+    (window as any).reencodeTimeout = setTimeout(() => {
+      // 预处理编辑后的内容用于标题扫描
+      const processedText = preprocessMarkdown(newContent);
+      const headingsMap = scanAndEncodeHeadings(processedText);
+      setHeadingsMap(headingsMap);
+      
+      const tocItems = generateTocFromMap(headingsMap);
+      setTocItems(tocItems);
+    }, 1000); // 1秒防抖，避免频繁重新编码
   };
 
   // 替换文本功能
@@ -578,24 +797,10 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
           <div
             className="flex-1 flex items-center gap-1"
             onClick={() => {
-              // 查找对应的标题元素
-              const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-              let targetElement: Element | null = null;
-              
-              // 通过标题文本匹配找到对应元素
-              for (const heading of headings) {
-                if (heading.textContent?.includes(item.title)) {
-                  targetElement = heading;
-                  break;
-                }
-              }
+              // 使用预编码的ID直接跳转
+              const targetElement = document.getElementById(item.id);
               
               if (targetElement) {
-                // 给标题元素添加ID以便后续跳转
-                if (!targetElement.id) {
-                  targetElement.id = item.id;
-                }
-                
                 // 滚动到目标位置
                 targetElement.scrollIntoView({ 
                   behavior: 'smooth',
@@ -603,12 +808,10 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
                 });
                 
                 // 高亮效果
-                (targetElement as HTMLElement).style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                targetElement.classList.add('highlighted-heading');
                 setTimeout(() => {
-                  (targetElement as HTMLElement).style.backgroundColor = '';
+                  targetElement.classList.remove('highlighted-heading');
                 }, 2000);
-              } else {
-                console.warn('未找到标题元素:', item.title);
               }
             }}
           >
@@ -672,165 +875,21 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
       {/* 主内容区域 */}
       <div className={`transition-all duration-300 ${isDrawerOpen ? 'ml-64' : 'ml-0'}`}>
         <div className="flex flex-col h-screen">
-          {/* 头部控制栏 */}
-          <Card className="m-4 flex-shrink-0">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-                    className="h-8 w-8 p-0"
-                  >
-                    {isDrawerOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                  </Button>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    {title}
-                    {fileName && (
-                      <span className="text-sm font-normal text-muted-foreground ml-2">
-                        - {fileName}
-                      </span>
-                    )}
-                  </CardTitle>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FontSizeControl variant="compact" />
-                  <DarkModeToggle />
-                </div>
-              </div>
-            </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 flex-wrap">
-              <label htmlFor="file-upload">
-                <Button variant="outline" size="sm" asChild>
-                  <span className="flex items-center gap-2 cursor-pointer">
-                    <Upload className="h-4 w-4" />
-                    上传 Markdown 文件
-                  </span>
-                </Button>
-                <input
-                  id="file-upload"
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".md,.markdown,.txt"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
-
-              {/* WebDAV文件浏览按钮 */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsWebDAVBrowserOpen(true)}
-                className="flex items-center gap-2"
-                disabled={!webdavConfig.enabled}
-              >
-                <Cloud className="h-4 w-4" />
-                从WebDAV打开
-              </Button>
-
-              {/* WebDAV设置按钮 */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsWebDAVSettingsOpen(true)}
-                className="flex items-center gap-2"
-              >
-                <Settings className="h-4 w-4" />
-                WebDAV设置
-              </Button>
-              
-              {content && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => isEditing ? handleSaveEdit() : handleStartEdit()}
-                    className="flex items-center gap-2"
-                  >
-                    <Eye className="h-4 w-4" />
-                    {isEditing ? '预览' : '编辑'}
-                  </Button>
-                  
-                  {/* 同步到云端按钮 */}
-                  {webdavConfig.enabled && webdavFilePath && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleSyncToCloud}
-                      disabled={isSyncing || stats.editedWords === 0}
-                      className="flex items-center gap-2"
-                    >
-                      <UploadCloud className="h-4 w-4" />
-                      {isSyncing ? '同步中...' : '同步到云端'}
-                    </Button>
-                  )}
-                  
-                  {/* 替换文本按钮 */}
-                  {isEditing && (
-                    <Dialog open={isReplaceDialogOpen} onOpenChange={setIsReplaceDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="flex items-center gap-2">
-                          <Replace className="h-4 w-4" />
-                          替换 (Ctrl+H)
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>替换文本</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="replace-text">查找文本</Label>
-                            <Input
-                              id="replace-text"
-                              value={replaceText}
-                              onChange={(e) => setReplaceText(e.target.value)}
-                              placeholder="输入要替换的文本"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="replace-with">替换为</Label>
-                            <Input
-                              id="replace-with"
-                              value={replaceWith}
-                              onChange={(e) => setReplaceWith(e.target.value)}
-                              placeholder="输入替换后的文本"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button onClick={handleReplace} disabled={!replaceText}>
-                              替换全部
-                            </Button>
-                            <Button variant="outline" onClick={() => setIsReplaceDialogOpen(false)}>
-                              取消
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearFile}
-                    className="flex items-center gap-2"
-                  >
-                    <X className="h-4 w-4" />
-                    清除文件
-                  </Button>
-                </>
+          {/* 简化的标题栏 - 只显示标题和文件名 */}
+          <div className="p-4 pb-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-muted-foreground" />
+              <h1 className="text-lg font-semibold">{title}</h1>
+              {fileName && (
+                <span className="text-sm text-muted-foreground">
+                  - {fileName}
+                </span>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
         {/* 内容区域 */}
-        <div className="flex-1 p-4">
+        <div className="flex-1 p-4 pt-2 pb-24">
           {content ? (
             <Card className="h-full">
               <CardContent className="p-6 h-full">
@@ -839,16 +898,7 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
                     <textarea
                       value={editContent}
                       onChange={(e) => {
-                        setEditContent(e.target.value);
-                        // 简单的防抖处理
-                        const timeoutId = setTimeout(() => {
-                          addToHistory(e.target.value);
-                        }, 1000);
-                        // 清理之前的定时器
-                        if ((window as any).editTimeout) {
-                          clearTimeout((window as any).editTimeout);
-                        }
-                        (window as any).editTimeout = timeoutId;
+                        handleEditContentChange(e.target.value);
                       }}
                       className="flex-1 w-full p-4 border rounded-md bg-background text-foreground font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                       placeholder="在此输入 Markdown 内容..."
@@ -879,6 +929,7 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
                   <div className="h-full overflow-y-auto markdown-content prose prose-sm max-w-none">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm, remarkCjkFriendly]}
+                      components={components}
                     >
                       {content}
                     </ReactMarkdown>
@@ -926,23 +977,157 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
           )}
         </div>
 
-        {/* 底部状态栏 */}
-        <Card className="m-4">
-          <CardContent className="p-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <div className="flex items-center gap-4">
-                <span>总字数: {stats.totalWords}</span>
-                {stats.editedWords > 0 && (
-                  <span className="text-orange-600">已编辑: {stats.editedWords > 0 ? '+' : ''}{stats.editedWords}</span>
+        {/* 悬浮底部状态栏 */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t shadow-lg">
+          <div className="px-2 py-1">
+            {/* 主要操作按钮区域 */}
+            <div className="flex items-center justify-between mb-1">
+              {/* 左侧：目录和基础控制 */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+                  className="h-7 w-7 p-0"
+                  title={isDrawerOpen ? "收起目录" : "展开目录"}
+                >
+                  {isDrawerOpen ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                </Button>
+                
+                <div className="w-px h-4 bg-border mx-1" />
+                
+                <FontSizeControl variant="minimal" />
+                <DarkModeToggle />
+              </div>
+              
+              {/* 中间：文件操作按钮 */}
+              <div className="flex items-center gap-1">
+                <label htmlFor="file-upload-bottom">
+                  <Button variant="ghost" size="sm" asChild className="h-7 px-2">
+                    <span className="flex items-center gap-1 cursor-pointer" title="上传文件">
+                      <Upload className="h-3 w-3" />
+                      <span className="text-xs">上传</span>
+                    </span>
+                  </Button>
+                </label>
+                <input
+                  id="file-upload-bottom"
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".md,.markdown,.txt"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                
+                {webdavConfig.enabled && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsWebDAVBrowserOpen(true)}
+                      className="h-7 px-2"
+                      title="从WebDAV打开"
+                    >
+                      <Cloud className="h-3 w-3" />
+                      <span className="text-xs ml-1">WebDAV</span>
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsWebDAVSettingsOpen(true)}
+                      className="h-7 px-2"
+                      title="WebDAV设置"
+                    >
+                      <Settings className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+                
+                {content && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => isEditing ? handleSaveEdit() : handleStartEdit()}
+                      className="h-7 px-2"
+                      title={isEditing ? "预览" : "编辑"}
+                    >
+                      <Eye className="h-3 w-3" />
+                      <span className="text-xs ml-1">{isEditing ? '预览' : '编辑'}</span>
+                    </Button>
+                    
+                    {webdavConfig.enabled && webdavFilePath && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSyncToCloud}
+                        disabled={isSyncing || stats.editedWords === 0}
+                        className="h-7 px-2"
+                        title="同步到云端"
+                      >
+                        <UploadCloud className="h-3 w-3" />
+                        <span className="text-xs ml-1">{isSyncing ? '同步中' : '同步'}</span>
+                      </Button>
+                    )}
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFile}
+                      className="h-7 px-2"
+                      title="清除文件"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </>
                 )}
               </div>
-              <div className="flex items-center gap-4">
-                {fileName && <span>文件: {fileName}</span>}
+              
+              {/* 右侧：编辑工具 */}
+              <div className="flex items-center gap-1">
+                {isEditing && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsReplaceDialogOpen(true)}
+                      className="h-7 px-2"
+                      title="替换文本 (Ctrl+H)"
+                    >
+                      <Replace className="h-3 w-3" />
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleUndo}
+                      disabled={historyIndex <= 0}
+                      className="h-7 px-2"
+                      title="撤回 (Ctrl+Z)"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            {/* 状态信息区域 */}
+            <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-1">
+              <div className="flex items-center gap-3">
+                <span>字数: {stats.totalWords}</span>
+                {stats.editedWords > 0 && (
+                  <span className="text-orange-600">+{stats.editedWords}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {fileName && <span className="truncate max-w-32">{fileName}</span>}
                 <span>{stats.currentTime}</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
     </div>
       </div>
 
@@ -959,6 +1144,53 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
         isOpen={isWebDAVSettingsOpen}
         onClose={() => setIsWebDAVSettingsOpen(false)}
       />
+
+      {/* 替换文本对话框 */}
+      <Dialog open={isReplaceDialogOpen} onOpenChange={setIsReplaceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>替换文本</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="replace-text">查找文本</Label>
+              <Input
+                id="replace-text"
+                value={replaceText}
+                onChange={(e) => setReplaceText(e.target.value)}
+                placeholder="输入要替换的文本"
+              />
+            </div>
+            <div>
+              <Label htmlFor="replace-with">替换为</Label>
+              <Input
+                id="replace-with"
+                value={replaceWith}
+                onChange={(e) => setReplaceWith(e.target.value)}
+                placeholder="输入替换后的文本"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleReplace} disabled={!replaceText}>
+                替换全部
+              </Button>
+              <Button variant="outline" onClick={() => setIsReplaceDialogOpen(false)}>
+                取消
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* CSS样式 */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .highlighted-heading {
+            background-color: yellow;
+            transition: background-color 0.3s ease;
+          }
+        `
+      }} />
     </div>
   );
 };

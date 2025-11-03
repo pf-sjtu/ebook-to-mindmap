@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -34,6 +34,17 @@ export function ChapterNavigation({
   const { t } = useTranslation()
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
   const [currentChapter, setCurrentChapter] = useState<string | null>(null)
+  const highlightTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // 组件卸载时清理定时器
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current)
+        highlightTimerRef.current = null
+      }
+    }
+  }, [])
   
   const toggleChapter = (chapterId: string) => {
     const newExpanded = new Set(expandedChapters)
@@ -52,10 +63,16 @@ export function ChapterNavigation({
       setCurrentChapter(chapterId)
       onChapterClick(chapterId)
       
+      // 清理之前的高亮定时器
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current)
+      }
+      
       // 高亮效果
       element.classList.add('ring-2', 'ring-blue-500', 'ring-opacity-50')
-      setTimeout(() => {
+      highlightTimerRef.current = setTimeout(() => {
         element.classList.remove('ring-2', 'ring-blue-500', 'ring-opacity-50')
+        highlightTimerRef.current = null
       }, 2000)
     }
   }

@@ -6,7 +6,7 @@ import { Minus, Plus, RotateCcw } from 'lucide-react'
 interface FontSizeControlProps {
   className?: string
   showLabel?: boolean
-  variant?: 'compact' | 'full'
+  variant?: 'compact' | 'full' | 'minimal'
 }
 
 export const FontSizeControl: React.FC<FontSizeControlProps> = ({
@@ -46,6 +46,36 @@ export const FontSizeControl: React.FC<FontSizeControlProps> = ({
 
   const resetFontSize = () => {
     updateFontScale(1)
+  }
+
+  if (variant === 'minimal') {
+    return (
+      <div className={`flex items-center gap-1 ${className}`}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={decreaseFontSize}
+          disabled={fontScale <= 0.5}
+          title="减小字体"
+          className="h-7 w-7 p-0"
+        >
+          <Minus className="h-3 w-3" />
+        </Button>
+        <span className="text-xs font-medium px-1 min-w-[28px] text-center">
+          {Math.round(fontScale * 100)}%
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={increaseFontSize}
+          disabled={fontScale >= 2}
+          title="增大字体"
+          className="h-7 w-7 p-0"
+        >
+          <Plus className="h-3 w-3" />
+        </Button>
+      </div>
+    )
   }
 
   if (variant === 'compact') {

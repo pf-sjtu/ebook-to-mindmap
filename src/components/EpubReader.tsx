@@ -371,7 +371,7 @@ export function EpubReader({
       shadowRef.current.dispatchEvent(event)
       
       // 确保内容完全渲染后滚动到顶部
-      setTimeout(() => {
+      const scrollTimer = setTimeout(() => {
         if (scrollAreaRef.current) {
           const scrollViewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
           if (scrollViewport) {
@@ -379,6 +379,8 @@ export function EpubReader({
           }
         }
       }, 100)
+      
+      return () => clearTimeout(scrollTimer)
     }
   }, [chapterHtmlContent, isLoadingHtml])
 
