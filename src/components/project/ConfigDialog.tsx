@@ -237,7 +237,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
       <DialogContent className="max-w-[95vw] md:max-w-2xl max-h-[85vh] w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-wrap break-words">
-            <Settings className="h-5 w-5 flex-shrink-0" />
+            <Settings className="h-4 w-4 flex-shrink-0" />
             {t('config.aiServiceConfig')}
           </DialogTitle>
           <DialogDescription className="text-wrap break-words">
@@ -254,20 +254,20 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
               <TabsTrigger value="export-import" className="flex-1 min-w-fit">导出导入</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="ai-config" className="space-y-4 mt-4">
+            <TabsContent value="ai-config" className="space-y-3 mt-3">
               {/* AI 服务配置 */}
-              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border dark:border-gray-700">
-                <div className="flex items-center justify-between mb-3">
+              <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border dark:border-gray-700">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    <Label className="text-sm font-medium">{t('config.aiServiceConfig')}</Label>
+                    <Settings className="h-3 w-3" />
+                    <Label className="text-xs font-medium">{t('config.aiServiceConfig')}</Label>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={testAIConnection}
                     disabled={isTestingConnection || processing || !apiKey}
-                    className="flex items-center gap-1"
+                    className="flex items-center gap-1 h-6 text-xs"
                   >
                     {isTestingConnection ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -280,21 +280,21 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                 
                 {/* 连接测试结果显示 */}
                 {connectionTestResult && (
-                  <div className={`flex items-center gap-2 p-2 rounded-md text-sm ${
+                  <div className={`flex items-center gap-2 p-2 rounded-md text-xs ${
                     connectionTestResult.success 
                       ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' 
                       : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
                   }`}>
                     {connectionTestResult.success ? (
-                      <CheckCircle className="h-4 w-4" />
+                      <CheckCircle className="h-3 w-3" />
                     ) : (
-                      <XCircle className="h-4 w-4" />
+                      <XCircle className="h-3 w-3" />
                     )}
                     {connectionTestResult.message}
                   </div>
                 )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <div className="space-y-2 min-w-0">
                   <Label htmlFor="ai-provider">{t('config.aiProvider')}</Label>
                   <div className="flex flex-col items-start gap-2">

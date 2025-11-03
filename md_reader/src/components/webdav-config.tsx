@@ -180,14 +180,14 @@ export function WebDAVConfig() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 启用开关 */}
       <div className="flex items-center justify-between">
-        <div className="space-y-0.5">
-          <Label htmlFor="webdav-enabled" className="text-base font-medium">
+        <div className="space-y-1">
+          <Label htmlFor="webdav-enabled" className="text-sm font-medium">
             启用WebDAV文件访问
           </Label>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             启用后可以从WebDAV服务器打开Markdown文件
           </p>
         </div>
@@ -202,38 +202,40 @@ export function WebDAVConfig() {
         <>
           {/* 服务器配置 */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Settings className="h-4 w-4" />
                 服务器配置
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 配置WebDAV服务器的连接信息
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="server-url">服务器地址</Label>
+            <CardContent className="space-y-3 pt-0">
+              <div className="space-y-1">
+                <Label htmlFor="server-url" className="text-xs">服务器地址</Label>
                 <Input
                   id="server-url"
                   placeholder="https://dav.jianguoyun.com/dav/"
                   value={webdavConfig.serverUrl}
                   onChange={(e) => setWebDAVServerUrl(e.target.value)}
+                  className="h-8"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="username">用户名</Label>
+              <div className="space-y-1">
+                <Label htmlFor="username" className="text-xs">用户名</Label>
                 <Input
                   id="username"
                   placeholder="your-email@example.com"
                   value={webdavConfig.username}
                   onChange={(e) => setWebDAVUsername(e.target.value)}
+                  className="h-8"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">密码</Label>
+              <div className="space-y-1">
+                <Label htmlFor="password" className="text-xs">密码</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -241,30 +243,32 @@ export function WebDAVConfig() {
                     placeholder="应用密码"
                     value={webdavConfig.password}
                     onChange={(e) => setWebDAVPassword(e.target.value)}
+                    className="h-8 pr-8"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-2 py-1 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="h-3 w-3" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-3 w-3" />
                     )}
                   </Button>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="app-name">应用名称</Label>
+              <div className="space-y-1">
+                <Label htmlFor="app-name" className="text-xs">应用名称</Label>
                 <Input
                   id="app-name"
                   placeholder="md_reader_by_PF"
                   value={webdavConfig.appName}
                   onChange={(e) => setWebDAVAppName(e.target.value)}
+                  className="h-8"
                 />
               </div>
             </CardContent>
@@ -272,20 +276,20 @@ export function WebDAVConfig() {
 
           {/* 代理设置 */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Settings className="h-4 w-4" />
                 代理设置
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 配置是否使用代理访问WebDAV服务器（仅开发环境）
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 pt-0">
               <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="use-proxy">使用代理</Label>
-                  <p className="text-sm text-muted-foreground">
+                <div className="space-y-1">
+                  <Label htmlFor="use-proxy" className="text-xs">使用代理</Label>
+                  <p className="text-xs text-muted-foreground">
                     通过开发服务器代理访问WebDAV（解决CORS问题）
                   </p>
                 </div>
@@ -296,12 +300,12 @@ export function WebDAVConfig() {
                 />
               </div>
               {webdavConfig.useProxy && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    <div className="space-y-2">
+                <Alert className="py-2">
+                  <Info className="h-3 w-3" />
+                  <AlertDescription className="text-xs">
+                    <div className="space-y-1">
                       <p>代理模式已启用，需要重启开发服务器才能生效。</p>
-                      <p>重启命令：<code className="bg-muted px-1 py-0.5 rounded text-sm">npm run dev</code></p>
+                      <p>重启命令：<code className="bg-muted px-1 py-0.5 rounded text-xs">npm run dev</code></p>
                       <p>代理将自动处理跨域问题，允许浏览器访问坚果云WebDAV。</p>
                     </div>
                   </AlertDescription>
@@ -312,20 +316,20 @@ export function WebDAVConfig() {
 
           {/* 连接测试 */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RefreshCw className="h-5 w-5" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <RefreshCw className="h-4 w-4" />
                 连接测试
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 测试WebDAV服务器连接是否正常
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 pt-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {getConnectionStatusIcon()}
-                  <span className="text-sm">{getConnectionStatusText()}</span>
+                  <span className="text-xs">{getConnectionStatusText()}</span>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -333,15 +337,16 @@ export function WebDAVConfig() {
                     size="sm"
                     onClick={testConnection}
                     disabled={isTestingConnection}
+                    className="h-7 text-xs"
                   >
                     {isTestingConnection ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                         测试中...
                       </>
                     ) : (
                       <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                        <RefreshCw className="mr-1 h-3 w-3" />
                         测试连接
                       </>
                     )}
@@ -350,6 +355,7 @@ export function WebDAVConfig() {
                     variant="outline"
                     size="sm"
                     onClick={handleReset}
+                    className="h-7 text-xs"
                   >
                     重置
                   </Button>
@@ -358,7 +364,7 @@ export function WebDAVConfig() {
 
               {connectionTestResult && (
                 <Alert className={connectionTestResult.success ? 'border-green-200' : 'border-red-200'}>
-                  <AlertDescription>
+                  <AlertDescription className="text-xs">
                     {connectionTestResult.message}
                   </AlertDescription>
                 </Alert>
@@ -367,26 +373,26 @@ export function WebDAVConfig() {
           </Card>
 
           {/* 帮助信息 */}
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
+          <Alert className="py-2">
+            <Info className="h-3 w-3" />
+            <AlertDescription className="text-xs">
               <div className="space-y-2">
                 <p>
                   <strong>坚果云WebDAV配置说明：</strong>
                 </p>
-                <ul className="list-disc list-inside space-y-1 text-sm">
+                <ul className="list-disc list-inside space-y-1 text-xs">
                   <li>服务器地址：https://dav.jianguoyun.com/dav/</li>
                   <li>用户名：坚果云账户邮箱</li>
                   <li>密码：在坚果云安全选项中生成的应用密码</li>
                   <li>应用密码不是登录密码，需要在账户设置中单独生成</li>
                 </ul>
-                <div className="flex items-center gap-2 pt-2">
-                  <ExternalLink className="h-4 w-4" />
+                <div className="flex items-center gap-1 pt-1">
+                  <ExternalLink className="h-3 w-3" />
                   <a 
                     href="https://help.jianguoyun.com/?p=1464" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="text-blue-600 hover:underline text-xs"
                   >
                     查看坚果云WebDAV设置教程
                   </a>
