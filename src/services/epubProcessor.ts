@@ -681,12 +681,12 @@ export class EpubProcessor {
 
   private extractContentFromHeading(doc: Document, headingElement: Element): string {
     try {
+      console.log(`📖 [DEBUG] 从标题提取内容: ${headingElement.textContent}`)
       const headingLevel = parseInt(headingElement.tagName.charAt(1))
       const content = []
       
       // 从标题开始遍历
-      let currentElement = headingElement
-      let hasNextHeading = false
+      let currentElement = headingElement.nextElementSibling
 
       while (currentElement) {
         // 收集当前元素的文本
@@ -701,7 +701,6 @@ export class EpubProcessor {
         if (currentElement && currentElement.tagName && /^h[1-6]$/i.test(currentElement.tagName)) {
           const currentLevel = parseInt(currentElement.tagName.charAt(1))
           if (currentLevel <= headingLevel) {
-            hasNextHeading = true
             break
           }
         }
@@ -758,46 +757,7 @@ export class EpubProcessor {
     }
   }
 
-  private extractContentByAnchorRegex(htmlContent: string, anchor: string): string {
-    try {
-      console.log(`🔧 [DEBUG] 使用正则表达式通过锚点提取内容: ${anchor}`)
-
-      // 策略1：查找带有id的标签
-      const idMatch = htmlContent.match(new RegExp(`<[^>]*id=["']${anchor}["'][^>]*>(.*?)</[^>]*>`, 'is'))
-      if (idMatch) {
-        const content = idMatch[1].replace(/<[^>]*>/g, ' ').trim()
-        if (content.length > 20) {
-          console.log(`✅ [DEBUG] 正则表达式通过id提取内容，长度: ${content.length}`)
-          return content
-        }
-      }
-
-      // 策略2：查找带有name的标签
-      const nameMatch = htmlContent.match(new RegExp(`<[^>]*name=["']${anchor}["'][^>]*>(.*?)</[^>]*>`, 'is'))
-      if (nameMatch) {
-        const content = nameMatch[1].replace(/<[^>]*>/g, ' ').trim()
-        if (content.length > 20) {
-          console.log(`✅ [DEBUG] 正则表达式通过name提取内容，长度: ${content.length}`)
-          return content
-        }
-      }
-
-      // 策略3：查找包含锚点文本的标题
-      const titleMatch = htmlContent.match(new RegExp(`<h[1-6][^>]*id=["'][^"']*${anchor}[^"']*["'][^>]*>(.*?)</h[1-6]>`, 'is'))
-      if (titleMatch) {
-        const title = titleMatch[1].replace(/<[^>]*>/g, '').trim()
-        console.log(`✅ [DEBUG] 正则表达式通过标题提取内容: ${title}`)
-        return title
-      }
-
-      console.log(`❌ [DEBUG] 正则表达式锚点定位失败: ${anchor}`)
-      return ''
-    } catch (error) {
-      console.warn(`⚠️ [DEBUG] 正则表达式锚点提取失败:`, error)
-      return ''
-    }
-  }
-
+  
   // 新增方法：获取章节的HTML内容（不影响原有功能）
   async getSingleChapterHTML(book: Book, href: string): Promise<string> {
     try {

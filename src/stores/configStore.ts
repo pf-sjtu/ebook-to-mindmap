@@ -277,24 +277,24 @@ const createDefaultAIConfigManager = (): AIConfigManager => {
     providers: [defaultProvider],
     activeProviderId: defaultProvider.id,
     
-    addProvider: (config) => {
+    addProvider: (_config) => {
       const id = `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       return id
     },
     
-    updateProvider: (id, config) => {
+    updateProvider: (_id, _config) => {
       // 这个方法会在store中被重写
     },
     
-    deleteProvider: (id) => {
+    deleteProvider: (_id) => {
       // 这个方法会在store中被重写
     },
     
-    duplicateProvider: (id, newName) => {
+    duplicateProvider: (_id, _newName) => {
       return `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     },
     
-    setActiveProvider: (id) => {
+    setActiveProvider: (_id) => {
       // 这个方法会在store中被重写
     },
     
@@ -302,11 +302,11 @@ const createDefaultAIConfigManager = (): AIConfigManager => {
       return defaultProvider
     },
     
-    getProviderById: (id) => {
-      return id === defaultProvider.id ? defaultProvider : undefined
+    getProviderById: (_id) => {
+      return defaultProvider
     },
     
-    createFromTemplate: (template, name) => {
+    createFromTemplate: (_template, _name) => {
       return `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     },
     
@@ -768,13 +768,13 @@ export const useConfigStore = create<ConfigState>()(
         setWebDAVConnectionStatus: (connectionStatus) => set((state) => ({
           webdavConfig: { ...state.webdavConfig, connectionStatus }
         })),
-        updateWebDAVLastSyncTime: () => set((state) => ({
+        updateWebDAVLastSyncTime: () => set((_state) => ({
           webdavConfig: { 
             ...state.webdavConfig, 
             lastSyncTime: new Date().toISOString()
           }
         })),
-        resetWebDAVConfig: () => set((state) => ({
+        resetWebDAVConfig: () => set((_state) => ({
           webdavConfig: defaultWebDAVConfig
         })),
         
@@ -928,7 +928,7 @@ export const useConfigStore = create<ConfigState>()(
         },
 
         resetAllConfig: () => {
-          set((state) => ({
+          set((_state) => ({
             aiConfigManager: createDefaultAIConfigManager(),
             processingOptions: defaultProcessingOptions,
             webdavConfig: defaultWebDAVConfig,

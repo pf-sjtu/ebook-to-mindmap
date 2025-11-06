@@ -39,7 +39,7 @@ export interface WebDAVConfig {
  */
 function getProcessedUrl(originalUrl: string, useProxy: boolean = false): string {
   // 只有在明确指定使用代理且在开发环境中才使用代理
-  if (useProxy && import.meta.env.DEV && originalUrl.includes('dav.jianguoyun.com')) {
+  if (useProxy && (import.meta as any).env.DEV && originalUrl.includes('dav.jianguoyun.com')) {
     const url = new URL(originalUrl)
     // 提取路径部分，去掉 /dav 前缀
     let pathname = url.pathname
@@ -124,7 +124,7 @@ export class WebDAVService {
         console.log('WebDAV连接测试成功')
         return { success: true, data: true }
       } else {
-        return result
+        return { success: false, error: result.error || '连接测试失败' }
       }
     } catch (error) {
       console.error('WebDAV连接测试失败:', error)
@@ -241,19 +241,19 @@ export class WebDAVService {
         try {
           const binaryContent = await this.client.getFileContents(normalizedPath, { format: 'binary' })
           console.log('WebDAV客户端返回的内容类型:', typeof binaryContent, binaryContent.constructor.name)
-          console.log('内容长度:', binaryContent.length || binaryContent.byteLength)
+          console.log('内容长度:', (binaryContent as any).length || (binaryContent as any).byteLength)
           
           // 转换为 ArrayBuffer
           let arrayBuffer: ArrayBuffer
           if (binaryContent instanceof ArrayBuffer) {
             arrayBuffer = binaryContent
           } else if (binaryContent instanceof Uint8Array) {
-            arrayBuffer = binaryContent.buffer.slice(binaryContent.byteOffset, binaryContent.byteOffset + binaryContent.byteLength)
+            arrayBuffer = binaryContent.buffer.slice(binaryContent.byteOffset, binaryContent.byteOffset + binaryContent.byteLength) as ArrayBuffer
           } else if (typeof binaryContent === 'string') {
             arrayBuffer = this.base64ToArrayBuffer(binaryContent)
           } else {
             // 如果是 Buffer（Node.js 环境），直接转换
-            arrayBuffer = binaryContent instanceof Buffer ? binaryContent.buffer : new Uint8Array(binaryContent).buffer
+            arrayBuffer = (binaryContent as any) instanceof Buffer ? (binaryContent as any).buffer : new Uint8Array(binaryContent as any).buffer
           }
           
           return { success: true, data: arrayBuffer }
@@ -304,7 +304,7 @@ export class WebDAVService {
         }
       }
 
-      console.log('文件内容获取成功，长度:', contentResult.data.length)
+      console.log('文件内容获取成功，长度:', (contentResult.data as string).length)
       
       // 使用提供的文件名或从路径中提取
       const finalFileName = fileName || normalizedPath.split('/').pop() || 'downloaded_file.md'
@@ -476,7 +476,7 @@ export class WebDAVService {
         return await this.uploadViaProxy(normalizedPath, data)
       }
       
-      const result = await this.client.putFileContents(normalizedPath, data, { overwrite })
+      const result = await this.client.putFileContents(normalizedPath, data as any, { overwrite })
       
       console.log('WebDAV上传成功:', result)
       return { success: true, data: result }

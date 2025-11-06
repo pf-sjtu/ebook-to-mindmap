@@ -11,7 +11,6 @@ import {
   CheckCircle, 
   XCircle, 
   Loader2,
-  FolderOpen,
   RefreshCw,
   Eye,
   EyeOff
@@ -28,11 +27,8 @@ export function WebDAVConfig() {
     setWebDAVUsername,
     setWebDAVPassword,
     setWebDAVAppName,
-    setWebDAVAutoSync,
-    setWebDAVSyncPath,
     setWebDAVConnectionStatus,
     setWebDAVUseProxy,
-    updateWebDAVLastSyncTime,
     resetWebDAVConfig
   } = useWebDAVStore()
 
@@ -40,12 +36,11 @@ export function WebDAVConfig() {
   const [isTestingConnection, setIsTestingConnection] = useState(false)
   const [connectionTestResult, setConnectionTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [showPassword, setShowPassword] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
   const [lastConfigHash, setLastConfigHash] = useState('')
 
   // 检查WebDAV服务状态
   useEffect(() => {
-    setIsInitialized(webdavService.isInitialized())
+    // 初始化逻辑
   }, [webdavConfig])
 
   // 生成配置哈希用于检测配置变化
@@ -148,7 +143,6 @@ export function WebDAVConfig() {
     resetWebDAVConfig()
     setConnectionTestResult(null)
     webdavService.disconnect()
-    setIsInitialized(false)
   }
 
   // 获取连接状态图标

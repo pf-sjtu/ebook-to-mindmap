@@ -390,7 +390,7 @@ export const MarkdownReader: React.FC<MarkdownReaderProps> = ({
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {recentFiles.map((file, index) => (
+                {recentFiles.map((file) => (
                   <div
                     key={`${file.name}-${file.timestamp}`}
                     className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"

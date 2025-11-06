@@ -1,5 +1,4 @@
-import { Button } from './ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 import { Settings } from 'lucide-react'
 import { WebDAVConfig } from './webdav-config'
 

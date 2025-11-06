@@ -13,6 +13,7 @@ interface WebDAVState {
   setWebDAVAppName: (appName: string) => void
   setWebDAVAutoSync: (autoSync: boolean) => void
   setWebDAVSyncPath: (syncPath: string) => void
+  setWebDAVUseProxy: (useProxy: boolean) => void
   setWebDAVConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected' | 'error') => void
   updateWebDAVLastSyncTime: () => void
   resetWebDAVConfig: () => void
@@ -34,7 +35,7 @@ const defaultWebDAVConfig: WebDAVConfig = {
 
 export const useWebDAVStore = create<WebDAVState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // WebDAV配置
       webdavConfig: defaultWebDAVConfig,
       setWebDAVEnabled: (enabled) => set((state) => ({
@@ -61,7 +62,7 @@ export const useWebDAVStore = create<WebDAVState>()(
       setWebDAVConnectionStatus: (connectionStatus) => set((state) => ({
         webdavConfig: { ...state.webdavConfig, connectionStatus }
       })),
-      setWebDAVUseProxy: (useProxy) => set((state) => ({
+      setWebDAVUseProxy: (useProxy: boolean) => set((state) => ({
         webdavConfig: { ...state.webdavConfig, useProxy }
       })),
       updateWebDAVLastSyncTime: () => set((state) => ({
@@ -70,7 +71,7 @@ export const useWebDAVStore = create<WebDAVState>()(
           lastSyncTime: new Date().toISOString()
         }
       })),
-      resetWebDAVConfig: () => set((state) => ({
+      resetWebDAVConfig: () => set(() => ({
         webdavConfig: defaultWebDAVConfig
       }))
     }),

@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkCjkFriendly from "remark-cjk-friendly";
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -11,15 +11,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from './ui/dialog';
 import { 
   FileText, 
   Upload, 
-  Download, 
-  Trash2, 
   Eye, 
-  EyeOff, 
   Settings, 
   Cloud,
   ChevronDown,
@@ -35,7 +31,7 @@ import { WebDAVSettingsDialog } from './webdav-settings-dialog';
 import { useWebDAVConfig } from '../stores/webdavStore';
 import { webdavService } from '../services/webdavService';
 import { 
-  AlertCircle, X, Clock, UploadCloud, Replace
+  X, UploadCloud, Replace
 } from 'lucide-react';
 
 interface MarkdownReaderProps {
@@ -129,7 +125,6 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
       
       if (headingMatch) {
         // 当前行是只有 # 符号的标题行
-        const level = headingMatch[1].length;
         
         // 检查下一行是否有内容
         if (i + 1 < lines.length) {
@@ -583,47 +578,6 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
     }
   };
 
-  const loadRecentFile = (file: RecentFile) => {
-    // 预处理Markdown内容，将跨行标题转换为标准格式
-    const processedText = preprocessMarkdown(file.content);
-    
-    setContent(processedText);
-    setEditContent(file.content); // 编辑时仍使用原始内容
-    setOriginalContent(file.content);
-    setFileName(file.name);
-    setWebdavFilePath(null);
-    setError(null);
-    
-    // 初始化编辑历史
-    setEditHistory([file.content]);
-    setHistoryIndex(0);
-    
-    // 扫描并编码标题ID（使用预处理后的内容）
-    const headingsMap = scanAndEncodeHeadings(processedText);
-    setHeadingsMap(headingsMap);
-    
-    // 生成目录
-    const tocItems = generateTocFromMap(headingsMap);
-    setTocItems(tocItems);
-  };
-
-  const formatTimestamp = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    
-    if (diffHours < 1) {
-      return '刚刚';
-    } else if (diffHours < 24) {
-      return `${diffHours}小时前`;
-    } else {
-      const diffDays = Math.floor(diffHours / 24);
-      return `${diffDays}天前`;
-    }
-  };
-
-  // 开始编辑时初始化历史记录
   const handleStartEdit = () => {
     setIsEditing(true);
     // 初始化历史记录为当前内容

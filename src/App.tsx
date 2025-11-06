@@ -32,7 +32,7 @@ import { PdfReader } from './components/PdfReader'
 import { UploadToWebDAVButton } from './components/UploadToWebDAVButton'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
-import { scrollToTop, openInMindElixir, downloadMindMap } from './utils/index'
+import { scrollToTop } from './utils/index'
 import { useWebDAVConfig, useConfigStore, useAIConfig, useProcessingOptions, usePromptConfig, useAIServiceOptions } from './stores/configStore'
 
 

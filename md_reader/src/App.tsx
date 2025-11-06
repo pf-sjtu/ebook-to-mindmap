@@ -1,4 +1,3 @@
-import React from 'react';
 import { ThemeProvider } from './components/theme-provider';
 import { MarkdownReaderEnhanced } from './components/markdown-reader-enhanced';
 
