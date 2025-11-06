@@ -892,7 +892,7 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
         <div className="flex-1 p-4 pt-2 pb-24">
           {content ? (
             <Card className="h-full">
-              <CardContent className="p-6 h-full">
+              <CardContent className="p-4 h-full">
                 {isEditing ? (
                   <div className="h-full flex flex-col">
                     <textarea
@@ -948,7 +948,7 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
             >
-              <CardContent className="p-12 text-center">
+              <CardContent className="p-8 text-center">
                 <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">
                   {isDragging ? '释放文件以打开' : '欢迎使用 Markdown 阅读器'}

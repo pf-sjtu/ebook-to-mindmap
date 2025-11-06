@@ -1198,7 +1198,7 @@ function App() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-96 overflow-y-auto overscroll-contain">
                       {file?.name.endsWith('.epub') ? (
                         <EpubReader
                           chapter={rightPanelContent.chapter}
@@ -1470,7 +1470,7 @@ function App() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-96 overflow-y-auto overscroll-contain">
                       {file?.name.endsWith('.epub') ? (
                         <EpubReader
                           chapter={rightPanelContent.chapter}

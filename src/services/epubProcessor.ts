@@ -212,7 +212,9 @@ export class EpubProcessor {
           if (chapterNamingMode === 'numbered') {
             chapterTitle = `第${formatChapterNumber(chapterInfos.length + 1, totalChapters)}章`
           } else {
-            chapterTitle = item.label || `第${chapterInfos.length + 1}章`
+            // 清理章节标题中的HTML实体字符
+            const rawTitle = item.label || `第${chapterInfos.length + 1}章`
+            chapterTitle = this.cleanChapterTitle(rawTitle)
           }
           
           const chapterInfo: { title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number } = {
@@ -361,7 +363,8 @@ export class EpubProcessor {
         console.log(`✅ [DEBUG] 成功通过锚点提取内容，长度: ${textContent.length}`)
       }
 
-      textContent = textContent.trim()
+      // 清理和格式化文本内容
+      textContent = this.cleanAndFormatText(textContent)
 
       console.log(`✨ [DEBUG] 清理后文本长度: ${textContent.length}`)
 
@@ -370,6 +373,128 @@ export class EpubProcessor {
       console.warn(`⚠️ [DEBUG] DOM解析失败，使用正则表达式备选方案:`, error)
       // 如果DOM解析失败，使用正则表达式作为备选方案
       return this.extractTextWithRegex(xhtmlContent, anchor)
+    }
+  }
+
+  private cleanChapterTitle(title: string): string {
+    try {
+      if (!title) return title
+      
+      // 解码HTML实体字符
+      let cleaned = title
+        .replace(/&amp;#160;/g, ' ')  // 处理嵌套的 &#160;
+        .replace(/&amp;nbsp;/g, ' ')  // 处理嵌套的 &nbsp;
+        .replace(/&#160;/g, ' ')      // 不间断空格
+        .replace(/&nbsp;/g, ' ')      // 不间断空格
+        .replace(/&#xA0;/g, ' ')      // 不间断空格（十六进制）
+        .replace(/&amp;/g, '&')       // 和号
+        .replace(/&lt;/g, '<')        // 小于号
+        .replace(/&gt;/g, '>')        // 大于号
+        .replace(/&quot;/g, '"')      // 引号
+        .replace(/&#39;/g, "'")       // 单引号
+        .replace(/&#\d+;/g, '')       // 移除其他数字实体
+        .replace(/&[a-zA-Z]+;/g, '')  // 移除其他命名实体
+      
+      // 清理多余空格
+      cleaned = cleaned.replace(/\s+/g, ' ').trim()
+      
+      console.log(`🧹 [DEBUG] 清理章节标题: "${title}" -> "${cleaned}"`)
+      
+      return cleaned
+    } catch (error) {
+      console.warn(`⚠️ [DEBUG] 章节标题清理失败:`, error)
+      return title
+    }
+  }
+
+  private cleanAndFormatText(text: string): string {
+    try {
+      // 解码HTML实体（包括嵌套的实体）
+      let cleaned = text
+        .replace(/&amp;#160;/g, ' ')  // 处理嵌套的 &#160;
+        .replace(/&amp;nbsp;/g, ' ')  // 处理嵌套的 &nbsp;
+        .replace(/&#160;/g, ' ')      // 不间断空格
+        .replace(/&nbsp;/g, ' ')      // 不间断空格
+        .replace(/&#xA0;/g, ' ')      // 不间断空格（十六进制）
+        .replace(/&amp;/g, '&')       // 和号
+        .replace(/&lt;/g, '<')        // 小于号
+        .replace(/&gt;/g, '>')        // 大于号
+        .replace(/&quot;/g, '"')      // 引号
+        .replace(/&#39;/g, "'")       // 单引号
+        .replace(/&#\d+;/g, '')       // 移除其他数字实体
+        .replace(/&[a-zA-Z]+;/g, '')  // 移除其他命名实体
+
+      // 智能换行处理
+      cleaned = this.addSmartLineBreaks(cleaned)
+
+      // 清理多余空白（但保留换行）
+      cleaned = cleaned
+        .replace(/[ \t]+/g, ' ')         // 合并空格和制表符，但不包括换行
+        .replace(/\n[ \t]+\n/g, '\n')    // 合并空行
+        .replace(/\n{3,}/g, '\n\n')      // 限制连续换行数
+        .trim()
+
+      return cleaned
+    } catch (error) {
+      console.warn(`⚠️ [DEBUG] 文本清理失败:`, error)
+      return text
+    }
+  }
+
+  private addSmartLineBreaks(text: string): string {
+    try {
+      console.log(`🔧 [DEBUG] 开始智能换行处理，文本长度: ${text.length}`)
+      
+      // 首先按句子添加换行
+      let withBreaks = text
+        .replace(/([。！？])([^ \n])/g, '$1\n$2')  // 中文句号后换行
+        .replace(/([.!?])([a-zA-Z])/g, '$1\n$2')  // 英文句号后换行（后跟字母）
+        .replace(/([.!?])(\s+[a-zA-Z])/g, '$1\n$2')  // 英文句号后换行（空格+字母）
+
+      // 按标点符号添加换行
+      withBreaks = withBreaks
+        .replace(/([，,；;])([^ \n])/g, '$1\n$2')  // 逗号、分号后换行
+        .replace(/([：:])([^ \n])/g, '$1\n$2')    // 冒号后换行
+
+      // 按章节标题添加换行
+      withBreaks = withBreaks
+        .replace(/(第[一二三四五六七八九十\d]+章|第[一二三四五六七八九十\d]+节|第[一二三四五六七八九十\d]+篇|Chapter\s+\d+|Section\s+\d+)/g, '\n$1')
+        .replace(/(封面|前言|序言|导论|目录|参考文献|附录)/g, '\n$1')
+
+      // 处理超长行
+      const sentences = withBreaks.split('\n')
+      const formattedSentences = sentences.map(sentence => {
+        const trimmed = sentence.trim()
+        // 如果单行过长（超过150字符），强制换行
+        if (trimmed.length > 150) {
+          // 在适当位置换行
+          let broken = trimmed
+            .replace(/([，,；;]\s*)([^，,；;\n]{30,})/g, '$1\n$2')  // 逗号、分号后换行
+            .replace(/(\s{2,})([^ \n]{30,})/g, '\n$2')               // 多个空格后换行
+            .replace(/([a-zA-Z]+\s+)([a-zA-Z]+\s+[^ \n]{30,})/g, '$1\n$2') // 英文单词后换行
+          
+          // 如果还是很长，按字符数强制换行
+          if (broken.length > 150) {
+            const chunks = []
+            for (let i = 0; i < broken.length; i += 120) {
+              chunks.push(broken.substring(i, Math.min(i + 120, broken.length)))
+            }
+            broken = chunks.join('\n')
+          }
+          
+          return broken
+        }
+        return trimmed
+      })
+
+      const result = formattedSentences.join('\n').trim()
+      const lineCount = result.split('\n').length
+      console.log(`✅ [DEBUG] 智能换行完成，行数: ${lineCount}`)
+      
+      return result
+    } catch (error) {
+      console.warn(`⚠️ [DEBUG] 智能换行处理失败:`, error)
+      return text
     }
   }
 
@@ -386,44 +511,41 @@ export class EpubProcessor {
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
 
-    // 提取标题（通常在h1-h6标签中）
-    const titleMatch = cleanContent.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/i)
-    const title = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : ''
-
+    // 如果有锚点，尝试用正则表达式提取锚点内容
     let textContent = ''
-
-    // 如果有锚点，尝试通过正则表达式定位锚点内容
     if (anchor) {
       textContent = this.extractContentByAnchorRegex(cleanContent, anchor)
     }
 
-    // 如果锚点定位失败，提取全部内容
+    // 如果锚点提取失败或没有锚点，提取全部内容
     if (!textContent.trim()) {
-      // 移除所有HTML标签
-      textContent = cleanContent.replace(/<[^>]*>/g, ' ')
-      console.log(`🔧 [DEBUG] 锚点定位失败，提取全部内容`)
+      // 提取标题
+      const titleMatch = cleanContent.match(/<title[^>]*>([^<]*)<\/title>/i)
+      const title = titleMatch ? this.cleanAndFormatText(titleMatch[1]) : ''
+
+      // 提取正文内容
+      const bodyMatch = cleanContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+      if (bodyMatch) {
+        textContent = bodyMatch[1]
+      } else {
+        textContent = cleanContent
+      }
+
+      // 移除HTML标签并清理文本
+      textContent = textContent.replace(/<[^>]*>/g, ' ')
+      
+      // 使用相同的文本清理逻辑
+      textContent = this.cleanAndFormatText(textContent)
+
+      console.log(`✨ [DEBUG] 正则表达式方案 - 标题: "${title}", 文本长度: ${textContent.length}`)
+
+      return { title, textContent }
     } else {
-      console.log(`✅ [DEBUG] 正则表达式成功通过锚点提取内容`)
+      // 锚点提取成功，清理文本
+      textContent = this.cleanAndFormatText(textContent)
+      console.log(`✨ [DEBUG] 正则表达式锚点提取成功，文本长度: ${textContent.length}`)
+      return { title: '', textContent }
     }
-
-    // 解码HTML实体
-    textContent = textContent
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-
-    // 清理空白字符
-    textContent = textContent
-      .replace(/\s+/g, ' ')
-      .replace(/\n\s*\n/g, '\n')
-      .trim()
-
-    console.log(`✨ [DEBUG] 正则表达式方案 - 标题: "${title}", 文本长度: ${textContent.length}`)
-
-    return { title, textContent }
   }
 
   private extractContentByAnchor(doc: Document, anchor: string): string {
@@ -464,7 +586,7 @@ export class EpubProcessor {
         const content = exactIdMatch[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
         if (content.length > 10) {
           console.log(`✅ [DEBUG] 策略1成功: 精确id匹配`)
-          return content
+          return this.cleanAndFormatText(content)
         }
       }
 
@@ -474,7 +596,7 @@ export class EpubProcessor {
         const content = headingMatch[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
         if (content.length > 10) {
           console.log(`✅ [DEBUG] 策略2成功: 标题/段落匹配`)
-          return content
+          return this.cleanAndFormatText(content)
         }
       }
 
@@ -495,7 +617,7 @@ export class EpubProcessor {
         
         if (content.length > 20) {
           console.log(`✅ [DEBUG] 策略3成功: 锚点后内容提取`)
-          return content
+          return this.cleanAndFormatText(content)
         }
       }
 
@@ -505,7 +627,7 @@ export class EpubProcessor {
         const content = paragraphMatch[0].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
         if (content.length > 10) {
           console.log(`✅ [DEBUG] 策略4成功: 段落匹配`)
-          return content
+          return this.cleanAndFormatText(content)
         }
       }
 
@@ -513,6 +635,46 @@ export class EpubProcessor {
       return ''
     } catch (error) {
       console.warn(`⚠️ [DEBUG] 改进锚点提取出错:`, error)
+      return ''
+    }
+  }
+
+  private extractContentByAnchorRegex(htmlContent: string, anchor: string): string {
+    try {
+      console.log(`🔧 [DEBUG] 使用正则表达式通过锚点提取内容: ${anchor}`)
+
+      // 策略1：查找带有id的标签
+      const idMatch = htmlContent.match(new RegExp(`<[^>]*id=["']${anchor}["'][^>]*>(.*?)</[^>]*>`, 'is'))
+      if (idMatch) {
+        const content = idMatch[1].replace(/<[^>]*>/g, ' ').trim()
+        if (content.length > 20) {
+          console.log(`✅ [DEBUG] 正则表达式通过id提取内容，长度: ${content.length}`)
+          return this.cleanAndFormatText(content)
+        }
+      }
+
+      // 策略2：查找带有name的标签
+      const nameMatch = htmlContent.match(new RegExp(`<[^>]*name=["']${anchor}["'][^>]*>(.*?)</[^>]*>`, 'is'))
+      if (nameMatch) {
+        const content = nameMatch[1].replace(/<[^>]*>/g, ' ').trim()
+        if (content.length > 20) {
+          console.log(`✅ [DEBUG] 正则表达式通过name提取内容，长度: ${content.length}`)
+          return this.cleanAndFormatText(content)
+        }
+      }
+
+      // 策略3：查找包含锚点文本的标题
+      const titleMatch = htmlContent.match(new RegExp(`<h[1-6][^>]*id=["'][^"']*${anchor}[^"']*["'][^>]*>(.*?)</h[1-6]>`, 'is'))
+      if (titleMatch) {
+        const title = titleMatch[1].replace(/<[^>]*>/g, '').trim()
+        console.log(`✅ [DEBUG] 正则表达式通过标题提取内容: ${title}`)
+        return this.cleanAndFormatText(title)
+      }
+
+      console.log(`❌ [DEBUG] 正则表达式锚点定位失败: ${anchor}`)
+      return ''
+    } catch (error) {
+      console.warn(`⚠️ [DEBUG] 正则表达式锚点提取失败:`, error)
       return ''
     }
   }

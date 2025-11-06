@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ChevronDown, ChevronRight, Eye, EyeOff, CheckCircle, Circle, Loader2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle, Circle, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 
@@ -12,13 +12,12 @@ interface Chapter {
   title: string
   content?: string // 章节原始内容，用于预览
   summary?: string
-  mindMap?: any
+  mindMap?: Record<string, unknown>
   processed: boolean
 }
 
 interface ChapterNavigationProps {
   chapters: Chapter[]
-  totalChapters: number // 原始章节总数
   processingMode: 'summary' | 'mindmap' | 'combined-mindmap'
   onChapterClick: (chapterId: string) => void
   processing?: boolean
@@ -26,7 +25,6 @@ interface ChapterNavigationProps {
 
 export function ChapterNavigation({ 
   chapters, 
-  totalChapters,
   processingMode, 
   onChapterClick, 
   processing = false 
@@ -163,7 +161,7 @@ export function ChapterNavigation({
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0 ml-2 flex-shrink-0"
-                          onClick={(e) => {
+                          onClick={(e: React.MouseEvent) => {
                             e.stopPropagation()
                             toggleChapter(chapter.id)
                           }}
@@ -181,7 +179,7 @@ export function ChapterNavigation({
                   {isExpanded && isProcessed && hasContent && (
                     <div className="px-3 pb-3 text-sm text-muted-foreground border-t">
                       {processingMode === 'summary' ? (
-                        <div className="pt-2 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                        <div className="pt-2 whitespace-pre-wrap max-h-32 overflow-y-auto overscroll-contain">
                           {hasContent}
                         </div>
                       ) : (

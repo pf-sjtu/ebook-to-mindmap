@@ -934,7 +934,7 @@ export function ConfigDialog({ processing, file }: ConfigDialogProps) {
                 </div>
 
                 {previewChapters.length > 0 ? (
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                  <div className="space-y-2 max-h-60 overflow-y-auto overscroll-contain">
                     {previewChapters.map((chapter, index) => (
                       <div key={`${chapter.title}-${index}`} className="flex items-start gap-2 p-2 bg-white dark:bg-gray-900 rounded border dark:border-gray-600">
                         <span className="text-xs text-gray-500 dark:text-gray-400 font-mono shrink-0 w-8">

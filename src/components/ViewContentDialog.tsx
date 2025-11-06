@@ -53,15 +53,17 @@ export function ViewContentDialog({ title, content, chapterIndex, contentType = 
           <Eye className="h-4 w-4 " />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[80vh]">
-        <DialogHeader>
-          <DialogTitle>{title} - {t('viewContent.originalText')}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90vh] w-full flex flex-col">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="text-wrap break-words">{title} - {t('viewContent.originalText')}</DialogTitle>
+          <DialogDescription className="text-wrap break-words">
             {t('viewContent.chapterContent', { chapter: chapterIndex + 1 })}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-[60vh] w-full rounded-md border p-4">
-          {renderContent()}
+        <ScrollArea className="flex-1 w-full rounded-md border p-4 min-h-0">
+          <div className="max-w-none">
+            {renderContent()}
+          </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>

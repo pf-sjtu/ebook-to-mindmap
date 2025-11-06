@@ -500,7 +500,7 @@ export function WebDAVFileBrowser({
                 <Input
                   placeholder="搜索文件..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                   className="pl-8"
                 />
               </div>
@@ -577,7 +577,7 @@ export function WebDAVFileBrowser({
                       {sortedFilteredFiles.map((file, index) => (
                         <div
                           key={index}
-                          className={`flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800 ${
+                          className={`flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800 ${
                             selectedFile?.filename === file.filename ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                           }`}
                           onClick={() => file.type === 'directory' ? handleDirectoryClick(file) : handleFileClick(file)}
@@ -621,7 +621,7 @@ export function WebDAVFileBrowser({
 
           {/* 选中文件信息 */}
           {selectedFile && selectedFile.type === 'file' && (
-            <div className="flex-shrink-0 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md">
+            <div className="flex-shrink-0 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-md">
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span className="font-medium text-foreground" title={selectedFile.basename}>
                   {selectedFile.basename.length > 30 ? selectedFile.basename.substring(0, 30) + '...' : selectedFile.basename}
