@@ -59,10 +59,14 @@ export class ConfigExportService {
     // 过滤aiConfigManager
     if (config.aiConfigManager) {
       filtered.aiConfigManager = {
-        providers: config.aiConfigManager.providers.map(provider => {
+        providers: config.aiConfigManager.providers.map((provider: any) => {
           const { addProvider, updateProvider, deleteProvider, duplicateProvider, 
                   setActiveProvider, getActiveProvider, getProviderById, 
                   createFromTemplate, getAvailableTemplates, ...providerData } = provider
+          // 忽略解构的方法，只保留数据
+          void addProvider; void updateProvider; void deleteProvider; void duplicateProvider;
+          void setActiveProvider; void getActiveProvider; void getProviderById;
+          void createFromTemplate; void getAvailableTemplates;
           return providerData
         }),
         activeProviderId: config.aiConfigManager.activeProviderId
@@ -203,11 +207,11 @@ export class ConfigExportService {
         aiConfigManager: JSON.parse(JSON.stringify(config.aiConfigManager)),
         processingOptions: JSON.parse(JSON.stringify(config.processingOptions)),
         webdavConfig: JSON.parse(JSON.stringify(config.webdavConfig)),
-        promptConfig: JSON.parse(JSON.stringify(config.promptConfig)),
-        promptVersionConfig: JSON.parse(JSON.stringify(config.promptVersionConfig)),
-        currentPromptVersion: config.currentPromptVersion,
-        tokenUsage: config.tokenUsage
-      }
+        promptConfig: JSON.parse(JSON.stringify((config as any).promptConfig)),
+        promptVersionConfig: JSON.parse(JSON.stringify((config as any).promptVersionConfig)),
+        currentPromptVersion: (config as any).currentPromptVersion,
+        tokenUsage: (config as any).tokenUsage
+      } as any
     }
   }
 }

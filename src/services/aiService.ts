@@ -442,13 +442,13 @@ export class AIService {
       // 尝试解析JSON
       try {
         return JSON.parse(mindMapJson.trim())
-      } catch (parseError) {
+      } catch (_parseError) {
         // 尝试从代码块中提取JSON
         const jsonMatch = mindMapJson.match(/```(?:json)?\s*([\s\S]*?)```/)
         if (jsonMatch && jsonMatch[1]) {
           try {
             return JSON.parse(jsonMatch[1].trim())
-          } catch (extractError) {
+          } catch (_extractError) {
             throw new Error('AI返回的思维导图数据格式不正确')
           }
         }
@@ -473,13 +473,13 @@ export class AIService {
       // 尝试解析JSON
       try {
         return JSON.parse(arrowsJson.trim())
-      } catch (parseError) {
+      } catch (_parseError) {
         // 尝试从代码块中提取JSON
         const jsonMatch = arrowsJson.match(/```(?:json)?\s*([\s\S]*?)```/)
         if (jsonMatch && jsonMatch[1]) {
           try {
             return JSON.parse(jsonMatch[1].trim())
-          } catch (extractError) {
+          } catch (_extractError) {
             throw new Error('AI返回的箭头数据格式不正确')
           }
         }
@@ -512,13 +512,13 @@ export class AIService {
       // 尝试解析JSON
       try {
         return JSON.parse(mindMapJson.trim())
-      } catch (parseError) {
+      } catch (_parseError) {
         // 尝试从代码块中提取JSON
         const jsonMatch = mindMapJson.match(/```(?:json)?\s*([\s\S]*?)```/)
         if (jsonMatch && jsonMatch[1]) {
           try {
             return JSON.parse(jsonMatch[1].trim())
-          } catch (extractError) {
+          } catch (_extractError) {
             throw new Error('AI返回的思维导图数据格式不正确')
           }
         }
@@ -558,7 +558,7 @@ export class AIService {
               if (usage?.totalTokenCount) {
                 this.recordTokenUsage(usage.totalTokenCount)
               }
-            } catch (error) {
+            } catch (_error) {
               // 如果无法获取token使用量，忽略错误
             }
             
@@ -611,7 +611,7 @@ export class AIService {
             if (data.usage?.total_tokens) {
               this.recordTokenUsage(data.usage.total_tokens)
             }
-          } catch (error) {
+          } catch (_error) {
             // 如果无法获取token使用量，忽略错误
           }
           
@@ -769,9 +769,8 @@ export class AIService {
                   const response = JSON.parse(body)
                   const text = response.candidates?.[0]?.content?.parts?.[0]?.text || ''
                   resolve(text)
-                } catch (parseError) {
+                } catch (_parseError) {
                   console.error('Gemini API响应解析失败:', {
-                    parseError: parseError.message,
                     responseBody: body.substring(0, 500) + (body.length > 500 ? '...' : ''),
                     statusCode: res.statusCode,
                     provider: config.provider
@@ -976,7 +975,7 @@ export class AIService {
                     statusCode: res.statusCode
                   }
                 })
-              } catch (parseError) {
+              } catch (_parseError) {
                 resolve({
                   success: false,
                   message: '代理响应解析失败'

@@ -36,7 +36,7 @@ interface AIProviderConfig {
   temperature: number
   proxyUrl?: string // 代理服务器地址
   proxyEnabled?: boolean // 是否启用代理
-  customFields?: Record<string, any> // 自定义字段，用于不同服务商的特殊配置
+  customFields?: Record<string, unknown> // 自定义字段，用于不同服务商的特殊配置
   isCustom: boolean // 是否为自定义配置
   isDefault?: boolean // 是否为默认配置
   createdAt: string // 创建时间
@@ -46,7 +46,7 @@ interface AIProviderConfig {
 // AI配置管理接口
 interface AIConfigManager {
   providers: AIProviderConfig[] // 所有AI服务商配置
-  activeProviderId: string // 当前激活的服务商ID
+  activeProviderId: string | null // 当前激活的服务商ID
   
   // 管理服务商配置
   addProvider: (config: Omit<AIProviderConfig, 'id' | 'createdAt' | 'updatedAt'>) => string
@@ -90,7 +90,7 @@ interface ProcessingOptions {
 }
 
 // WebDAV配置接口
-interface WebDAVConfig {
+export interface WebDAVConfig {
   enabled: boolean // 是否启用WebDAV
   serverUrl: string // WebDAV服务器地址
   username: string // 用户名
@@ -109,7 +109,7 @@ interface AIServiceOptions {
 }
 
 // 配置store状态接口
-interface ConfigState {
+export interface ConfigState {
   // AI配置管理
   aiConfigManager: AIConfigManager
   
@@ -277,24 +277,24 @@ const createDefaultAIConfigManager = (): AIConfigManager => {
     providers: [defaultProvider],
     activeProviderId: defaultProvider.id,
     
-    addProvider: (_config) => {
+    addProvider: () => {
       const id = `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       return id
     },
     
-    updateProvider: (_id, _config) => {
+    updateProvider: () => {
       // 这个方法会在store中被重写
     },
     
-    deleteProvider: (_id) => {
+    deleteProvider: () => {
       // 这个方法会在store中被重写
     },
     
-    duplicateProvider: (_id, _newName) => {
+    duplicateProvider: () => {
       return `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     },
     
-    setActiveProvider: (_id) => {
+    setActiveProvider: () => {
       // 这个方法会在store中被重写
     },
     
@@ -302,11 +302,11 @@ const createDefaultAIConfigManager = (): AIConfigManager => {
       return defaultProvider
     },
     
-    getProviderById: (_id) => {
+    getProviderById: () => {
       return defaultProvider
     },
     
-    createFromTemplate: (_template, _name) => {
+    createFromTemplate: () => {
       return `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     },
     
@@ -384,7 +384,7 @@ export const useConfigStore = create<ConfigState>()(
         ...createDefaultAIConfigManager(),
         
         // 重写方法以支持状态管理
-        addProvider: (config) => {
+        addProvider: (config: any) => {
           const id = `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
           const newProvider: AIProviderConfig = {
             ...config,
@@ -408,7 +408,7 @@ export const useConfigStore = create<ConfigState>()(
           return id
         },
         
-        updateProvider: (id, config) => {
+        updateProvider: (id: any, config: any) => {
           set((prevState) => {
             const newAIConfigManager = {
               ...prevState.aiConfigManager,
@@ -423,7 +423,7 @@ export const useConfigStore = create<ConfigState>()(
           })
         },
         
-        deleteProvider: (id) => {
+        deleteProvider: (id: any) => {
           set((prevState) => {
             const newProviders = prevState.aiConfigManager.providers.filter(p => p.id !== id)
             const newActiveId = prevState.aiConfigManager.activeProviderId === id 
@@ -442,7 +442,7 @@ export const useConfigStore = create<ConfigState>()(
           })
         },
         
-        setActiveProvider: (id) => {
+        setActiveProvider: (id: any) => {
           set((prevState) => {
             const newAIConfigManager = {
               ...prevState.aiConfigManager,
@@ -459,7 +459,7 @@ export const useConfigStore = create<ConfigState>()(
           return state.aiConfigManager.providers.find(p => p.id === state.aiConfigManager.activeProviderId)
         },
         
-        getProviderById: (id) => {
+        getProviderById: (id: any) => {
           const state = get()
           return state.aiConfigManager.providers.find(p => p.id === id)
         }
@@ -484,49 +484,49 @@ export const useConfigStore = create<ConfigState>()(
         // 向后兼容的设置方法（更新当前激活的提供商）
         setAiProvider: (provider) => {
           const state = get()
-          const activeProvider = state.getActiveProvider()
+          const activeProvider = state.getActiveAIProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { provider })
           }
         },
         setApiKey: (apiKey) => {
           const state = get()
-          const activeProvider = state.getActiveProvider()
+          const activeProvider = state.getActiveAIProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { apiKey })
           }
         },
         setApiUrl: (apiUrl) => {
           const state = get()
-          const activeProvider = state.getActiveProvider()
+          const activeProvider = state.getActiveAIProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { apiUrl })
           }
         },
         setModel: (model) => {
           const state = get()
-          const activeProvider = state.getActiveProvider()
+          const activeProvider = state.getActiveAIProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { model })
           }
         },
         setTemperature: (temperature) => {
           const state = get()
-          const activeProvider = state.getActiveProvider()
+          const activeProvider = state.getActiveAIProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { temperature })
           }
         },
         setProxyUrl: (proxyUrl) => {
           const state = get()
-          const activeProvider = state.getActiveProvider()
+          const activeProvider = state.getActiveAIProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { proxyUrl })
           }
         },
         setProxyEnabled: (enabled) => {
           const state = get()
-          const activeProvider = state.getActiveProvider()
+          const activeProvider = state.getActiveAIProvider()
           if (activeProvider) {
             state.updateAIProvider(activeProvider.id, { proxyEnabled: enabled })
           }
@@ -538,8 +538,8 @@ export const useConfigStore = create<ConfigState>()(
           const newProvider: AIProviderConfig = {
             ...config,
             id,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
           }
           
           set((state) => {
@@ -600,7 +600,6 @@ export const useConfigStore = create<ConfigState>()(
             ...original,
             id: newId,
             name: newName,
-            isActive: false,
             isDefault: false, // 确保复制的配置不是默认配置
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -651,6 +650,7 @@ export const useConfigStore = create<ConfigState>()(
             ...templateConfig,
             id: `provider-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             name,
+            apiKey: '', // 从模板创建时需要提供空的apiKey
             isDefault: false, // 确保从模板创建的配置不是默认配置
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -770,7 +770,7 @@ export const useConfigStore = create<ConfigState>()(
         })),
         updateWebDAVLastSyncTime: () => set((_state) => ({
           webdavConfig: { 
-            ...state.webdavConfig, 
+            ..._state.webdavConfig, 
             lastSyncTime: new Date().toISOString()
           }
         })),
@@ -901,7 +901,7 @@ export const useConfigStore = create<ConfigState>()(
             }
 
             // 应用导入的配置
-            set((state) => {
+            set((_state) => {
               const currentPromptVersion = importedConfig.config.currentPromptVersion
               const promptConfig = importedConfig.config.promptVersionConfig[currentPromptVersion]
               
@@ -913,7 +913,6 @@ export const useConfigStore = create<ConfigState>()(
                 promptVersionConfig: importedConfig.config.promptVersionConfig,
                 currentPromptVersion,
                 tokenUsage: importedConfig.config.tokenUsage,
-                aiServiceOptions: importedConfig.config.aiServiceOptions || defaultAIServiceOptions,
                 aiConfig: computeAIConfig(importedConfig.config.aiConfigManager)
               }
             })

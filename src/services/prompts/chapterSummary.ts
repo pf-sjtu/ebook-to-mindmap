@@ -1,5 +1,4 @@
 // 章节总结相关的prompt模板
-import { usePromptConfig } from '../../stores/configStore'
 import { getChapterSummaryPrompt } from './config/promptLoader'
 
 export const getFictionChapterSummaryPrompt = (title: string, content: string, customPrompt?: string) => {

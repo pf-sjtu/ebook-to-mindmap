@@ -1,6 +1,8 @@
+/* Tailwind CSS v4 - 新语法警告可忽略 */
+/* @plugin, @custom-variant, @theme, @apply 是有效的Tailwind CSS v4 at-rules */
+
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
-@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 

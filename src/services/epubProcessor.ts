@@ -552,12 +552,24 @@ export class EpubProcessor {
     try {
       console.log(`🎯 [DEBUG] 尝试通过锚点提取内容: ${anchor}`)
 
-      // 查找锚点元素
-      const anchorElement = doc.querySelector(`#${anchor}`) || 
-                           doc.querySelector(`[name="${anchor}"]`) ||
-                           doc.querySelector(`[id*="${anchor}"]`)
+      // 转义锚点中的特殊字符
+      const escapedAnchor = CSS.escape(anchor)
+      console.log(`🔧 [DEBUG] 转义后的锚点: ${escapedAnchor}`)
+
+      // 查找锚点元素 - 使用属性选择器来处理以数字开头的ID
+      const anchorElement = doc.querySelector(`[id="${escapedAnchor}"]`) || 
+                           doc.querySelector(`[name="${escapedAnchor}"]`) ||
+                           doc.querySelector(`[id*="${escapedAnchor}"]`)
 
       if (!anchorElement) {
+        // 如果转义后还是找不到，尝试原始锚点
+        console.log(`❌ [DEBUG] 转义后未找到锚点元素，尝试原始锚点: ${anchor}`)
+        const originalAnchorElement = doc.querySelector(`[id*="${anchor}"]`) ||
+                                     doc.querySelector(`[name="${anchor}"]`)
+        if (originalAnchorElement) {
+          console.log(`✅ [DEBUG] 使用原始锚点找到元素: ${originalAnchorElement.tagName}, id: ${originalAnchorElement.id}`)
+          return this.extractContentFromElement(originalAnchorElement)
+        }
         console.log(`❌ [DEBUG] 未找到锚点元素: ${anchor}`)
         return ''
       }
@@ -686,7 +698,7 @@ export class EpubProcessor {
       const content = []
       
       // 从标题开始遍历
-      let currentElement = headingElement.nextElementSibling
+      let currentElement: Element | null = headingElement.nextElementSibling
 
       while (currentElement) {
         // 收集当前元素的文本
@@ -733,7 +745,7 @@ export class EpubProcessor {
   private extractContentFromGenericAnchor(doc: Document, anchorElement: Element): string {
     try {
       const content = []
-      let currentElement = anchorElement
+      let currentElement: Element | null = anchorElement
       let collectedElements = 0
 
       // 从锚点元素开始，收集后续元素的文本
@@ -886,5 +898,24 @@ export class EpubProcessor {
     console.log(`🔍 [DEBUG] EPUB章节检测完成，找到 ${detectedChapters.length} 个章节`)
 
     return detectedChapters.length > 0 ? detectedChapters : chapters
+  }
+
+  // 从锚点元素提取内容的辅助函数
+  private extractContentFromElement(anchorElement: Element): string {
+    // 获取锚点元素之后的所有内容
+    let content = ''
+    let currentElement: Element | null = anchorElement.nextElementSibling
+    
+    while (currentElement) {
+      content += currentElement.textContent + '\n'
+      currentElement = currentElement.nextElementSibling
+    }
+    
+    // 如果没有找到后续元素，获取锚点元素的内容
+    if (!content.trim()) {
+      content = anchorElement.textContent || ''
+    }
+    
+    return this.cleanAndFormatText(content.trim())
   }
 }

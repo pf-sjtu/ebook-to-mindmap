@@ -29,7 +29,7 @@ export type UploadProgressCallback = (progress: number) => void
  */
 function getProxiedUrl(originalUrl: string): string {
   // 在开发环境中，如果使用的是坚果云的URL，转换为代理URL
-  if (import.meta.env.DEV && originalUrl.includes('dav.jianguoyun.com')) {
+  if ((import.meta as any).env.DEV && originalUrl.includes('dav.jianguoyun.com')) {
     const url = new URL(originalUrl)
     // 提取路径部分，去掉 /dav 前缀
     let pathname = url.pathname
@@ -246,15 +246,25 @@ export class WebDAVService {
         try {
           const binaryContent = await this.client.getFileContents(normalizedPath, { format: 'binary' })
           console.log('WebDAV客户端返回的内容类型:', typeof binaryContent, binaryContent.constructor.name)
-          console.log('内容长度:', binaryContent.length || binaryContent.byteLength)
           
           // 检查文件大小是否合理（EPUB 文件应该至少几KB）
-          const contentLength = binaryContent.length || binaryContent.byteLength
+          let contentLength = 0
+          if (binaryContent instanceof ArrayBuffer) {
+            contentLength = binaryContent.byteLength
+          } else if (binaryContent instanceof Uint8Array) {
+            contentLength = binaryContent.length
+          } else if (typeof binaryContent === 'string') {
+            contentLength = new TextEncoder().encode(binaryContent).length
+          } else {
+            contentLength = (binaryContent as any).length || (binaryContent as any).byteLength || 0
+          }
+          
+          console.log('内容长度:', contentLength)
           if (contentLength < 1024) {
             console.warn('⚠️ 文件大小异常小（', contentLength, '字节），可能是代理问题')
             
             // 在开发环境下，如果文件太小，尝试使用fetch通过代理下载
-            if (import.meta.env.DEV && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
+            if ((import.meta as any).env.DEV && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
               console.log('尝试通过Vite代理直接下载...')
               return await this.downloadViaProxy(normalizedPath)
             }
@@ -265,12 +275,15 @@ export class WebDAVService {
           if (binaryContent instanceof ArrayBuffer) {
             arrayBuffer = binaryContent
           } else if (binaryContent instanceof Uint8Array) {
-            arrayBuffer = binaryContent.buffer.slice(binaryContent.byteOffset, binaryContent.byteOffset + binaryContent.byteLength)
+            arrayBuffer = binaryContent.buffer.slice(binaryContent.byteOffset, binaryContent.byteOffset + binaryContent.byteLength) as ArrayBuffer
           } else if (typeof binaryContent === 'string') {
             arrayBuffer = this.base64ToArrayBuffer(binaryContent)
           } else {
-            // 如果是 Buffer（Node.js 环境），直接转换
-            arrayBuffer = binaryContent instanceof Buffer ? binaryContent.buffer : new Uint8Array(binaryContent).buffer
+            // 如果是 Buffer（Node.js 环境）或其他类型，转换为Uint8Array再获取buffer
+            const uint8Array = binaryContent instanceof Buffer ? 
+              new Uint8Array(binaryContent) : 
+              new Uint8Array(binaryContent as unknown as ArrayBuffer | ArrayBufferView)
+            arrayBuffer = uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength) as ArrayBuffer
           }
           
           return { success: true, data: arrayBuffer }
@@ -279,7 +292,7 @@ export class WebDAVService {
           console.error('WebDAV客户端下载失败:', webdavError)
           
           // 在开发环境下尝试通过代理下载
-          if (import.meta.env.DEV && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
+          if ((import.meta as any).env.DEV && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
             console.log('尝试通过Vite代理下载...')
             return await this.downloadViaProxy(normalizedPath)
           }
@@ -373,18 +386,23 @@ export class WebDAVService {
       const binaryContent = await directClient.getFileContents(filePath, { format: 'binary' })
       
       console.log('直接下载成功，内容类型:', typeof binaryContent, binaryContent.constructor.name)
-      console.log('直接下载大小:', binaryContent.length || binaryContent.byteLength)
+      console.log('直接下载大小:', 
+        (binaryContent as ArrayBuffer).byteLength || (binaryContent as Uint8Array).length || (binaryContent as string).length || 0)
       
       // 转换为 ArrayBuffer
       let arrayBuffer: ArrayBuffer
       if (binaryContent instanceof ArrayBuffer) {
         arrayBuffer = binaryContent
       } else if (binaryContent instanceof Uint8Array) {
-        arrayBuffer = binaryContent.buffer.slice(binaryContent.byteOffset, binaryContent.byteOffset + binaryContent.byteLength)
+        arrayBuffer = binaryContent.buffer.slice(binaryContent.byteOffset, binaryContent.byteOffset + binaryContent.byteLength) as ArrayBuffer
       } else if (typeof binaryContent === 'string') {
         arrayBuffer = this.base64ToArrayBuffer(binaryContent)
       } else {
-        arrayBuffer = binaryContent instanceof Buffer ? binaryContent.buffer : new Uint8Array(binaryContent).buffer
+        // 处理Buffer或其他类型
+        const uint8Array = binaryContent instanceof Buffer ? 
+          new Uint8Array(binaryContent) : 
+          new Uint8Array(binaryContent as ArrayBuffer | ArrayBufferView)
+        arrayBuffer = uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength) as ArrayBuffer
       }
       
       return { success: true, data: arrayBuffer }
@@ -544,7 +562,7 @@ export class WebDAVService {
       }
       
       // 在开发环境中，如果使用代理，直接通过 HTTP 检查
-      if (import.meta.env.DEV && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
+      if ((import.meta as any).env.DEV && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
         return await this.checkExistsViaProxy(normalizedPath)
       }
       
@@ -645,13 +663,13 @@ export class WebDAVService {
       const stat = await this.client.stat(path)
       
       const fileInfo: WebDAVFileInfo = {
-        filename: stat.filename,
-        basename: stat.basename,
-        lastmod: stat.lastmod,
-        size: stat.size || 0,
-        type: stat.type,
-        etag: stat.etag,
-        mime: stat.mime
+        filename: (stat as any).filename || path,
+        basename: (stat as any).basename || path.split('/').pop() || '',
+        lastmod: (stat as any).lastmod || new Date().toISOString(),
+        size: (stat as any).size || 0,
+        type: (stat as any).type || 'file',
+        etag: (stat as any).etag || '',
+        mime: (stat as any).mime || ''
       }
 
       return { success: true, data: fileInfo }
@@ -773,7 +791,8 @@ export class WebDAVService {
         }
       }
 
-      console.log('文件内容获取成功，类型:', typeof contentResult.data, '长度:', contentResult.data.byteLength || contentResult.data.length)
+      console.log('文件内容获取成功，类型:', typeof contentResult.data, '长度:', 
+        (contentResult.data as ArrayBuffer).byteLength || (contentResult.data as string).length || 'unknown')
       
       // 使用提供的文件名或从路径中提取
       const finalFileName = fileName || normalizedPath.split('/').pop() || 'downloaded_file'
@@ -841,14 +860,14 @@ export class WebDAVService {
       const originalLink = this.client.getFileDownloadLink(filePath)
       
       // 在开发环境中，如果使用了代理，需要转换链接
-      if (import.meta.env.DEV && this.config.serverUrl.includes('dav.jianguoyun.com')) {
+      if ((import.meta as any).env.DEV && this.config.serverUrl.includes('dav.jianguoyun.com')) {
         // 将原始链接转换为代理链接
         const url = new URL(originalLink)
         return `/webdav${url.pathname}`
       }
       
       return originalLink
-    } catch (error) {
+    } catch (_error) {
       return ''
     }
   }
