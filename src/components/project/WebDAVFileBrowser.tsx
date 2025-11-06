@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   ChevronLeft,
   ChevronRight,
@@ -21,7 +22,11 @@ import {
   Book,
   FileText as FilePdf,
   RefreshCw,
-  File
+  File,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Shuffle
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useWebDAVConfig } from '../../stores/configStore'
@@ -55,6 +60,8 @@ export function WebDAVFileBrowser({
   const [historyIndex, setHistoryIndex] = useState(0)
   const [isDownloading, setIsDownloading] = useState(false)
   const [hasAttemptedInit, setHasAttemptedInit] = useState(false)
+  const [sortBy, setSortBy] = useState<'name' | 'time' | 'random'>('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   // 检查并初始化WebDAV连接
   useEffect(() => {
@@ -253,6 +260,40 @@ export function WebDAVFileBrowser({
     }
   }
 
+  // 处理文件下载
+  const handleDownloadFile = async () => {
+    if (selectedFile && selectedFile.type === 'file') {
+      setIsDownloading(true)
+      try {
+        // 下载文件内容，传递文件名以避免特殊字符问题
+        const downloadResult = await webdavService.downloadFileAsFile(selectedFile.filename, selectedFile.basename)
+        
+        if (!downloadResult.success || !downloadResult.data) {
+          console.error('下载文件失败:', downloadResult.error)
+          setError(downloadResult.error || '下载文件失败')
+          return
+        }
+        
+        // 创建下载链接
+        const url = URL.createObjectURL(downloadResult.data)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = selectedFile.basename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+        
+        console.log('文件下载成功:', selectedFile.basename)
+      } catch (error) {
+        console.error('文件下载失败:', error)
+        setError('文件下载失败')
+      } finally {
+        setIsDownloading(false)
+      }
+    }
+  }
+
   // 处理文件选择确认
   const handleFileSelect = async () => {
     if (selectedFile) {
@@ -339,6 +380,38 @@ export function WebDAVFileBrowser({
     loadDirectory(currentPath)
   }
 
+  // 排序文件
+  const sortFiles = (filesToSort: WebDAVFileInfo[]) => {
+    const sortedFiles = [...filesToSort]
+    
+    // 分离目录和文件
+    const directories = sortedFiles.filter(file => file.type === 'directory')
+    const files = sortedFiles.filter(file => file.type === 'file')
+    
+    // 排序函数
+    const sortFunction = (a: WebDAVFileInfo, b: WebDAVFileInfo) => {
+      if (sortBy === 'name') {
+        return sortOrder === 'asc' 
+          ? a.basename.localeCompare(b.basename)
+          : b.basename.localeCompare(a.basename)
+      } else if (sortBy === 'time') {
+        const timeA = new Date(a.lastmod).getTime()
+        const timeB = new Date(b.lastmod).getTime()
+        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA
+      } else if (sortBy === 'random') {
+        return Math.random() - 0.5
+      }
+      return 0
+    }
+    
+    // 分别排序目录和文件
+    directories.sort(sortFunction)
+    files.sort(sortFunction)
+    
+    // 目录在前，文件在后
+    return [...directories, ...files]
+  }
+
   // 过滤文件
   const filteredFiles = files.filter(file => {
     // 搜索过滤
@@ -354,6 +427,9 @@ export function WebDAVFileBrowser({
     
     return true
   })
+
+  // 应用排序
+  const sortedFilteredFiles = sortFiles(filteredFiles)
 
   // 检查是否可以导航到上级目录
   const canNavigateUp = currentPath !== '/'
@@ -429,6 +505,43 @@ export function WebDAVFileBrowser({
                 />
               </div>
             </div>
+
+            {/* 排序控件 */}
+            <div className="flex items-center gap-2">
+              <Select value={sortBy} onValueChange={(value: 'name' | 'time' | 'random') => setSortBy(value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">名称</SelectItem>
+                  <SelectItem value="time">时间</SelectItem>
+                  <SelectItem value="random">乱序</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {sortBy !== 'random' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="w-10 p-0"
+                >
+                  {sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                </Button>
+              )}
+              
+              {sortBy === 'random' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFiles([...files])}
+                  className="w-10 p-0"
+                  title="重新打乱"
+                >
+                  <Shuffle className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* 当前路径 */}
@@ -455,13 +568,13 @@ export function WebDAVFileBrowser({
                       <Loader2 className="h-6 w-6 animate-spin" />
                       <span className="ml-2">加载中...</span>
                     </div>
-                  ) : filteredFiles.length === 0 ? (
+                  ) : sortedFilteredFiles.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-muted-foreground">
                       {searchQuery ? '没有找到匹配的文件' : '目录为空'}
                     </div>
                   ) : (
                     <div className="min-w-[800px]">
-                      {filteredFiles.map((file, index) => (
+                      {sortedFilteredFiles.map((file, index) => (
                         <div
                           key={index}
                           className={`flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800 ${
@@ -482,6 +595,21 @@ export function WebDAVFileBrowser({
                           {file.type === 'file' && allowedExtensions.includes('.' + file.basename.toLowerCase().split('.').pop()) && (
                             <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 ml-2" />
                           )}
+                          {file.type === 'file' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-8 h-8 p-0 flex-shrink-0 ml-1"
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation()
+                                setSelectedFile(file)
+                                handleDownloadFile()
+                              }}
+                              title="下载文件"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -493,31 +621,15 @@ export function WebDAVFileBrowser({
 
           {/* 选中文件信息 */}
           {selectedFile && selectedFile.type === 'file' && (
-            <Card className="flex-shrink-0">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">选中文件</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground flex-shrink-0 w-16">文件名:</span>
-                  <span className="font-medium text-xs text-right ml-2 truncate flex-1" title={selectedFile.basename}>
-                    {selectedFile.basename}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground flex-shrink-0 w-16">大小:</span>
-                  <span className="font-medium text-xs text-right ml-2">
-                    {formatFileSize(selectedFile.size)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground flex-shrink-0 w-16">修改:</span>
-                  <span className="font-medium text-xs text-right ml-2">
-                    {formatDate(selectedFile.lastmod)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex-shrink-0 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground" title={selectedFile.basename}>
+                  {selectedFile.basename.length > 30 ? selectedFile.basename.substring(0, 30) + '...' : selectedFile.basename}
+                </span>
+                <span>大小: {formatFileSize(selectedFile.size)}</span>
+                <span>修改: {formatDate(selectedFile.lastmod)}</span>
+              </div>
+            </div>
           )}
 
           {/* 操作按钮 */}

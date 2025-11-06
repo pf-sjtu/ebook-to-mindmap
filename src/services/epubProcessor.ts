@@ -89,11 +89,11 @@ export class EpubProcessor {
         let chapterInfos: { title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[] = []
 
         if (chapterDetectionMode === 'epub-toc') {
-          // EPUB目录模式：使用指定的目录深度，不过滤锚点链接
+          // EPUB目录模式：使用指定的目录深度，保留锚点链接以支持精确定位
           const toc = book.navigation.toc
           // 估算总章节数，用于补零格式化
           const estimatedTotal = Math.max(toc.length, book.spine.spineItems.length)
-          chapterInfos = await this.extractChaptersFromToc(book, toc, 0, epubTocDepth, chapterNamingMode, estimatedTotal)
+          chapterInfos = await this.extractChaptersFromToc(book, toc, 0, epubTocDepth, chapterNamingMode, estimatedTotal, true)
           console.log(`📚 [DEBUG] EPUB目录模式 (深度${epubTocDepth}) 找到 ${chapterInfos.length} 个章节信息`, chapterInfos)
           
           // 回退：如果TOC为空或提取失败，使用spineItems
@@ -197,15 +197,15 @@ export class EpubProcessor {
     }
   }
 
-  private async extractChaptersFromToc(book: Book, toc: NavItem[], currentDepth: number = 0, maxDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto', totalChapters: number = 99): Promise<{ title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[]> {
+  private async extractChaptersFromToc(book: Book, toc: NavItem[], currentDepth: number = 0, maxDepth: number = 0, chapterNamingMode: 'auto' | 'numbered' = 'auto', totalChapters: number = 99, preserveAnchors: boolean = false): Promise<{ title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[]> {
     const chapterInfos: { title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number }[] = []
 
     for (const item of toc) {
       try {
         // 首先处理当前项目（如果它有有效的href）
         if (item.href) {
-          // 移除锚点部分，获取基础文件路径
-          const baseHref = item.href.split('#')[0]
+          // 根据preserveAnchors参数决定是否保留锚点
+          const href = preserveAnchors ? item.href : item.href.split('#')[0]
           
           // 根据章节命名模式生成标题
           let chapterTitle: string
@@ -217,7 +217,7 @@ export class EpubProcessor {
           
           const chapterInfo: { title: string, href: string, subitems?: NavItem[], tocItem: NavItem, depth: number } = {
             title: chapterTitle,
-            href: baseHref, // 使用去除锚点的href
+            href: href, // 根据参数决定是否保留锚点
             subitems: item.subitems,
             tocItem: item, // 保存原始TOC项目信息
             depth: currentDepth // 保存章节层级深度
@@ -227,7 +227,7 @@ export class EpubProcessor {
         
         // 然后递归处理子项目
         if (item.subitems && item.subitems.length > 0 && maxDepth > 0 && currentDepth < maxDepth) {
-          const subChapters = await this.extractChaptersFromToc(book, item.subitems, currentDepth + 1, maxDepth, chapterNamingMode, totalChapters)
+          const subChapters = await this.extractChaptersFromToc(book, item.subitems, currentDepth + 1, maxDepth, chapterNamingMode, totalChapters, preserveAnchors)
           chapterInfos.push(...subChapters)
         }
       } catch (error) {
@@ -242,13 +242,13 @@ export class EpubProcessor {
     try {
       console.log(`🔍 [DEBUG] 尝试通过href获取章节内容: ${href}`)
 
-      // 清理href，移除锚点部分
-      const cleanHref = href.split('#')[0]
+      // 解析href，分离文件路径和锚点
+      const [cleanHref, anchor] = href.split('#')
 
       let allContent = ''
 
       // 首先获取主章节内容
-      const mainContent = await this.getSingleChapterContent(book, cleanHref)
+      const mainContent = await this.getSingleChapterContent(book, cleanHref, anchor)
       if (mainContent) {
         allContent += mainContent
       }
@@ -258,10 +258,11 @@ export class EpubProcessor {
 
         for (const subitem of subitems) {
           if (subitem.href) {
-            if (cleanHref === subitem.href.split('#')[0]) {
+            const [subHref, subAnchor] = subitem.href.split('#')
+            if (cleanHref === subHref) {
               continue
             }
-            const subContent = await this.getSingleChapterContent(book, subitem.href.split('#')[0])
+            const subContent = await this.getSingleChapterContent(book, subHref, subAnchor)
             if (subContent) {
               allContent += '\n\n' + subContent
             }
@@ -277,7 +278,7 @@ export class EpubProcessor {
     }
   }
 
-  private async getSingleChapterContent(book: Book, href: string): Promise<string> {
+  private async getSingleChapterContent(book: Book, href: string, anchor?: string): Promise<string> {
     try {
       let section = null
       const spineItems = book.spine.spineItems
@@ -300,7 +301,7 @@ export class EpubProcessor {
       const chapterHTML = await section.render(book.load.bind(book))
 
       // 提取纯文本内容
-      const { textContent } = this.extractTextFromXHTML(chapterHTML)
+      const { textContent } = this.extractTextFromXHTML(chapterHTML, anchor)
 
       // 卸载章节内容以释放内存
       section.unload()
@@ -320,9 +321,9 @@ export class EpubProcessor {
     )
   }
 
-  private extractTextFromXHTML(xhtmlContent: string): { textContent: string } {
+  private extractTextFromXHTML(xhtmlContent: string, anchor?: string): { textContent: string } {
     try {
-      console.log(`🔍 [DEBUG] 开始解析XHTML内容，长度: ${xhtmlContent.length}`)
+      console.log(`🔍 [DEBUG] 开始解析XHTML内容，长度: ${xhtmlContent.length}, 锚点: ${anchor || '无'}`)
 
       // 创建一个临时的DOM解析器
       const parser = new DOMParser()
@@ -345,8 +346,20 @@ export class EpubProcessor {
       const scripts = body.querySelectorAll('script, style')
       scripts.forEach(el => el.remove())
 
-      // 获取纯文本内容
-      let textContent = body.textContent || ''
+      let textContent = ''
+
+      // 如果有锚点，尝试定位到锚点位置并提取相关内容
+      if (anchor) {
+        textContent = this.extractContentByAnchor(doc, anchor)
+      }
+
+      // 如果锚点定位失败或没有锚点，提取全部内容
+      if (!textContent.trim()) {
+        textContent = body.textContent || ''
+        console.log(`🔍 [DEBUG] 锚点定位失败或无锚点，提取全部内容`)
+      } else {
+        console.log(`✅ [DEBUG] 成功通过锚点提取内容，长度: ${textContent.length}`)
+      }
 
       textContent = textContent.trim()
 
@@ -356,12 +369,12 @@ export class EpubProcessor {
     } catch (error) {
       console.warn(`⚠️ [DEBUG] DOM解析失败，使用正则表达式备选方案:`, error)
       // 如果DOM解析失败，使用正则表达式作为备选方案
-      return this.extractTextWithRegex(xhtmlContent)
+      return this.extractTextWithRegex(xhtmlContent, anchor)
     }
   }
 
-  private extractTextWithRegex(xhtmlContent: string): { title: string; textContent: string } {
-    console.log(`🔧 [DEBUG] 使用正则表达式方案解析内容，长度: ${xhtmlContent.length}`)
+  private extractTextWithRegex(xhtmlContent: string, anchor?: string): { title: string; textContent: string } {
+    console.log(`🔧 [DEBUG] 使用正则表达式方案解析内容，长度: ${xhtmlContent.length}, 锚点: ${anchor || '无'}`)
 
     // 移除XML声明和DOCTYPE
     let cleanContent = xhtmlContent
@@ -377,8 +390,21 @@ export class EpubProcessor {
     const titleMatch = cleanContent.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/i)
     const title = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : ''
 
-    // 移除所有HTML标签
-    let textContent = cleanContent.replace(/<[^>]*>/g, ' ')
+    let textContent = ''
+
+    // 如果有锚点，尝试通过正则表达式定位锚点内容
+    if (anchor) {
+      textContent = this.extractContentByAnchorRegex(cleanContent, anchor)
+    }
+
+    // 如果锚点定位失败，提取全部内容
+    if (!textContent.trim()) {
+      // 移除所有HTML标签
+      textContent = cleanContent.replace(/<[^>]*>/g, ' ')
+      console.log(`🔧 [DEBUG] 锚点定位失败，提取全部内容`)
+    } else {
+      console.log(`✅ [DEBUG] 正则表达式成功通过锚点提取内容`)
+    }
 
     // 解码HTML实体
     textContent = textContent
@@ -398,6 +424,216 @@ export class EpubProcessor {
     console.log(`✨ [DEBUG] 正则表达式方案 - 标题: "${title}", 文本长度: ${textContent.length}`)
 
     return { title, textContent }
+  }
+
+  private extractContentByAnchor(doc: Document, anchor: string): string {
+    try {
+      console.log(`🎯 [DEBUG] 尝试通过锚点提取内容: ${anchor}`)
+
+      // 查找锚点元素
+      const anchorElement = doc.querySelector(`#${anchor}`) || 
+                           doc.querySelector(`[name="${anchor}"]`) ||
+                           doc.querySelector(`[id*="${anchor}"]`)
+
+      if (!anchorElement) {
+        console.log(`❌ [DEBUG] 未找到锚点元素: ${anchor}`)
+        return ''
+      }
+
+      console.log(`✅ [DEBUG] 找到锚点元素: ${anchorElement.tagName}, id: ${anchorElement.id}`)
+
+      // 获取整个HTML内容用于正则表达式匹配
+      const htmlContent = new XMLSerializer().serializeToString(doc)
+
+      // 使用改进的锚点提取策略
+      return this.extractContentByAnchorImproved(htmlContent, anchor)
+
+    } catch (error) {
+      console.warn(`⚠️ [DEBUG] 锚点内容提取失败:`, error)
+      return ''
+    }
+  }
+
+  private extractContentByAnchorImproved(htmlContent: string, anchor: string): string {
+    try {
+      console.log(`🔍 [DEBUG] 改进锚点提取: ${anchor}`)
+
+      // 策略1：精确匹配id属性
+      const exactIdMatch = htmlContent.match(new RegExp(`<[^>]*id=["']${anchor}["'][^>]*>(.*?)</[^>]*>`, 'is'))
+      if (exactIdMatch) {
+        const content = exactIdMatch[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+        if (content.length > 10) {
+          console.log(`✅ [DEBUG] 策略1成功: 精确id匹配`)
+          return content
+        }
+      }
+
+      // 策略2：查找包含锚点的标题元素
+      const headingMatch = htmlContent.match(new RegExp(`<(h[1-6]|div|p|section)[^>]*id=["']${anchor}["'][^>]*>(.*?)</\\1>`, 'is'))
+      if (headingMatch) {
+        const content = headingMatch[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+        if (content.length > 10) {
+          console.log(`✅ [DEBUG] 策略2成功: 标题/段落匹配`)
+          return content
+        }
+      }
+
+      // 策略3：查找锚点后的内容到下一个标题
+      const anchorElementMatch = htmlContent.match(new RegExp(`<[^>]*id=["']${anchor}["'][^>]*>.*?</[^>]*>`, 'is'))
+      if (anchorElementMatch) {
+        const anchorStart = htmlContent.indexOf(anchorElementMatch[0])
+        const afterAnchor = htmlContent.substring(anchorStart + anchorElementMatch[0].length)
+        
+        // 查找下一个标题作为结束点
+        const nextHeadingMatch = afterAnchor.match(/<h[1-6][^>]*>/i)
+        const endIndex = nextHeadingMatch && nextHeadingMatch[0] ? afterAnchor.indexOf(nextHeadingMatch[0]) : afterAnchor.length
+        
+        const content = afterAnchor.substring(0, endIndex)
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+        
+        if (content.length > 20) {
+          console.log(`✅ [DEBUG] 策略3成功: 锚点后内容提取`)
+          return content
+        }
+      }
+
+      // 策略4：查找锚点所在段落的文本
+      const paragraphMatch = htmlContent.match(new RegExp(`<p[^>]*>.*?id=["']${anchor}["'][^>]*>.*?</p>`, 'is'))
+      if (paragraphMatch) {
+        const content = paragraphMatch[0].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+        if (content.length > 10) {
+          console.log(`✅ [DEBUG] 策略4成功: 段落匹配`)
+          return content
+        }
+      }
+
+      console.log(`❌ [DEBUG] 所有锚点提取策略都失败了`)
+      return ''
+    } catch (error) {
+      console.warn(`⚠️ [DEBUG] 改进锚点提取出错:`, error)
+      return ''
+    }
+  }
+
+  private extractContentFromHeading(doc: Document, headingElement: Element): string {
+    try {
+      const headingLevel = parseInt(headingElement.tagName.charAt(1))
+      const content = []
+      
+      // 从标题开始遍历
+      let currentElement = headingElement
+      let hasNextHeading = false
+
+      while (currentElement) {
+        // 收集当前元素的文本
+        if (currentElement.textContent) {
+          content.push(currentElement.textContent.trim())
+        }
+
+        // 移动到下一个元素
+        currentElement = currentElement.nextElementSibling
+
+        // 检查是否遇到同级或更高级的标题
+        if (currentElement && currentElement.tagName && /^h[1-6]$/i.test(currentElement.tagName)) {
+          const currentLevel = parseInt(currentElement.tagName.charAt(1))
+          if (currentLevel <= headingLevel) {
+            hasNextHeading = true
+            break
+          }
+        }
+
+        // 防止无限循环
+        if (content.length > 50) break
+      }
+
+      const result = content.join('\n').trim()
+      console.log(`📖 [DEBUG] 从标题提取内容，长度: ${result.length}`)
+      return result
+    } catch (error) {
+      console.warn(`⚠️ [DEBUG] 标题内容提取失败:`, error)
+      return headingElement.textContent?.trim() || ''
+    }
+  }
+
+  private extractContentFromSection(doc: Document, sectionElement: Element): string {
+    try {
+      // 提取section元素及其所有子元素的文本
+      const textContent = sectionElement.textContent?.trim() || ''
+      console.log(`📚 [DEBUG] 从章节提取内容，长度: ${textContent.length}`)
+      return textContent
+    } catch (error) {
+      console.warn(`⚠️ [DEBUG] 章节内容提取失败:`, error)
+      return sectionElement.textContent?.trim() || ''
+    }
+  }
+
+  private extractContentFromGenericAnchor(doc: Document, anchorElement: Element): string {
+    try {
+      const content = []
+      let currentElement = anchorElement
+      let collectedElements = 0
+
+      // 从锚点元素开始，收集后续元素的文本
+      while (currentElement && collectedElements < 10) {
+        if (currentElement.textContent) {
+          const text = currentElement.textContent.trim()
+          if (text.length > 10) { // 只收集有意义的文本
+            content.push(text)
+            collectedElements++
+          }
+        }
+        currentElement = currentElement.nextElementSibling
+      }
+
+      const result = content.join('\n').trim()
+      console.log(`🔗 [DEBUG] 从通用锚点提取内容，元素数: ${collectedElements}, 长度: ${result.length}`)
+      return result
+    } catch (error) {
+      console.warn(`⚠️ [DEBUG] 通用锚点内容提取失败:`, error)
+      return anchorElement.textContent?.trim() || ''
+    }
+  }
+
+  private extractContentByAnchorRegex(htmlContent: string, anchor: string): string {
+    try {
+      console.log(`🔧 [DEBUG] 使用正则表达式通过锚点提取内容: ${anchor}`)
+
+      // 策略1：查找带有id的标签
+      const idMatch = htmlContent.match(new RegExp(`<[^>]*id=["']${anchor}["'][^>]*>(.*?)</[^>]*>`, 'is'))
+      if (idMatch) {
+        const content = idMatch[1].replace(/<[^>]*>/g, ' ').trim()
+        if (content.length > 20) {
+          console.log(`✅ [DEBUG] 正则表达式通过id提取内容，长度: ${content.length}`)
+          return content
+        }
+      }
+
+      // 策略2：查找带有name的标签
+      const nameMatch = htmlContent.match(new RegExp(`<[^>]*name=["']${anchor}["'][^>]*>(.*?)</[^>]*>`, 'is'))
+      if (nameMatch) {
+        const content = nameMatch[1].replace(/<[^>]*>/g, ' ').trim()
+        if (content.length > 20) {
+          console.log(`✅ [DEBUG] 正则表达式通过name提取内容，长度: ${content.length}`)
+          return content
+        }
+      }
+
+      // 策略3：查找包含锚点文本的标题
+      const titleMatch = htmlContent.match(new RegExp(`<h[1-6][^>]*id=["'][^"']*${anchor}[^"']*["'][^>]*>(.*?)</h[1-6]>`, 'is'))
+      if (titleMatch) {
+        const title = titleMatch[1].replace(/<[^>]*>/g, '').trim()
+        console.log(`✅ [DEBUG] 正则表达式通过标题提取内容: ${title}`)
+        return title
+      }
+
+      console.log(`❌ [DEBUG] 正则表达式锚点定位失败: ${anchor}`)
+      return ''
+    } catch (error) {
+      console.warn(`⚠️ [DEBUG] 正则表达式锚点提取失败:`, error)
+      return ''
+    }
   }
 
   // 新增方法：获取章节的HTML内容（不影响原有功能）

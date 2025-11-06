@@ -1019,30 +1019,32 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
                   className="hidden"
                 />
                 
-                {webdavConfig.enabled && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsWebDAVBrowserOpen(true)}
-                      className="h-7 px-2"
-                      title="从WebDAV打开"
-                    >
-                      <Cloud className="h-3 w-3" />
-                      <span className="text-xs ml-1">WebDAV</span>
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsWebDAVSettingsOpen(true)}
-                      className="h-7 px-2"
-                      title="WebDAV设置"
-                    >
-                      <Settings className="h-3 w-3" />
-                    </Button>
-                  </>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (webdavConfig.enabled) {
+                      setIsWebDAVBrowserOpen(true)
+                    } else {
+                      setIsWebDAVSettingsOpen(true)
+                    }
+                  }}
+                  className="h-7 px-2"
+                  title={webdavConfig.enabled ? "从WebDAV打开" : "请先在设置中启用WebDAV"}
+                >
+                  <Cloud className="h-3 w-3" />
+                  <span className="text-xs ml-1">WebDAV</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsWebDAVSettingsOpen(true)}
+                  className="h-7 px-2"
+                  title="WebDAV设置"
+                >
+                  <Settings className="h-3 w-3" />
+                </Button>
                 
                 {content && (
                   <>
