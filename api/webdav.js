@@ -103,26 +103,38 @@ export default async function handler(request, response) {
     console.log(`[PROXY] 收到响应: ${fetchResponse.status} ${fetchResponse.statusText}`)
     
     // 读取响应体
-    let responseText = ''
+    let responseData
+    let isBinary = false
     try {
-      if (fetchResponse.headers.get('content-type')?.includes('application/xml') || 
-          fetchResponse.headers.get('content-type')?.includes('text/xml')) {
+      const contentType = fetchResponse.headers.get('content-type') || ''
+      
+      if (contentType.includes('application/xml') || 
+          contentType.includes('text/xml')) {
         // XML响应（WebDAV PROPFIND等）
-        responseText = await fetchResponse.text()
-        console.log(`[PROXY] XML响应体长度: ${responseText.length}`)
-      } else if (fetchResponse.headers.get('content-type')?.includes('application/json')) {
+        responseData = await fetchResponse.text()
+        console.log(`[PROXY] XML响应体长度: ${responseData.length}`)
+      } else if (contentType.includes('application/json')) {
         // JSON响应
         const jsonResponse = await fetchResponse.json()
-        responseText = JSON.stringify(jsonResponse)
-        console.log(`[PROXY] JSON响应体长度: ${responseText.length}`)
+        responseData = JSON.stringify(jsonResponse)
+        console.log(`[PROXY] JSON响应体长度: ${responseData.length}`)
+      } else if (contentType.includes('application/octet-stream') ||
+                 contentType.includes('application/epub+zip') ||
+                 contentType.includes('application/pdf') ||
+                 contentType.includes('application/zip') ||
+                 contentType.includes('application/x-mobipocket-ebook')) {
+        // 二进制文件响应
+        responseData = await fetchResponse.arrayBuffer()
+        isBinary = true
+        console.log(`[PROXY] 二进制响应体长度: ${responseData.byteLength} 字节`)
       } else {
-        // 其他响应
-        responseText = await fetchResponse.text()
-        console.log(`[PROXY] 文本响应体长度: ${responseText.length}`)
+        // 其他响应（默认为文本）
+        responseData = await fetchResponse.text()
+        console.log(`[PROXY] 文本响应体长度: ${responseData.length}`)
       }
     } catch (error) {
       console.error(`[PROXY] 读取响应体失败:`, error)
-      responseText = `读取响应体失败: ${error.message}`
+      responseData = `读取响应体失败: ${error.message}`
     }
     
     // 设置响应头
@@ -134,9 +146,17 @@ export default async function handler(request, response) {
     
     // 返回响应
     response.status(fetchResponse.status)
-    response.send(responseText)
     
-    console.log(`[PROXY] 返回响应，状态: ${fetchResponse.status} ${fetchResponse.statusText}`)
+    if (isBinary) {
+      // 二进制数据直接发送
+      response.send(Buffer.from(responseData))
+      console.log(`[PROXY] 返回二进制响应，状态: ${fetchResponse.status} 大小: ${responseData.byteLength} 字节`)
+    } else {
+      // 文本数据发送
+      response.send(responseData)
+      console.log(`[PROXY] 返回文本响应，状态: ${fetchResponse.status}`)
+    }
+    
     console.log(`[PROXY] 响应头:`, {
       'content-type': fetchResponse.headers.get('content-type'),
       'content-length': fetchResponse.headers.get('content-length')

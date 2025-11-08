@@ -431,10 +431,47 @@ export class WebDAVService {
       
       console.log('代理下载响应状态:', response.status, response.statusText)
       console.log('Content-Length:', response.headers.get('content-length'))
+      console.log('Content-Type:', response.headers.get('content-type'))
       
-      // 获取文件数据
-      const arrayBuffer = await response.arrayBuffer()
-      console.log('代理下载成功，大小:', arrayBuffer.byteLength, '字节')
+      // 获取文件数据 - 确保正确处理二进制数据
+      let arrayBuffer: ArrayBuffer
+      const contentType = response.headers.get('content-type')
+      
+      console.log('开始处理响应数据...')
+      
+      if (contentType?.includes('application/octet-stream') || 
+          contentType?.includes('application/epub+zip') ||
+          contentType?.includes('application/pdf') ||
+          contentType?.includes('application/zip')) {
+        // 二进制文件，直接获取ArrayBuffer
+        arrayBuffer = await response.arrayBuffer()
+        console.log('二进制文件下载成功，大小:', arrayBuffer.byteLength, '字节')
+        
+        // 验证ArrayBuffer完整性
+        if (arrayBuffer.byteLength === 0) {
+          throw new Error('下载的文件为空')
+        }
+        
+        // 检查EPUB文件头
+        if (contentType?.includes('epub') || arrayBuffer.byteLength > 1000) {
+          const header = new Uint8Array(arrayBuffer.slice(0, 4))
+          const headerStr = String.fromCharCode(...header)
+          console.log('文件头标识:', headerStr, '字节:', Array.from(header))
+          
+          // EPUB文件应该是ZIP格式，以PK开头
+          if (headerStr !== 'PK') {
+            console.warn('⚠️ 警告：EPUB文件头不是PK开头，可能损坏')
+          }
+        }
+        
+      } else {
+        // 其他类型，先获取文本再转换
+        const text = await response.text()
+        arrayBuffer = new TextEncoder().encode(text).buffer
+        console.log('文本文件转换成功，大小:', arrayBuffer.byteLength, '字节')
+      }
+      
+      console.log('代理下载完成，最终大小:', arrayBuffer.byteLength, '字节')
       
       return { success: true, data: arrayBuffer }
       
