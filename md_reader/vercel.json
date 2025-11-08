@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/webdav.js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/test.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",

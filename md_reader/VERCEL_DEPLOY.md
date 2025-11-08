@@ -22,8 +22,9 @@ md_reader/
 - 包含CORS头部处理
 
 #### vercel.json
-- 配置了`api/webdav.js`和`api/test.js`的运行时
+- 简化配置，让Vercel自动检测运行时
 - 设置了正确的CORS头部
+- 移除了可能有问题的functions配置
 
 ### 3. 部署到Vercel
 
@@ -48,6 +49,11 @@ md_reader/
 - 检查`api/`目录是否存在
 - 确认文件名正确（`.js`而不是`.ts`）
 - 检查`vercel.json`配置
+
+### 运行时错误
+- 确认`vercel.json`中没有指定无效的运行时版本
+- 让Vercel自动检测运行时（推荐）
+- 检查package.json中的`"type": "module"`配置
 
 ### CORS错误
 - 确认`vercel.json`中的headers配置
