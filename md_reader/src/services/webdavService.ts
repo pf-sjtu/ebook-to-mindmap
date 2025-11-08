@@ -172,14 +172,33 @@ export class WebDAVService {
       const contents = await this.client.getDirectoryContents(normalizedPath, { deep })
       
       // 转换文件信息格式
-      const fileInfos: WebDAVFileInfo[] = (contents as any[]).map(item => ({
-        filename: item.filename,
-        basename: item.basename,
-        lastmod: new Date(item.lastmod),
-        size: item.size,
-        type: item.type,
-        etag: item.etag
-      }))
+      const fileInfos: WebDAVFileInfo[] = (contents as any[]).map(item => {
+        // 检测是否在Vercel环境中
+        const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+        
+        // 重写filename路径，确保使用代理URL
+        let filename = item.filename
+        if (isVercel && filename.includes('dav.jianguoyun.com')) {
+          console.log('[getDirectoryContents] 重写URL:', filename)
+          // 提取相对路径并重写为代理路径
+          const url = new URL(filename)
+          let pathname = url.pathname
+          if (pathname.startsWith('/dav/')) {
+            pathname = pathname.substring(4) // 去掉 '/dav'
+          }
+          filename = `/api/webdav${pathname}`
+          console.log('[getDirectoryContents] 重写后:', filename)
+        }
+        
+        return {
+          filename: filename,
+          basename: item.basename,
+          lastmod: new Date(item.lastmod),
+          size: item.size,
+          type: item.type,
+          etag: item.etag
+        }
+      })
 
       console.log('返回文件列表:', fileInfos)
       return { success: true, data: fileInfos }
