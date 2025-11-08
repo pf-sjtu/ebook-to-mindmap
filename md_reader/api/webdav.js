@@ -36,9 +36,9 @@ async function proxyRequest(request) {
     const webdavPath = pathParts[1] || ''
     const targetUrl = `https://dav.jianguoyun.com/dav/${webdavPath}${urlObj.search}`
     
-    console.log(`代理请求: ${method} ${url} -> ${targetUrl}`)
+    console.log(`[PROXY] ${method} ${url} -> ${targetUrl}`)
     
-    // 获取请求头
+    // 准备请求头
     const requestHeaders = {}
     for (const [key, value] of request.headers.entries()) {
       // 跳过一些不应该转发的头部
@@ -53,17 +53,21 @@ async function proxyRequest(request) {
       body = request.body
     }
     
+    console.log(`[PROXY] 发送请求到: ${targetUrl}`)
+    console.log(`[PROXY] 请求头数量: ${Object.keys(requestHeaders).length}`)
+    
     // 发送请求到WebDAV服务器
     const response = await fetch(targetUrl, {
       method,
       headers: requestHeaders,
       body,
-      // 重要：不跟随重定向，让浏览器处理
       redirect: 'manual'
     })
     
-    // 获取响应头
-    const responseHeaders = {}
+    console.log(`[PROXY] 收到响应: ${response.status} ${response.statusText}`)
+    
+    // 准备响应头
+    const responseHeaders = { ...CORS_HEADERS }
     for (const [key, value] of response.headers.entries()) {
       // 跳过一些不应该转发的头部
       if (!['connection', 'transfer-encoding', 'content-encoding'].includes(key.toLowerCase())) {
@@ -71,31 +75,30 @@ async function proxyRequest(request) {
       }
     }
     
-    // 添加CORS头部
-    Object.assign(responseHeaders, CORS_HEADERS)
-    
     // 获取响应体
     let responseBody = null
     const contentType = response.headers.get('content-type') || ''
     
-    // 对于二进制内容，直接转发
-    if (contentType.includes('application/xml') || 
-        contentType.includes('text/xml') || 
-        contentType.includes('text/html') ||
-        contentType.includes('application/octet-stream')) {
-      responseBody = response.body
-    } else {
-      // 对于文本内容，可以读取并转发
-      try {
-        const text = await response.text()
-        responseBody = text
-      } catch (error) {
-        console.error('读取响应体失败:', error)
+    try {
+      if (contentType.includes('application/xml') || 
+          contentType.includes('text/xml') || 
+          contentType.includes('text/html')) {
+        // 对于XML/HTML内容，读取为文本
+        responseBody = await response.text()
+        console.log(`[PROXY] 响应体长度: ${responseBody.length} 字符`)
+      } else if (contentType.includes('application/octet-stream')) {
+        // 对于二进制内容，直接转发
         responseBody = response.body
+        console.log(`[PROXY] 二进制响应体`)
+      } else {
+        // 其他内容也读取为文本
+        responseBody = await response.text()
+        console.log(`[PROXY] 文本响应体长度: ${responseBody.length} 字符`)
       }
+    } catch (error) {
+      console.error(`[PROXY] 读取响应体失败:`, error)
+      responseBody = response.body
     }
-    
-    console.log(`代理响应: ${response.status} ${response.statusText} for ${targetUrl}`)
     
     // 返回响应
     return new Response(responseBody, {
@@ -105,13 +108,14 @@ async function proxyRequest(request) {
     })
     
   } catch (error) {
-    console.error('代理请求失败:', error)
+    console.error('[PROXY] 代理请求失败:', error)
     
     // 返回错误响应
     return new Response(JSON.stringify({
       error: '代理请求失败',
-      message: error.message || '未知错误'
-    }), {
+      message: error.message || '未知错误',
+      stack: error.stack
+    }, null, 2), {
       status: 500,
       headers: {
         ...CORS_HEADERS,
@@ -124,14 +128,18 @@ async function proxyRequest(request) {
 /**
  * 处理WebDAV代理请求 - Vercel Serverless Function入口
  */
-async function handler(request) {
+export default async function handler(request) {
+  console.log(`[HANDLER] 收到请求: ${request.method} ${request.url}`)
+  
   // 处理OPTIONS请求
   if (request.method === 'OPTIONS') {
+    console.log('[HANDLER] 处理OPTIONS请求')
     return handleOptions()
   }
   
   // 检查是否支持的方法
   if (!SUPPORTED_METHODS.includes(request.method || '')) {
+    console.log(`[HANDLER] 不支持的方法: ${request.method}`)
     return new Response(JSON.stringify({
       error: '方法不被支持',
       method: request.method,
@@ -146,8 +154,6 @@ async function handler(request) {
   }
   
   // 转发请求
+  console.log('[HANDLER] 开始转发请求')
   return proxyRequest(request)
 }
-
-// 导出处理器
-export default handler
