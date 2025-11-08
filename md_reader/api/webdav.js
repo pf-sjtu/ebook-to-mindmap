@@ -55,11 +55,14 @@ export default async function handler(request, response) {
     
     // 构建目标URL - 移除 /api/webdav 前缀，添加 /dav 前缀
     const urlObj = new URL(url)
+    console.log(`[PROXY] 原始路径: ${urlObj.pathname}`)
     const pathParts = urlObj.pathname.split('/api/webdav/')
+    console.log(`[PROXY] 路径分割:`, pathParts)
     const webdavPath = pathParts[1] || ''
     const targetUrl = `https://dav.jianguoyun.com/dav/${webdavPath}${urlObj.search}`
     
     console.log(`[PROXY] ${method} ${url} -> ${targetUrl}`)
+    console.log(`[PROXY] webdavPath: "${webdavPath}"`)
     
     // 准备请求头
     const requestHeaders = {}
