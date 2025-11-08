@@ -58,6 +58,16 @@ export class WebDAVService {
   private config: WebDAVConfig | null = null
   private baseURL: string = ''
 
+  // 创建单例实例
+  static getInstance(): WebDAVService {
+    if (!WebDAVService.instance) {
+      WebDAVService.instance = new WebDAVService()
+    }
+    return WebDAVService.instance
+  }
+
+  private static instance: WebDAVService | null = null
+
   /**
    * 初始化WebDAV客户端
    */
@@ -279,3 +289,6 @@ export class WebDAVService {
     }
   }
 }
+
+// 导出单例实例
+export const webdavService = WebDAVService.getInstance()
