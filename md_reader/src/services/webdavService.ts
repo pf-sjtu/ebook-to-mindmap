@@ -540,8 +540,9 @@ export class WebDAVService {
       // 如果使用代理（Vite开发代理或Vercel Serverless Function）且是坚果云，需要特殊处理
       if ((this.config?.useProxy || isVercel) && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
         // 代理模式下需要直接上传到原始服务器
-        console.log('代理模式下上传到原始服务器:', normalizedPath)
-        return await this.uploadViaProxy(normalizedPath, data)
+        console.log('代理模式下上传到原始服务器:', filePath)
+        // 传入原始路径，让 uploadViaProxy 处理路径标准化
+        return await this.uploadViaProxy(filePath, data)
       }
       
       const result = await this.client.putFileContents(normalizedPath, data as any, { overwrite })
@@ -576,8 +577,35 @@ export class WebDAVService {
       // 检测是否在Vercel环境中
       const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
       
+      // 标准化路径 - 移除各种可能的前缀
+      let normalizedPath = filePath
+      console.log('原始路径:', normalizedPath)
+      
+      // 处理各种可能的前缀
+      if (normalizedPath.startsWith('/api/webdav/')) {
+        normalizedPath = normalizedPath.substring(11) // 移除 '/api/webdav/' (11个字符)
+        console.log('移除 /api/webdav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('/webdav/')) {
+        normalizedPath = normalizedPath.substring(7) // 移除 '/webdav/' (7个字符)
+        console.log('移除 /webdav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('/../dav/')) {
+        normalizedPath = normalizedPath.substring(8) // 移除 '/../dav/' (8个字符)
+        console.log('移除 /../dav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('../dav/')) {
+        normalizedPath = normalizedPath.substring(7) // 移除 '../dav/' (7个字符)
+        console.log('移除 ../dav/ 后:', normalizedPath)
+      }
+      
+      // 确保路径以 / 开头
+      if (!normalizedPath.startsWith('/')) {
+        normalizedPath = '/' + normalizedPath
+        console.log('添加 / 前缀后:', normalizedPath)
+      }
+      
+      console.log('最终标准化路径:', normalizedPath)
+      
       // 对路径进行 URL 编码，但保留 / 分隔符
-      const encodedPath = filePath.split('/').map(segment => 
+      const encodedPath = normalizedPath.split('/').map(segment => 
         segment ? encodeURIComponent(segment) : ''
       ).join('/')
       
