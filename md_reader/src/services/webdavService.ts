@@ -44,55 +44,19 @@ function getProcessedUrl(originalUrl: string, useProxy: boolean = false): string
   
   // Vercel环境使用Serverless Function代理
   if (isVercel && originalUrl.includes('dav.jianguoyun.com')) {
-    const url = new URL(originalUrl)
-    // 提取路径部分，去掉 /dav 前缀
-    let pathname = url.pathname
-    if (pathname.startsWith('/dav/')) {
-      pathname = pathname.substring(4) // 去掉 '/dav'
-    } else if (pathname === '/dav') {
-      pathname = '/' // 根目录
-    }
-    // 如果路径为空，设为根路径
-    if (pathname === '') {
-      pathname = '/'
-    }
-    return `/api/webdav${pathname}`
+    console.log('[getProcessedUrl] Vercel环境，使用代理:', originalUrl)
+    // 始终返回代理基础URL，让WebDAV库在此基础上构建路径
+    return '/api/webdav'
   }
   
   // 开发环境自动使用Vite代理（避免CORS问题）
   if (isDev && originalUrl.includes('dav.jianguoyun.com')) {
-    const url = new URL(originalUrl)
-    // 提取路径部分，去掉 /dav 前缀
-    let pathname = url.pathname
-    if (pathname.startsWith('/dav/')) {
-      pathname = pathname.substring(4) // 去掉 '/dav'
-    } else if (pathname === '/dav') {
-      pathname = '/' // 根目录
-    }
-    // 如果路径为空，设为根路径
-    if (pathname === '') {
-      pathname = '/'
-    }
-    return `/webdav${pathname}`
+    console.log('[getProcessedUrl] 开发环境，使用Vite代理:', originalUrl)
+    return '/webdav'
   }
   
-  // 手动指定使用代理的情况
-  if (useProxy && originalUrl.includes('dav.jianguoyun.com')) {
-    const url = new URL(originalUrl)
-    // 提取路径部分，去掉 /dav 前缀
-    let pathname = url.pathname
-    if (pathname.startsWith('/dav/')) {
-      pathname = pathname.substring(4) // 去掉 '/dav'
-    } else if (pathname === '/dav') {
-      pathname = '/' // 根目录
-    }
-    // 如果路径为空，设为根路径
-    if (pathname === '') {
-      pathname = '/'
-    }
-    return `/webdav${pathname}`
-  }
-  
+  // 其他情况返回原始URL
+  console.log('[getProcessedUrl] 直连模式:', originalUrl)
   return originalUrl
 }
 
