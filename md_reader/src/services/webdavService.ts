@@ -680,10 +680,12 @@ export class WebDAVService {
       const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
       console.log('移动端检测:', isMobile, 'User-Agent:', navigator.userAgent)
       
-      // 准备上传数据
+      // 准备上传数据 - 确保格式正确
       let body: BodyInit
       if (typeof data === 'string') {
-        body = data
+        // 将字符串转换为Uint8Array，确保二进制传输
+        body = new TextEncoder().encode(data)
+        console.log('字符串数据转换为Uint8Array，长度:', (body as Uint8Array).length)
       } else if (data instanceof ArrayBuffer) {
         body = new Blob([data])
       } else {

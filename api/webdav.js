@@ -108,13 +108,15 @@ export default async function handler(request, response) {
     let requestBody = null
     if (method === 'PUT' || method === 'POST') {
       try {
-        // 在Vercel中，request.body可能需要特殊处理
+        // 在Vercel API routes中，request.body通常已经解析
         if (request.body) {
           requestBody = request.body
           console.log(`[PROXY] 请求体类型: ${typeof requestBody}`)
+          console.log(`[PROXY] 请求体是否为ReadableStream: ${requestBody instanceof ReadableStream}`)
           
-          // 如果是ReadableStream，转换为ArrayBuffer
+          // Vercel通常直接提供解析后的body，无需手动处理ReadableStream
           if (requestBody instanceof ReadableStream) {
+            console.log(`[PROXY] 处理ReadableStream`)
             const reader = requestBody.getReader()
             const chunks = []
             let done = false
@@ -127,32 +129,47 @@ export default async function handler(request, response) {
               }
             }
             
-            requestBody = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0))
+            const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0)
+            requestBody = new Uint8Array(totalLength)
             let offset = 0
             for (const chunk of chunks) {
               requestBody.set(chunk, offset)
               offset += chunk.length
             }
             
-            console.log(`[PROXY] 请求体长度: ${requestBody.length} bytes`)
+            console.log(`[PROXY] ReadableStream处理完成，长度: ${requestBody.length} bytes`)
           } else if (typeof requestBody === 'string') {
             requestBody = Buffer.from(requestBody, 'utf-8')
-            console.log(`[PROXY] 请求体字符串长度: ${requestBody.length} bytes`)
+            console.log(`[PROXY] 字符串转Buffer，长度: ${requestBody.length} bytes`)
+          } else if (requestBody instanceof Buffer) {
+            console.log(`[PROXY] 直接使用Buffer，长度: ${requestBody.length} bytes`)
           } else if (requestBody instanceof ArrayBuffer) {
-            console.log(`[PROXY] 请求体ArrayBuffer长度: ${requestBody.byteLength} bytes`)
+            console.log(`[PROXY] 直接使用ArrayBuffer，长度: ${requestBody.byteLength} bytes`)
+          } else if (requestBody instanceof Uint8Array) {
+            console.log(`[PROXY] 直接使用Uint8Array，长度: ${requestBody.length} bytes`)
           } else {
-            console.log(`[PROXY] 请求体其他类型: ${typeof requestBody}`)
+            console.log(`[PROXY] 未知请求体类型: ${typeof requestBody}`)
+            // 尝试转换为字符串再转Buffer
+            const str = String(requestBody)
+            requestBody = Buffer.from(str, 'utf-8')
+            console.log(`[PROXY] 转换为字符串后长度: ${requestBody.length} bytes`)
           }
         } else {
           console.log(`[PROXY] 无请求体`)
         }
       } catch (bodyError) {
         console.error(`[PROXY] 读取请求体失败:`, bodyError)
+        console.error(`[PROXY] 错误详情:`, bodyError.message, bodyError.stack)
       }
     }
     
     // 发送请求到WebDAV服务器
     console.log(`[PROXY] 发送请求到: ${targetUrl}`)
+    console.log(`[PROXY] 请求方法: ${method}`)
+    console.log(`[PROXY] 请求头:`, JSON.stringify(requestHeaders, null, 2))
+    console.log(`[PROXY] 请求体类型: ${requestBody?.constructor?.name || typeof requestBody}`)
+    console.log(`[PROXY] 请求体长度: ${requestBody?.length || requestBody?.byteLength || 'unknown'}`)
+    
     const fetchResponse = await fetch(targetUrl, {
       method: method,
       headers: requestHeaders,
@@ -161,6 +178,7 @@ export default async function handler(request, response) {
     })
     
     console.log(`[PROXY] 收到响应: ${fetchResponse.status} ${fetchResponse.statusText}`)
+    console.log(`[PROXY] 响应头:`, Object.fromEntries(fetchResponse.headers.entries()))
     
     // 读取响应体
     let responseData
