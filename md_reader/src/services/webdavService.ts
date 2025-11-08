@@ -192,9 +192,10 @@ export class WebDAVService {
             }
             filename = `/api/webdav${pathname}`
             console.log('[getDirectoryContents] 重写后:', filename)
-          } else if (filename.startsWith('/../dav/')) {
+          } else if (filename.startsWith('/../dav/') || filename.includes('/../dav/')) {
             console.log('[getDirectoryContents] 重写相对路径:', filename)
-            filename = filename.replace('/../dav/', '/api/webdav/')
+            // 使用正则表达式匹配并替换
+            filename = filename.replace(/\/\.\.\/\.\.\/dav\//, '/api/webdav/')
             console.log('[getDirectoryContents] 重写后:', filename)
           } else if (filename.startsWith('/dav/')) {
             console.log('[getDirectoryContents] 重写绝对路径:', filename)
