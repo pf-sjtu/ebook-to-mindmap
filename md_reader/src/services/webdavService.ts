@@ -101,25 +101,26 @@ export class WebDAVService {
       
       // 根据环境和浏览器类型配置请求头
       if (!isVercel && !config.useProxy) {
-        // 直连模式的请求头
         clientConfig.headers = {
-          'User-Agent': 'md-reader/1.0'
+          Accept: '*/*'
         }
         
         if (isMobile) {
           clientConfig.headers['X-Requested-With'] = 'XMLHttpRequest'
-          clientConfig.headers['Accept'] = '*/*'
         }
       } else if (isVercel) {
-        // Vercel代理模式下，为WebDAV客户端添加特殊配置
         clientConfig.headers = {
-          'User-Agent': 'md-reader/1.0',
-          'Accept': 'application/xml, text/xml, */*'
+          Accept: 'application/xml, text/xml, */*'
         }
         
         if (isMobile) {
           clientConfig.headers['X-Requested-With'] = 'XMLHttpRequest'
           clientConfig.headers['Cache-Control'] = 'no-cache'
+          clientConfig.headers['Pragma'] = 'no-cache'
+        }
+      } else {
+        clientConfig.headers = {
+          Accept: '*/*'
         }
       }
       

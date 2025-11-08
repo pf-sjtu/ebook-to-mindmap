@@ -2,6 +2,52 @@
 // 支持的WebDAV方法
 const SUPPORTED_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PROPFIND', 'PROPPATCH', 'MKCOL', 'COPY', 'MOVE', 'LOCK', 'UNLOCK', 'OPTIONS']
 
+async function getRawRequestBody(request) {
+  try {
+    if (request.body) {
+      if (typeof request.body === 'string') {
+        return Buffer.from(request.body, 'utf-8')
+      }
+
+      if (Buffer.isBuffer(request.body)) {
+        return request.body
+      }
+      if (request.body instanceof Uint8Array) {
+        return Buffer.from(request.body)
+      }
+      if (request.body instanceof ArrayBuffer) {
+        return Buffer.from(request.body)
+      }
+      // 尝试将未知类型转换为字符串再转Buffer
+      return Buffer.from(String(request.body), 'utf-8')
+    }
+
+    const chunks = []
+    for await (const chunk of request) {
+      if (!chunk) {
+        continue
+      }
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk, 'utf-8') : Buffer.from(chunk))
+    }
+
+    if (chunks.length === 0) {
+      return null
+    }
+
+    return Buffer.concat(chunks)
+  } catch (error) {
+    console.error('[PROXY] 读取原始请求体失败:', error)
+    return null
+  }
+}
+
+export const config = {
+  api: {
+    bodyParser: false,
+    externalResolver: true
+  }
+}
+
 /**
  * 处理WebDAV代理请求 - Vercel官方格式入口
  */
@@ -95,57 +141,47 @@ export default async function handler(request, response) {
     
     // 准备请求头
     const requestHeaders = {}
-    if (request.headers?.entries) {
-      for (const [key, value] of request.headers.entries()) {
-        if (!['host', 'connection'].includes(key.toLowerCase())) {
-          requestHeaders[key] = value
-        }
+    const forwardHeader = (key, value) => {
+      if (!value) {
+        return
       }
-    } else {
+      const lower = key.toLowerCase()
+      if (['host', 'connection', 'content-length'].includes(lower)) {
+        return
+      }
+      requestHeaders[lower] = value
+    }
+
+    if (typeof request.headers?.entries === 'function') {
+      for (const [key, value] of request.headers.entries()) {
+        forwardHeader(key, value)
+      }
+    } else if (request.headers) {
       for (const key in request.headers) {
-        if (!['host', 'connection'].includes(key.toLowerCase())) {
-          requestHeaders[key] = request.headers[key]
-        }
+        forwardHeader(key, request.headers[key])
       }
     }
-    
+
+    // 如果缺少Authorization，尝试从请求体参数中获取
+    if (!requestHeaders.authorization && request.query?.username && request.query?.password) {
+      const auth = Buffer.from(`${request.query.username}:${request.query.password}`).toString('base64')
+      requestHeaders.authorization = `Basic ${auth}`
+      console.log('[PROXY] 从查询参数构造Authorization头')
+    }
+
     console.log(`[PROXY] 请求头数量: ${Object.keys(requestHeaders).length}`)
-    
+
     // 读取请求体数据 - 正确处理PUT请求的body
     let requestBody = null
     if (request.method === 'PUT' || request.method === 'POST') {
       try {
-        // 在Vercel API routes中，对于二进制数据，request.body可能需要特殊处理
-        if (request.body) {
-          requestBody = request.body
-          console.log(`[PROXY] 原始请求体类型: ${typeof requestBody}`)
-          console.log(`[PROXY] 请求体是否为ReadableStream: ${requestBody instanceof ReadableStream}`)
-          console.log(`[PROXY] 请求体是否为Buffer: ${requestBody instanceof Buffer}`)
-          console.log(`[PROXY] 请求体是否为Uint8Array: ${requestBody instanceof Uint8Array}`)
-          console.log(`[PROXY] 请求体是否为ArrayBuffer: ${requestBody instanceof ArrayBuffer}`)
-          
-          // Vercel对于Uint8Array通常会转换为Buffer
-          if (requestBody instanceof Buffer) {
-            console.log(`[PROXY] 直接使用Buffer，长度: ${requestBody.length} bytes`)
-            // 保持Buffer格式，fetch会自动处理
-          } else if (requestBody instanceof Uint8Array) {
-            console.log(`[PROXY] 转换为Buffer，长度: ${requestBody.length} bytes`)
-            requestBody = Buffer.from(requestBody)
-          } else if (requestBody instanceof ArrayBuffer) {
-            console.log(`[PROXY] ArrayBuffer转换为Buffer，长度: ${requestBody.byteLength} bytes`)
-            requestBody = Buffer.from(requestBody)
-          } else if (typeof requestBody === 'string') {
-            console.log(`[PROXY] 字符串转换为Buffer，长度: ${requestBody.length} bytes`)
-            requestBody = Buffer.from(requestBody, 'utf-8')
-          } else {
-            console.log(`[PROXY] 未知请求体类型，尝试转换`)
-            // 尝试转换为字符串再转Buffer
-            const str = String(requestBody)
-            requestBody = Buffer.from(str, 'utf-8')
-            console.log(`[PROXY] 转换后长度: ${requestBody.length} bytes`)
-          }
+        requestBody = await getRawRequestBody(request)
+        if (requestBody) {
+          console.log(`[PROXY] 原始请求体类型: ${Object.prototype.toString.call(request.body)}`)
+          console.log(`[PROXY] 最终请求体长度: ${requestBody.length} bytes`)
+          requestHeaders['content-length'] = String(requestBody.length)
         } else {
-          console.log(`[PROXY] 无请求体`)
+          console.log('[PROXY] 无请求体')
         }
       } catch (bodyError) {
         console.error(`[PROXY] 读取请求体失败:`, bodyError)
