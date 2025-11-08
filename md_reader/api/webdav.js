@@ -28,7 +28,16 @@ async function proxyRequest(request) {
   try {
     // 获取请求信息
     const method = request.method
-    const url = request.url
+    let url = request.url
+    
+    // 在Vercel环境中，request.url可能只是路径，需要构造完整URL
+    if (!url.startsWith('http')) {
+      const host = request.headers.get('host') || 'localhost'
+      const protocol = request.headers.get('x-forwarded-proto') || 'https'
+      url = `${protocol}://${host}${url}`
+    }
+    
+    console.log(`[PROXY] 原始URL: ${request.url}, 完整URL: ${url}`)
     
     // 构建目标URL - 移除 /api/webdav 前缀，添加 /dav 前缀
     const urlObj = new URL(url)
@@ -129,7 +138,16 @@ async function proxyRequest(request) {
  * 处理WebDAV代理请求 - Vercel Serverless Function入口
  */
 export default async function handler(request) {
-  console.log(`[HANDLER] 收到请求: ${request.method} ${request.url}`)
+  let url = request.url
+  
+  // 在Vercel环境中，request.url可能只是路径，需要构造完整URL
+  if (!url.startsWith('http')) {
+    const host = request.headers.get('host') || 'localhost'
+    const protocol = request.headers.get('x-forwarded-proto') || 'https'
+    url = `${protocol}://${host}${url}`
+  }
+  
+  console.log(`[HANDLER] 收到请求: ${request.method} ${url}`)
   
   // 处理OPTIONS请求
   if (request.method === 'OPTIONS') {
