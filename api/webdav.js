@@ -104,12 +104,59 @@ export default async function handler(request, response) {
       depth: requestHeaders.depth
     })
     
+    // 读取请求体数据 - 正确处理PUT请求的body
+    let requestBody = null
+    if (method === 'PUT' || method === 'POST') {
+      try {
+        // 在Vercel中，request.body可能需要特殊处理
+        if (request.body) {
+          requestBody = request.body
+          console.log(`[PROXY] 请求体类型: ${typeof requestBody}`)
+          
+          // 如果是ReadableStream，转换为ArrayBuffer
+          if (requestBody instanceof ReadableStream) {
+            const reader = requestBody.getReader()
+            const chunks = []
+            let done = false
+            
+            while (!done) {
+              const { value, done: readerDone } = await reader.read()
+              done = readerDone
+              if (value) {
+                chunks.push(value)
+              }
+            }
+            
+            requestBody = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0))
+            let offset = 0
+            for (const chunk of chunks) {
+              requestBody.set(chunk, offset)
+              offset += chunk.length
+            }
+            
+            console.log(`[PROXY] 请求体长度: ${requestBody.length} bytes`)
+          } else if (typeof requestBody === 'string') {
+            requestBody = Buffer.from(requestBody, 'utf-8')
+            console.log(`[PROXY] 请求体字符串长度: ${requestBody.length} bytes`)
+          } else if (requestBody instanceof ArrayBuffer) {
+            console.log(`[PROXY] 请求体ArrayBuffer长度: ${requestBody.byteLength} bytes`)
+          } else {
+            console.log(`[PROXY] 请求体其他类型: ${typeof requestBody}`)
+          }
+        } else {
+          console.log(`[PROXY] 无请求体`)
+        }
+      } catch (bodyError) {
+        console.error(`[PROXY] 读取请求体失败:`, bodyError)
+      }
+    }
+    
     // 发送请求到WebDAV服务器
     console.log(`[PROXY] 发送请求到: ${targetUrl}`)
     const fetchResponse = await fetch(targetUrl, {
       method: method,
       headers: requestHeaders,
-      body: request.body,
+      body: requestBody,
       redirect: 'manual'
     })
     
