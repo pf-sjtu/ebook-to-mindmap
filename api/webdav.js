@@ -41,9 +41,25 @@ export default async function handler(request, response) {
     console.log(`[PROXY] 收到请求: ${method} ${request.url}`)
     
     // 构建目标URL - 移除 /api/webdav 前缀，添加 /dav 前缀
-    const urlObj = new URL(url)
-    console.log(`[PROXY] 原始路径: ${urlObj.pathname}`)
-    const pathParts = urlObj.pathname.split('/api/webdav/')
+    // 在Vercel环境中，request.url可能不是完整URL，需要手动构建
+    let pathname = request.url
+    let search = ''
+    
+    if (pathname && pathname.startsWith('http')) {
+      // 完整URL，提取路径和查询参数
+      const urlObj = new URL(pathname)
+      pathname = urlObj.pathname
+      search = urlObj.search
+    } else {
+      // 相对路径，需要手动分离路径和查询参数
+      const urlParts = (pathname || '').split('?')
+      pathname = urlParts[0] || '/'
+      search = urlParts[1] ? `?${urlParts[1]}` : ''
+    }
+    
+    console.log(`[PROXY] 原始路径: ${pathname}`)
+    console.log(`[PROXY] 查询参数: ${search}`)
+    const pathParts = pathname.split('/api/webdav/')
     console.log(`[PROXY] 路径分割:`, pathParts)
     let webdavPath = pathParts[1] || ''
     
@@ -52,33 +68,31 @@ export default async function handler(request, response) {
       webdavPath = '/' + webdavPath
     }
     
-    const targetUrl = `https://dav.jianguoyun.com/dav${webdavPath}${urlObj.search}`
+    const targetUrl = `https://dav.jianguoyun.com/dav${webdavPath}${search}`
     
-    console.log(`[PROXY] ${method} ${url} -> ${targetUrl}`)
+    console.log(`[PROXY] ${method} ${pathname} -> ${targetUrl}`)
     console.log(`[PROXY] webdavPath: "${webdavPath}"`)
     
     // 准备请求头
     let requestHeaders = {}
     
     // 转发头部，但过滤掉一些可能导致问题的头部
-    if (method === 'PROPFIND' || method === 'PROPPATCH') {
-      // WebDAV方法需要保留所有头部
-      for (const key in request.headers) {
-        if (!['host', 'connection'].includes(key.toLowerCase())) {
-          requestHeaders[key] = request.headers[key]
-        }
-      }
-    } else {
-      for (const key in request.headers) {
-        if (!['host', 'connection'].includes(key.toLowerCase())) {
-          requestHeaders[key] = request.headers[key]
-        }
+    for (const key in request.headers) {
+      if (!['host', 'connection'].includes(key.toLowerCase())) {
+        requestHeaders[key] = request.headers[key]
       }
     }
     
     console.log(`[PROXY] 请求头数量: ${Object.keys(requestHeaders).length}`)
+    console.log(`[PROXY] 主要请求头:`, {
+      authorization: requestHeaders.authorization ? '***已设置***' : '未设置',
+      'user-agent': requestHeaders['user-agent'],
+      'content-type': requestHeaders['content-type'],
+      depth: requestHeaders.depth
+    })
     
     // 发送请求到WebDAV服务器
+    console.log(`[PROXY] 发送请求到: ${targetUrl}`)
     const fetchResponse = await fetch(targetUrl, {
       method: method,
       headers: requestHeaders,
@@ -91,8 +105,21 @@ export default async function handler(request, response) {
     // 读取响应体
     let responseText = ''
     try {
-      responseText = await fetchResponse.text()
-      console.log(`[PROXY] 响应体长度: ${responseText.length}`)
+      if (fetchResponse.headers.get('content-type')?.includes('application/xml') || 
+          fetchResponse.headers.get('content-type')?.includes('text/xml')) {
+        // XML响应（WebDAV PROPFIND等）
+        responseText = await fetchResponse.text()
+        console.log(`[PROXY] XML响应体长度: ${responseText.length}`)
+      } else if (fetchResponse.headers.get('content-type')?.includes('application/json')) {
+        // JSON响应
+        const jsonResponse = await fetchResponse.json()
+        responseText = JSON.stringify(jsonResponse)
+        console.log(`[PROXY] JSON响应体长度: ${responseText.length}`)
+      } else {
+        // 其他响应
+        responseText = await fetchResponse.text()
+        console.log(`[PROXY] 文本响应体长度: ${responseText.length}`)
+      }
     } catch (error) {
       console.error(`[PROXY] 读取响应体失败:`, error)
       responseText = `读取响应体失败: ${error.message}`
@@ -109,7 +136,11 @@ export default async function handler(request, response) {
     response.status(fetchResponse.status)
     response.send(responseText)
     
-    console.log(`[PROXY] 返回响应，状态: ${fetchResponse.status}`)
+    console.log(`[PROXY] 返回响应，状态: ${fetchResponse.status} ${fetchResponse.statusText}`)
+    console.log(`[PROXY] 响应头:`, {
+      'content-type': fetchResponse.headers.get('content-type'),
+      'content-length': fetchResponse.headers.get('content-length')
+    })
     
   } catch (error) {
     console.error('[PROXY] 代理请求失败:', error)
