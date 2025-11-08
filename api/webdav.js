@@ -108,51 +108,34 @@ export default async function handler(request, response) {
     let requestBody = null
     if (method === 'PUT' || method === 'POST') {
       try {
-        // 在Vercel API routes中，request.body通常已经解析
+        // 在Vercel API routes中，对于二进制数据，request.body可能需要特殊处理
         if (request.body) {
           requestBody = request.body
-          console.log(`[PROXY] 请求体类型: ${typeof requestBody}`)
+          console.log(`[PROXY] 原始请求体类型: ${typeof requestBody}`)
           console.log(`[PROXY] 请求体是否为ReadableStream: ${requestBody instanceof ReadableStream}`)
+          console.log(`[PROXY] 请求体是否为Buffer: ${requestBody instanceof Buffer}`)
+          console.log(`[PROXY] 请求体是否为Uint8Array: ${requestBody instanceof Uint8Array}`)
+          console.log(`[PROXY] 请求体是否为ArrayBuffer: ${requestBody instanceof ArrayBuffer}`)
           
-          // Vercel通常直接提供解析后的body，无需手动处理ReadableStream
-          if (requestBody instanceof ReadableStream) {
-            console.log(`[PROXY] 处理ReadableStream`)
-            const reader = requestBody.getReader()
-            const chunks = []
-            let done = false
-            
-            while (!done) {
-              const { value, done: readerDone } = await reader.read()
-              done = readerDone
-              if (value) {
-                chunks.push(value)
-              }
-            }
-            
-            const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0)
-            requestBody = new Uint8Array(totalLength)
-            let offset = 0
-            for (const chunk of chunks) {
-              requestBody.set(chunk, offset)
-              offset += chunk.length
-            }
-            
-            console.log(`[PROXY] ReadableStream处理完成，长度: ${requestBody.length} bytes`)
-          } else if (typeof requestBody === 'string') {
-            requestBody = Buffer.from(requestBody, 'utf-8')
-            console.log(`[PROXY] 字符串转Buffer，长度: ${requestBody.length} bytes`)
-          } else if (requestBody instanceof Buffer) {
+          // Vercel对于Uint8Array通常会转换为Buffer
+          if (requestBody instanceof Buffer) {
             console.log(`[PROXY] 直接使用Buffer，长度: ${requestBody.length} bytes`)
-          } else if (requestBody instanceof ArrayBuffer) {
-            console.log(`[PROXY] 直接使用ArrayBuffer，长度: ${requestBody.byteLength} bytes`)
+            // 保持Buffer格式，fetch会自动处理
           } else if (requestBody instanceof Uint8Array) {
-            console.log(`[PROXY] 直接使用Uint8Array，长度: ${requestBody.length} bytes`)
+            console.log(`[PROXY] 转换为Buffer，长度: ${requestBody.length} bytes`)
+            requestBody = Buffer.from(requestBody)
+          } else if (requestBody instanceof ArrayBuffer) {
+            console.log(`[PROXY] ArrayBuffer转换为Buffer，长度: ${requestBody.byteLength} bytes`)
+            requestBody = Buffer.from(requestBody)
+          } else if (typeof requestBody === 'string') {
+            console.log(`[PROXY] 字符串转换为Buffer，长度: ${requestBody.length} bytes`)
+            requestBody = Buffer.from(requestBody, 'utf-8')
           } else {
-            console.log(`[PROXY] 未知请求体类型: ${typeof requestBody}`)
+            console.log(`[PROXY] 未知请求体类型，尝试转换`)
             // 尝试转换为字符串再转Buffer
             const str = String(requestBody)
             requestBody = Buffer.from(str, 'utf-8')
-            console.log(`[PROXY] 转换为字符串后长度: ${requestBody.length} bytes`)
+            console.log(`[PROXY] 转换后长度: ${requestBody.length} bytes`)
           }
         } else {
           console.log(`[PROXY] 无请求体`)
