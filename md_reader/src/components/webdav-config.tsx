@@ -368,49 +368,147 @@ export function WebDAVConfig() {
               <div className="pt-2 border-t">
                 <div className="flex items-center gap-2 mb-2">
                   <Info className="h-3 w-3 text-blue-500" />
-                  <span className="text-xs font-medium">调试工具</span>
+                  <span className="text-xs font-medium">🔧 完整调试工具</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open('/test/response-test.html', '_blank')}
-                    className="h-7 text-xs"
-                  >
-                    <ExternalLink className="mr-1 h-3 w-3" />
-                    响应调试
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open('/test/headers-test.html', '_blank')}
-                    className="h-7 text-xs"
-                  >
-                    <ExternalLink className="mr-1 h-3 w-3" />
-                    Headers测试
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open('/test/url-test.html', '_blank')}
-                    className="h-7 text-xs"
-                  >
-                    <ExternalLink className="mr-1 h-3 w-3" />
-                    URL解析测试
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open('/test/vercel-function-test.html', '_blank')}
-                    className="h-7 text-xs"
-                  >
-                    <ExternalLink className="mr-1 h-3 w-3" />
-                    完整功能测试
-                  </Button>
+                
+                {/* 主要测试 */}
+                <div className="mb-3">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    如果连接测试卡住或失败，请按顺序进行以下测试：
+                  </p>
+                  <div className="grid grid-cols-1 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/test/vercel-debug.html', '_blank')}
+                      className="h-8 text-xs justify-start"
+                    >
+                      <ExternalLink className="mr-2 h-3 w-3" />
+                      🚀 Vercel完整调试 (推荐首选)
+                    </Button>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  如果连接测试卡住或失败，可以使用上面的调试工具进行详细诊断
-                </p>
+
+                {/* 单独测试 */}
+                <div className="mb-3">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    单独功能测试：
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/api/ping', '_blank')}
+                      className="h-7 text-xs"
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      Ping测试
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/api/webdav-fixed/', '_blank')}
+                      className="h-7 text-xs"
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      修复版本
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/test/quick-test.html', '_blank')}
+                      className="h-7 text-xs"
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      快速测试
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/test/response-test.html', '_blank')}
+                      className="h-7 text-xs"
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      响应调试
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 详细诊断 */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    详细诊断工具：
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/test/headers-test.html', '_blank')}
+                      className="h-7 text-xs"
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      Headers测试
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/test/url-test.html', '_blank')}
+                      className="h-7 text-xs"
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      URL测试
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/test/vercel-function-test.html', '_blank')}
+                      className="h-7 text-xs"
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      完整功能
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/test/local-webdav-test.html', '_blank')}
+                      className="h-7 text-xs"
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      本地WebDAV
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/test/webdav-vercel-proxy-test.html', '_blank')}
+                      className="h-7 text-xs"
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      Vercel代理
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('/test/debug-links.html', '_blank')}
+                      className="h-7 text-xs"
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      所有工具
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 使用说明 */}
+                <Alert className="py-2 mt-3">
+                  <Info className="h-3 w-3" />
+                  <AlertDescription className="text-xs">
+                    <div className="space-y-1">
+                      <p><strong>🎯 推荐测试流程：</strong></p>
+                      <p>1. 点击"Vercel完整调试"进行自动化诊断</p>
+                      <p>2. 如果基础功能正常，尝试"修复版本"代理</p>
+                      <p>3. 查看Vercel后台Function日志获取详细信息</p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
               </div>
             </CardContent>
           </Card>
