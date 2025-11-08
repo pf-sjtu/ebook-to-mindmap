@@ -178,16 +178,29 @@ export class WebDAVService {
         
         // 重写filename路径，确保使用代理URL
         let filename = item.filename
-        if (isVercel && filename.includes('dav.jianguoyun.com')) {
-          console.log('[getDirectoryContents] 重写URL:', filename)
-          // 提取相对路径并重写为代理路径
-          const url = new URL(filename)
-          let pathname = url.pathname
-          if (pathname.startsWith('/dav/')) {
-            pathname = pathname.substring(4) // 去掉 '/dav'
+        console.log('[getDirectoryContents] 原始filename:', filename)
+        
+        if (isVercel) {
+          // 处理各种可能的URL格式
+          if (filename.includes('dav.jianguoyun.com')) {
+            console.log('[getDirectoryContents] 重写URL:', filename)
+            // 提取相对路径并重写为代理路径
+            const url = new URL(filename)
+            let pathname = url.pathname
+            if (pathname.startsWith('/dav/')) {
+              pathname = pathname.substring(4) // 去掉 '/dav'
+            }
+            filename = `/api/webdav${pathname}`
+            console.log('[getDirectoryContents] 重写后:', filename)
+          } else if (filename.startsWith('/../dav/')) {
+            console.log('[getDirectoryContents] 重写相对路径:', filename)
+            filename = filename.replace('/../dav/', '/api/webdav/')
+            console.log('[getDirectoryContents] 重写后:', filename)
+          } else if (filename.startsWith('/dav/')) {
+            console.log('[getDirectoryContents] 重写绝对路径:', filename)
+            filename = filename.replace('/dav/', '/api/webdav/')
+            console.log('[getDirectoryContents] 重写后:', filename)
           }
-          filename = `/api/webdav${pathname}`
-          console.log('[getDirectoryContents] 重写后:', filename)
         }
         
         return {
