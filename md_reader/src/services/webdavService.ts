@@ -676,6 +676,10 @@ export class WebDAVService {
       const proxyUrl = isVercel ? `/api/webdav${encodedPath}` : `/webdav${encodedPath}`
       console.log('代理上传URL:', proxyUrl)
       
+      // 检测移动端浏览器
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      console.log('移动端检测:', isMobile, 'User-Agent:', navigator.userAgent)
+      
       // 准备上传数据
       let body: BodyInit
       if (typeof data === 'string') {
@@ -686,15 +690,30 @@ export class WebDAVService {
         body = data
       }
       
+      // 构建请求头 - 增强移动端兼容性
+      const requestHeaders: Record<string, string> = {
+        'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
+        'User-Agent': 'md-reader/1.0',
+        'Content-Type': 'text/markdown',
+        'Accept': '*/*',
+        'Cache-Control': 'no-cache'
+      }
+      
+      // 移动端特殊处理
+      if (isMobile) {
+        requestHeaders['X-Requested-With'] = 'XMLHttpRequest'
+        requestHeaders['Pragma'] = 'no-cache'
+        console.log('检测到移动端浏览器，添加特殊请求头')
+      }
+      
+      console.log('上传请求头配置:', Object.keys(requestHeaders).join(', '))
+      
       // 使用fetch上传
       const response = await fetch(proxyUrl, {
         method: 'PUT',
-        headers: {
-          'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
-          'User-Agent': 'md-reader/1.0',
-          'Content-Type': 'text/markdown'
-        },
-        body
+        headers: requestHeaders,
+        body,
+        cache: 'no-store'
       })
       
       if (!response.ok) {

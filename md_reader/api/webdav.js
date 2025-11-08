@@ -121,48 +121,89 @@ export default async function handler(request, response) {
     
     console.log(`[PROXY] 收到响应: ${fetchResponse.status} ${fetchResponse.statusText}`)
     
-    // 读取响应体
-    let responseText = ''
+    // 读取响应体 - 根据Content-Type区分处理
+    let responseData
+    const contentType = fetchResponse.headers.get('content-type') || ''
+    
     try {
-      responseText = await fetchResponse.text()
-      console.log(`[PROXY] 响应体长度: ${responseText.length}`)
+      if (contentType.includes('application/xml') || contentType.includes('text/xml')) {
+        // XML响应 - WebDAV常用
+        responseData = await fetchResponse.text()
+        console.log(`[PROXY] XML响应体长度: ${responseData.length}`)
+      } else if (contentType.includes('application/json')) {
+        // JSON响应
+        responseData = await fetchResponse.json()
+        console.log(`[PROXY] JSON响应解析成功`)
+      } else if (contentType.includes('application/octet-stream') || 
+                 contentType.includes('application/epub+zip') ||
+                 contentType.includes('application/pdf') ||
+                 contentType.includes('application/zip')) {
+        // 二进制文件响应
+        responseData = await fetchResponse.arrayBuffer()
+        console.log(`[PROXY] 二进制响应体长度: ${responseData.byteLength}`)
+      } else {
+        // 其他响应
+        responseData = await fetchResponse.text()
+        console.log(`[PROXY] 文本响应体长度: ${responseData.length}`)
+      }
     } catch (error) {
-      console.error(`[PROXY] 读取响应体失败:`, error)
-      responseText = `读取响应体失败: ${error.message}`
+      console.error('[PROXY] 读取响应体失败:', error)
+      responseData = ''
     }
     
-    // 设置响应头
-    const contentType = fetchResponse.headers.get('content-type') || 'application/xml; charset=utf-8'
+    // 设置响应头 - 增强移动端兼容性
     response.status(fetchResponse.status)
-      .setHeader('Content-Type', contentType)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent')
-      .setHeader('Access-Control-Allow-Credentials', 'true')
+      .setHeader('Access-Control-Allow-Origin', origin || '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS, HEAD, PATCH')
+      .setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name')
+      .setHeader('Access-Control-Allow-Credentials', 'false')
+      .setHeader('Access-Control-Max-Age', '86400')
+      .setHeader('Vary', 'Origin')
+      .setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+      .setHeader('Pragma', 'no-cache')
+      .setHeader('Expires', '0')
+    
+    // 添加Content-Type和其他响应头
+    if (contentType) {
+      response.setHeader('Content-Type', contentType)
+    }
     
     // 添加其他响应头（跳过一些可能有问题的）
     if (fetchResponse.headers?.entries) {
       for (const [key, value] of fetchResponse.headers.entries()) {
-        if (!['connection', 'transfer-encoding', 'content-encoding'].includes(key.toLowerCase())) {
+        if (!['connection', 'transfer-encoding', 'content-encoding', 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-allow-credentials'].includes(key.toLowerCase())) {
           response.setHeader(key, value)
         }
       }
     }
     
+    // 发送响应数据
+    if (responseData instanceof ArrayBuffer) {
+      // 二进制数据
+      response.send(Buffer.from(responseData))
+    } else if (typeof responseData === 'object') {
+      // JSON数据
+      response.json(responseData)
+    } else {
+      // 文本数据
+      response.send(responseData)
+    }
     console.log(`[PROXY] 返回响应，状态: ${fetchResponse.status}`)
-    
-    // 发送响应
-    response.send(responseText)
     
   } catch (error) {
     console.error('[PROXY] 代理请求失败:', error)
     
-    // 返回错误响应
+    // 返回错误响应 - 增强移动端兼容性
     response.status(500)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent')
-      .setHeader('Access-Control-Allow-Credentials', 'true')
+      .setHeader('Access-Control-Allow-Origin', origin || '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS, HEAD, PATCH')
+      .setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name')
+      .setHeader('Access-Control-Allow-Credentials', 'false')
+      .setHeader('Access-Control-Max-Age', '86400')
+      .setHeader('Vary', 'Origin')
+      .setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+      .setHeader('Pragma', 'no-cache')
+      .setHeader('Expires', '0')
       .json({
         error: '代理请求失败',
         message: error.message || '未知错误',
