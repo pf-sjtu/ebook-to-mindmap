@@ -275,6 +275,15 @@ export class WebDAVService {
     try {
       console.log('获取文件内容:', filePath, '格式:', format)
       
+      // 检测是否在Vercel环境中
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      
+      if (isVercel) {
+        // Vercel环境使用代理下载
+        console.log('🌐 Vercel环境，使用代理下载文件')
+        return await this.downloadViaProxy(filePath)
+      }
+      
       // 标准化文件路径
       let normalizedPath = filePath
       if (normalizedPath.startsWith('../dav/')) {
@@ -357,7 +366,7 @@ export class WebDAVService {
   }
 
   /**
-   * 通过Vite代理下载文件
+   * 通过代理下载文件 - 支持Vercel和Vite环境
    * @param filePath 文件路径
    */
   private async downloadViaProxy(filePath: string): Promise<WebDAVOperationResult<ArrayBuffer>> {
@@ -366,16 +375,46 @@ export class WebDAVService {
     }
 
     try {
-      console.log('通过Vite代理下载文件:', filePath)
+      console.log('通过代理下载文件:', filePath)
+      
+      // 检测是否在Vercel环境中
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      
+      // 标准化路径 - 移除各种可能的前缀
+      let normalizedPath = filePath
+      console.log('原始路径:', normalizedPath)
+      
+      // 处理各种可能的前缀
+      if (normalizedPath.startsWith('/api/webdav/')) {
+        normalizedPath = normalizedPath.substring(11) // 移除 '/api/webdav/' (11个字符)
+        console.log('移除 /api/webdav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('/webdav/')) {
+        normalizedPath = normalizedPath.substring(7) // 移除 '/webdav/' (7个字符)
+        console.log('移除 /webdav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('/../dav/')) {
+        normalizedPath = normalizedPath.substring(8) // 移除 '/../dav/' (8个字符)
+        console.log('移除 /../dav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('../dav/')) {
+        normalizedPath = normalizedPath.substring(7) // 移除 '../dav/' (7个字符)
+        console.log('移除 ../dav/ 后:', normalizedPath)
+      }
+      
+      // 确保路径以 / 开头
+      if (!normalizedPath.startsWith('/')) {
+        normalizedPath = '/' + normalizedPath
+        console.log('添加 / 前缀后:', normalizedPath)
+      }
+      
+      console.log('最终标准化路径:', normalizedPath)
       
       // 对路径进行 URL 编码，但保留 / 分隔符
-      const encodedPath = filePath.split('/').map(segment => 
+      const encodedPath = normalizedPath.split('/').map(segment => 
         segment ? encodeURIComponent(segment) : ''
       ).join('/')
       
-      // 构建代理URL，使用 /webdav 路径
-      const proxyUrl = `/webdav${encodedPath}`
-      console.log('代理URL:', proxyUrl)
+      // 构建代理URL，根据环境选择不同的代理路径
+      const proxyUrl = isVercel ? `/api/webdav${encodedPath}` : `/webdav${encodedPath}`
+      console.log('代理下载URL:', proxyUrl)
       
       // 使用fetch下载
       const response = await fetch(proxyUrl, {
@@ -487,6 +526,15 @@ export class WebDAVService {
       console.log('   数据大小:', typeof data === 'string' ? data.length : 'unknown')
       console.log('   覆盖模式:', overwrite)
       
+      // 检测是否在Vercel环境中
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      
+      if (isVercel) {
+        // Vercel环境使用代理上传
+        console.log('🌐 Vercel环境，使用代理上传')
+        return await this.uploadViaProxy(filePath, data)
+      }
+      
       // 确保目录存在
       const dirPath = filePath.substring(0, filePath.lastIndexOf('/'))
       if (dirPath && dirPath !== '/') {
@@ -498,7 +546,7 @@ export class WebDAVService {
         }
       }
       
-      const result = await this.client.putFileContents(filePath, data, { overwrite })
+      const result = await this.client.putFileContents(filePath, data as any, { overwrite })
       
       console.log('✅ WebDAV上传成功:', result)
       return { success: true, data: result }
@@ -931,6 +979,102 @@ export class WebDAVService {
    */
   isInitialized(): boolean {
     return this.client !== null && this.config !== null
+  }
+
+  /**
+   * 通过代理上传文件 - 支持Vercel和Vite环境
+   * @param filePath 文件路径
+   * @param data 文件数据
+   */
+  private async uploadViaProxy(
+    filePath: string,
+    data: string | ArrayBuffer | Blob
+  ): Promise<WebDAVOperationResult<boolean>> {
+    if (!this.config) {
+      return { success: false, error: 'WebDAV配置未找到' }
+    }
+
+    try {
+      console.log('通过代理上传文件:', filePath)
+      
+      // 检测是否在Vercel环境中
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      
+      // 标准化路径 - 移除各种可能的前缀
+      let normalizedPath = filePath
+      console.log('原始路径:', normalizedPath)
+      
+      // 处理各种可能的前缀
+      if (normalizedPath.startsWith('/api/webdav/')) {
+        normalizedPath = normalizedPath.substring(11) // 移除 '/api/webdav/' (11个字符)
+        console.log('移除 /api/webdav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('/webdav/')) {
+        normalizedPath = normalizedPath.substring(7) // 移除 '/webdav/' (7个字符)
+        console.log('移除 /webdav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('/../dav/')) {
+        normalizedPath = normalizedPath.substring(8) // 移除 '/../dav/' (8个字符)
+        console.log('移除 /../dav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('../dav/')) {
+        normalizedPath = normalizedPath.substring(7) // 移除 '../dav/' (7个字符)
+        console.log('移除 ../dav/ 后:', normalizedPath)
+      }
+      
+      // 确保路径以 / 开头
+      if (!normalizedPath.startsWith('/')) {
+        normalizedPath = '/' + normalizedPath
+        console.log('添加 / 前缀后:', normalizedPath)
+      }
+      
+      console.log('最终标准化路径:', normalizedPath)
+      
+      // 对路径进行 URL 编码，但保留 / 分隔符
+      const encodedPath = normalizedPath.split('/').map(segment => 
+        segment ? encodeURIComponent(segment) : ''
+      ).join('/')
+      
+      // 构建代理URL，根据环境选择不同的代理路径
+      const proxyUrl = isVercel ? `/api/webdav${encodedPath}` : `/webdav${encodedPath}`
+      console.log('代理上传URL:', proxyUrl)
+      
+      // 准备上传数据
+      let body: BodyInit
+      if (typeof data === 'string') {
+        body = data
+      } else if (data instanceof ArrayBuffer) {
+        body = new Blob([data])
+      } else {
+        body = data
+      }
+      
+      // 发送PUT请求
+      const response = await fetch(proxyUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
+          'User-Agent': 'ebook-to-mindmap/1.0',
+          'Content-Type': 'text/markdown'
+        },
+        body
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('代理上传失败:', response.status, response.statusText, errorText)
+        return {
+          success: false,
+          error: `上传失败 (${response.status}): ${response.statusText} - ${errorText}`
+        }
+      }
+      
+      console.log('✅ 代理上传成功')
+      return { success: true, data: true }
+    } catch (error) {
+      console.error('代理上传异常:', error)
+      return {
+        success: false,
+        error: `上传异常: ${error instanceof Error ? error.message : '未知错误'}`
+      }
+    }
   }
 
   /**
