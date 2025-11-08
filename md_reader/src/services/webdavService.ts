@@ -40,6 +40,7 @@ export interface WebDAVConfig {
 function getProcessedUrl(originalUrl: string, useProxy: boolean = false): string {
   // 检测是否在Vercel环境中
   const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+  const isDev = (import.meta as any).env.DEV
   
   // Vercel环境使用Serverless Function代理
   if (isVercel && originalUrl.includes('dav.jianguoyun.com')) {
@@ -58,8 +59,8 @@ function getProcessedUrl(originalUrl: string, useProxy: boolean = false): string
     return `/api/webdav${pathname}`
   }
   
-  // 开发环境使用Vite代理
-  if (useProxy && (import.meta as any).env.DEV && originalUrl.includes('dav.jianguoyun.com')) {
+  // 开发环境自动使用Vite代理（避免CORS问题）
+  if (isDev && originalUrl.includes('dav.jianguoyun.com')) {
     const url = new URL(originalUrl)
     // 提取路径部分，去掉 /dav 前缀
     let pathname = url.pathname
@@ -74,6 +75,24 @@ function getProcessedUrl(originalUrl: string, useProxy: boolean = false): string
     }
     return `/webdav${pathname}`
   }
+  
+  // 手动指定使用代理的情况
+  if (useProxy && originalUrl.includes('dav.jianguoyun.com')) {
+    const url = new URL(originalUrl)
+    // 提取路径部分，去掉 /dav 前缀
+    let pathname = url.pathname
+    if (pathname.startsWith('/dav/')) {
+      pathname = pathname.substring(4) // 去掉 '/dav'
+    } else if (pathname === '/dav') {
+      pathname = '/' // 根目录
+    }
+    // 如果路径为空，设为根路径
+    if (pathname === '') {
+      pathname = '/'
+    }
+    return `/webdav${pathname}`
+  }
+  
   return originalUrl
 }
 
@@ -100,7 +119,8 @@ export class WebDAVService {
       // 获取处理后的URL（根据环境自动选择代理模式）
       const processedUrl = getProcessedUrl(config.serverUrl, config.useProxy || false)
       const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
-      const proxyMode = isVercel ? 'Vercel Serverless Function' : (config.useProxy ? 'Vite开发代理' : '直连')
+      const isDev = (import.meta as any).env.DEV
+      const proxyMode = isVercel ? 'Vercel Serverless Function' : (config.useProxy || isDev ? 'Vite开发代理' : '直连')
       console.log('初始化WebDAV客户端，原始URL:', config.serverUrl)
       console.log('初始化WebDAV客户端，处理后URL:', processedUrl)
       console.log('代理模式:', proxyMode)
