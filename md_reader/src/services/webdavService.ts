@@ -283,8 +283,9 @@ export class WebDAVService {
       
       // 如果使用代理（Vite开发代理或Vercel Serverless Function）且是坚果云，直接通过代理下载
       if ((this.config?.useProxy || isVercel) && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
-        console.log('使用代理模式下载文件:', normalizedPath)
-        return await this.downloadViaProxy(normalizedPath, format)
+        console.log('使用代理模式下载文件:', filePath)
+        // 传入原始路径，让 downloadViaProxy 处理路径标准化
+        return await this.downloadViaProxy(filePath, format)
       }
       
       if (format === 'text') {
@@ -402,7 +403,13 @@ export class WebDAVService {
       console.log('原始路径:', normalizedPath)
       
       // 处理各种可能的前缀
-      if (normalizedPath.startsWith('/../dav/')) {
+      if (normalizedPath.startsWith('/api/webdav/')) {
+        normalizedPath = normalizedPath.substring(11) // 移除 '/api/webdav/' (11个字符)
+        console.log('移除 /api/webdav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('/webdav/')) {
+        normalizedPath = normalizedPath.substring(7) // 移除 '/webdav/' (7个字符)
+        console.log('移除 /webdav/ 后:', normalizedPath)
+      } else if (normalizedPath.startsWith('/../dav/')) {
         normalizedPath = normalizedPath.substring(8) // 移除 '/../dav/' (8个字符)
         console.log('移除 /../dav/ 后:', normalizedPath)
       } else if (normalizedPath.startsWith('../dav/')) {
