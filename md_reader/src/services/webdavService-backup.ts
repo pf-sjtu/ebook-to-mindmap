@@ -103,6 +103,20 @@ export class WebDAVService {
       }
       
       this.client = createClient(processedUrl, clientConfig)
+      
+      console.log('[WebDAVService] WebDAV客户端已创建:')
+      console.log('- 基础URL:', processedUrl)
+      console.log('- 配置:', clientConfig)
+      
+      // 测试客户端配置
+      try {
+        const clientConfig = this.client.config
+        console.log('[WebDAVService] 客户端内部配置:')
+        console.log('- baseURL:', clientConfig.baseURL)
+        console.log('- headers:', clientConfig.headers)
+      } catch (error) {
+        console.log('[WebDAVService] 无法读取客户端配置:', error.message)
+      }
 
       // 测试连接
       const testResult = await this.testConnection()
@@ -162,14 +176,32 @@ export class WebDAVService {
       
       // 标准化路径
       let normalizedPath = path
+      console.log('[getDirectoryContents] 原始路径:', path)
+      
+      // 处理各种可能的路径格式
       if (normalizedPath.startsWith('../dav/')) {
         normalizedPath = normalizedPath.replace('../dav/', '/')
+        console.log('[getDirectoryContents] 处理../dav/路径:', normalizedPath)
+      } else if (normalizedPath.startsWith('../../dav/')) {
+        normalizedPath = normalizedPath.replace('../../dav/', '/')
+        console.log('[getDirectoryContents] 处理../../dav/路径:', normalizedPath)
+      } else if (normalizedPath.startsWith('/dav/')) {
+        normalizedPath = normalizedPath.replace('/dav/', '/')
+        console.log('[getDirectoryContents] 处理/dav/路径:', normalizedPath)
       }
+      
       if (!normalizedPath.startsWith('/')) {
         normalizedPath = '/' + normalizedPath
       }
       
+      console.log('[getDirectoryContents] 最终路径:', normalizedPath)
+      
       const contents = await this.client.getDirectoryContents(normalizedPath, { deep })
+      
+      console.log('[getDirectoryContents] WebDAV库请求完成')
+      console.log('- 请求路径:', normalizedPath)
+      console.log('- 基础URL:', processedUrl)
+      console.log('- 响应项目数量:', (contents as any[]).length)
       
       // 转换文件信息格式
       const fileInfos: WebDAVFileInfo[] = (contents as any[]).map(item => {

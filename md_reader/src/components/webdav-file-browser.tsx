@@ -206,6 +206,11 @@ export function WebDAVFileBrowser({
         newPath = newPath.replace('https://dav.jianguoyun.com/dav/', '/')
       } else if (newPath.startsWith('/../dav/')) {
         newPath = newPath.replace('/../dav/', '/')
+      } else if (newPath.startsWith('/api/webdav/')) {
+        // Vercel代理路径处理
+        console.log('处理Vercel代理路径:', newPath)
+        newPath = newPath.replace('/api/webdav/', '/')
+        console.log('处理后路径:', newPath)
       }
       
       // 确保路径以 / 开头和结尾
