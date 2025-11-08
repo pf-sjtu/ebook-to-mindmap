@@ -38,7 +38,27 @@ export interface WebDAVConfig {
  * @returns 处理后的URL
  */
 function getProcessedUrl(originalUrl: string, useProxy: boolean = false): string {
-  // 只有在明确指定使用代理且在开发环境中才使用代理
+  // 检测是否在Vercel环境中
+  const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+  
+  // Vercel环境使用Serverless Function代理
+  if (isVercel && originalUrl.includes('dav.jianguoyun.com')) {
+    const url = new URL(originalUrl)
+    // 提取路径部分，去掉 /dav 前缀
+    let pathname = url.pathname
+    if (pathname.startsWith('/dav/')) {
+      pathname = pathname.substring(4) // 去掉 '/dav'
+    } else if (pathname === '/dav') {
+      pathname = '/' // 根目录
+    }
+    // 如果路径为空，设为根路径
+    if (pathname === '') {
+      pathname = '/'
+    }
+    return `/api/webdav${pathname}`
+  }
+  
+  // 开发环境使用Vite代理
   if (useProxy && (import.meta as any).env.DEV && originalUrl.includes('dav.jianguoyun.com')) {
     const url = new URL(originalUrl)
     // 提取路径部分，去掉 /dav 前缀
@@ -77,20 +97,28 @@ export class WebDAVService {
         }
       }
 
-      // 获取处理后的URL（根据配置决定是否使用代理）
+      // 获取处理后的URL（根据环境自动选择代理模式）
       const processedUrl = getProcessedUrl(config.serverUrl, config.useProxy || false)
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      const proxyMode = isVercel ? 'Vercel Serverless Function' : (config.useProxy ? 'Vite开发代理' : '直连')
       console.log('初始化WebDAV客户端，原始URL:', config.serverUrl)
       console.log('初始化WebDAV客户端，处理后URL:', processedUrl)
-      console.log('使用代理:', config.useProxy || false)
+      console.log('代理模式:', proxyMode)
 
       // 创建WebDAV客户端
-      this.client = createClient(processedUrl, {
+      const clientConfig: any = {
         username: config.username,
-        password: config.password,
-        headers: {
+        password: config.password
+      }
+      
+      // 只有在非代理模式下才添加User-Agent头部
+      if (!isVercel && !config.useProxy) {
+        clientConfig.headers = {
           'User-Agent': 'md-reader/1.0'
         }
-      })
+      }
+      
+      this.client = createClient(processedUrl, clientConfig)
 
       // 测试连接
       const testResult = await this.testConnection()
@@ -217,6 +245,9 @@ export class WebDAVService {
     try {
       console.log('获取文件内容:', filePath, '格式:', format)
       
+      // 检测是否在Vercel环境中
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      
       // 标准化文件路径
       let normalizedPath = filePath
       if (normalizedPath.startsWith('../dav/')) {
@@ -226,8 +257,8 @@ export class WebDAVService {
         normalizedPath = '/' + normalizedPath
       }
       
-      // 如果使用代理且是坚果云，直接通过代理下载
-      if (this.config?.useProxy && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
+      // 如果使用代理（Vite开发代理或Vercel Serverless Function）且是坚果云，直接通过代理下载
+      if ((this.config?.useProxy || isVercel) && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
         console.log('使用代理模式下载文件:', normalizedPath)
         return await this.downloadViaProxy(normalizedPath, format)
       }
@@ -337,7 +368,10 @@ export class WebDAVService {
     }
 
     try {
-      console.log('通过Vite代理下载文件:', filePath, '格式:', format)
+      console.log('通过代理下载文件:', filePath, '格式:', format)
+      
+      // 检测是否在Vercel环境中
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
       
       // 标准化路径 - 移除各种可能的前缀
       let normalizedPath = filePath
@@ -365,8 +399,8 @@ export class WebDAVService {
         segment ? encodeURIComponent(segment) : ''
       ).join('/')
       
-      // 构建代理URL，使用 /webdav 路径
-      const proxyUrl = `/webdav${encodedPath}`
+      // 构建代理URL，根据环境选择不同的代理路径
+      const proxyUrl = isVercel ? `/api/webdav${encodedPath}` : `/webdav${encodedPath}`
       console.log('代理URL:', proxyUrl)
       
       // 使用fetch下载
@@ -460,6 +494,9 @@ export class WebDAVService {
     try {
       console.log('上传文件到WebDAV:', filePath)
       
+      // 检测是否在Vercel环境中
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      
       // 标准化路径
       let normalizedPath = filePath
       if (normalizedPath.startsWith('../dav/')) {
@@ -469,8 +506,8 @@ export class WebDAVService {
         normalizedPath = '/' + normalizedPath
       }
       
-      // 如果使用代理且是坚果云，需要特殊处理
-      if (this.config?.useProxy && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
+      // 如果使用代理（Vite开发代理或Vercel Serverless Function）且是坚果云，需要特殊处理
+      if ((this.config?.useProxy || isVercel) && this.config?.serverUrl.includes('dav.jianguoyun.com')) {
         // 代理模式下需要直接上传到原始服务器
         console.log('代理模式下上传到原始服务器:', normalizedPath)
         return await this.uploadViaProxy(normalizedPath, data)
@@ -505,13 +542,16 @@ export class WebDAVService {
     try {
       console.log('通过代理上传文件:', filePath)
       
+      // 检测是否在Vercel环境中
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      
       // 对路径进行 URL 编码，但保留 / 分隔符
       const encodedPath = filePath.split('/').map(segment => 
         segment ? encodeURIComponent(segment) : ''
       ).join('/')
       
-      // 构建代理URL
-      const proxyUrl = `/webdav${encodedPath}`
+      // 构建代理URL，根据环境选择不同的代理路径
+      const proxyUrl = isVercel ? `/api/webdav${encodedPath}` : `/webdav${encodedPath}`
       console.log('代理上传URL:', proxyUrl)
       
       // 准备上传数据
