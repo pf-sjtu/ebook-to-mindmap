@@ -103,20 +103,34 @@ async function proxyRequest(request) {
     const contentType = response.headers.get('content-type') || ''
     
     try {
+      console.log(`[PROXY] Content-Type: ${contentType}`)
+      
+      // 对于WebDAV的XML响应，通常content-type可能是application/xml或text/xml
+      // 但有些服务器可能返回其他格式或不设置content-type
       if (contentType.includes('application/xml') || 
           contentType.includes('text/xml') || 
-          contentType.includes('text/html')) {
-        // 对于XML/HTML内容，读取为文本
+          contentType.includes('text/html') ||
+          contentType.includes('text/plain')) {
+        // 对于文本内容，读取为文本
         responseBody = await response.text()
-        console.log(`[PROXY] 响应体长度: ${responseBody.length} 字符`)
+        console.log(`[PROXY] 文本响应体长度: ${responseBody.length} 字符`)
       } else if (contentType.includes('application/octet-stream')) {
         // 对于二进制内容，直接转发
         responseBody = response.body
         console.log(`[PROXY] 二进制响应体`)
-      } else {
-        // 其他内容也读取为文本
+      } else if (contentType === '' || contentType.includes('application/xml') || response.status === 207) {
+        // 对于WebDAV Multi-Status响应或无content-type的响应，读取为文本
         responseBody = await response.text()
-        console.log(`[PROXY] 文本响应体长度: ${responseBody.length} 字符`)
+        console.log(`[PROXY] WebDAV响应或无Content-Type，长度: ${responseBody.length} 字符`)
+      } else {
+        // 其他情况，尝试读取为文本，如果失败则直接转发body
+        try {
+          responseBody = await response.text()
+          console.log(`[PROXY] 默认文本处理，长度: ${responseBody.length} 字符`)
+        } catch (textError) {
+          console.log(`[PROXY] 文本读取失败，直接转发body`)
+          responseBody = response.body
+        }
       }
     } catch (error) {
       console.error(`[PROXY] 读取响应体失败:`, error)
@@ -124,6 +138,9 @@ async function proxyRequest(request) {
     }
     
     // 返回响应
+    console.log(`[PROXY] 返回响应: 状态=${response.status}, 响应体类型=${typeof responseBody}, 长度=${responseBody?.length || 'unknown'}`)
+    console.log(`[PROXY] 响应头数量: ${Object.keys(responseHeaders).length}`)
+    
     return new Response(responseBody, {
       status: response.status,
       statusText: response.statusText,

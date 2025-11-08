@@ -363,6 +363,55 @@ export function WebDAVConfig() {
                   </AlertDescription>
                 </Alert>
               )}
+
+              {/* 调试测试链接 */}
+              <div className="pt-2 border-t">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="h-3 w-3 text-blue-500" />
+                  <span className="text-xs font-medium">调试工具</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('/test/response-test.html', '_blank')}
+                    className="h-7 text-xs"
+                  >
+                    <ExternalLink className="mr-1 h-3 w-3" />
+                    响应调试
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('/test/headers-test.html', '_blank')}
+                    className="h-7 text-xs"
+                  >
+                    <ExternalLink className="mr-1 h-3 w-3" />
+                    Headers测试
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('/test/url-test.html', '_blank')}
+                    className="h-7 text-xs"
+                  >
+                    <ExternalLink className="mr-1 h-3 w-3" />
+                    URL解析测试
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('/test/vercel-function-test.html', '_blank')}
+                    className="h-7 text-xs"
+                  >
+                    <ExternalLink className="mr-1 h-3 w-3" />
+                    完整功能测试
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  如果连接测试卡住或失败，可以使用上面的调试工具进行详细诊断
+                </p>
+              </div>
             </CardContent>
           </Card>
 
