@@ -32,8 +32,9 @@ async function proxyRequest(request) {
     
     // 在Vercel环境中，request.url可能只是路径，需要构造完整URL
     if (!url.startsWith('http')) {
-      const host = request.headers.get('host') || 'localhost'
-      const protocol = request.headers.get('x-forwarded-proto') || 'https'
+      // 兼容不同的headers格式
+      const host = request.headers?.get ? request.headers.get('host') : request.headers?.host || 'localhost'
+      const protocol = request.headers?.get ? request.headers.get('x-forwarded-proto') : request.headers['x-forwarded-proto'] || 'https'
       url = `${protocol}://${host}${url}`
     }
     
@@ -49,10 +50,23 @@ async function proxyRequest(request) {
     
     // 准备请求头
     const requestHeaders = {}
-    for (const [key, value] of request.headers.entries()) {
-      // 跳过一些不应该转发的头部
-      if (!['host', 'connection', 'accept-encoding', 'accept-language'].includes(key.toLowerCase())) {
-        requestHeaders[key] = value
+    
+    // 兼容不同的headers格式
+    if (request.headers?.entries) {
+      // Headers对象格式
+      for (const [key, value] of request.headers.entries()) {
+        // 跳过一些不应该转发的头部
+        if (!['host', 'connection', 'accept-encoding', 'accept-language'].includes(key.toLowerCase())) {
+          requestHeaders[key] = value
+        }
+      }
+    } else if (typeof request.headers === 'object') {
+      // 普通对象格式
+      for (const key in request.headers) {
+        // 跳过一些不应该转发的头部
+        if (!['host', 'connection', 'accept-encoding', 'accept-language'].includes(key.toLowerCase())) {
+          requestHeaders[key] = request.headers[key]
+        }
       }
     }
     
@@ -142,8 +156,9 @@ export default async function handler(request) {
   
   // 在Vercel环境中，request.url可能只是路径，需要构造完整URL
   if (!url.startsWith('http')) {
-    const host = request.headers.get('host') || 'localhost'
-    const protocol = request.headers.get('x-forwarded-proto') || 'https'
+    // 兼容不同的headers格式
+    const host = request.headers?.get ? request.headers.get('host') : request.headers?.host || 'localhost'
+    const protocol = request.headers?.get ? request.headers.get('x-forwarded-proto') : request.headers['x-forwarded-proto'] || 'https'
     url = `${protocol}://${host}${url}`
   }
   
