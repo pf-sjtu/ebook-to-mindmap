@@ -20,6 +20,16 @@
     <button onclick="testJSON()">测试 /api/test-json</button>
     <button onclick="testPing()">测试 /api/ping</button>
     
+    <h3>🎯 Vercel官方格式测试</h3>
+    <button onclick="testHelloOfficial()">官方格式: response.send()</button>
+    <button onclick="testJsonOfficial()">官方格式: response.json()</button>
+    
+    <h3>Vercel响应方法测试</h3>
+    <button onclick="testVercelMethod1()">方法1: 直接字符串</button>
+    <button onclick="testVercelMethod2()">方法2: JSON字符串</button>
+    <button onclick="testVercelMethod3()">方法3: 简化Response</button>
+    <button onclick="testVercelMethod4()">方法4: 带CORS</button>
+    
     <h3>WebDAV测试</h3>
     <button onclick="testWebDAVFixed()">测试 /api/webdav-fixed/</button>
     
@@ -127,6 +137,180 @@
             } catch (error) {
                 console.error('请求失败:', error);
                 showResult(`❌ /api/ping 测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testHelloOfficial() {
+            showResult('正在测试官方格式: response.send()...', 'loading');
+            
+            try {
+                console.log('发送请求到 /api/hello-official');
+                const startTime = Date.now();
+                
+                const response = await fetch('/api/hello-official');
+                const endTime = Date.now();
+                console.log('收到响应:', response.status, response.statusText);
+                
+                const text = await response.text();
+                console.log('响应内容:', text);
+                
+                showResult(
+                    `✅ 官方格式 response.send() 测试成功!\n\n` +
+                    `状态码: ${response.status}\n` +
+                    `响应时间: ${endTime - startTime}ms\n` +
+                    `内容类型: ${response.headers.get('content-type')}\n` +
+                    `响应内容: ${text}`,
+                    'success'
+                );
+                
+            } catch (error) {
+                console.error('请求失败:', error);
+                showResult(`❌ 官方格式 response.send() 测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testJsonOfficial() {
+            showResult('正在测试官方格式: response.json()...', 'loading');
+            
+            try {
+                console.log('发送请求到 /api/json-official');
+                const startTime = Date.now();
+                
+                const response = await fetch('/api/json-official');
+                const endTime = Date.now();
+                console.log('收到响应:', response.status, response.statusText);
+                
+                const json = await response.json();
+                console.log('响应JSON:', json);
+                
+                showResult(
+                    `✅ 官方格式 response.json() 测试成功!\n\n` +
+                    `状态码: ${response.status}\n` +
+                    `响应时间: ${endTime - startTime}ms\n` +
+                    `内容类型: ${response.headers.get('content-type')}\n` +
+                    `响应数据: ${JSON.stringify(json, null, 2)}`,
+                    'success'
+                );
+                
+            } catch (error) {
+                console.error('请求失败:', error);
+                showResult(`❌ 官方格式 response.json() 测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testVercelMethod1() {
+            showResult('正在测试方法1: 直接字符串...', 'loading');
+            
+            try {
+                console.log('发送请求到 /api/vercel-test?method=1');
+                const startTime = Date.now();
+                
+                const response = await fetch('/api/vercel-test?method=1');
+                const endTime = Date.now();
+                console.log('收到响应:', response.status, response.statusText);
+                
+                const text = await response.text();
+                console.log('响应内容:', text);
+                
+                showResult(
+                    `✅ 方法1 测试成功!\n\n` +
+                    `状态码: ${response.status}\n` +
+                    `响应时间: ${endTime - startTime}ms\n` +
+                    `内容类型: ${response.headers.get('content-type')}\n` +
+                    `响应内容: ${text}`,
+                    'success'
+                );
+                
+            } catch (error) {
+                console.error('请求失败:', error);
+                showResult(`❌ 方法1 测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testVercelMethod2() {
+            showResult('正在测试方法2: JSON字符串...', 'loading');
+            
+            try {
+                console.log('发送请求到 /api/vercel-test?method=2');
+                const startTime = Date.now();
+                
+                const response = await fetch('/api/vercel-test?method=2');
+                const endTime = Date.now();
+                console.log('收到响应:', response.status, response.statusText);
+                
+                const text = await response.text();
+                console.log('响应内容:', text);
+                
+                showResult(
+                    `✅ 方法2 测试成功!\n\n` +
+                    `状态码: ${response.status}\n` +
+                    `响应时间: ${endTime - startTime}ms\n` +
+                    `内容类型: ${response.headers.get('content-type')}\n` +
+                    `响应内容: ${text}`,
+                    'success'
+                );
+                
+            } catch (error) {
+                console.error('请求失败:', error);
+                showResult(`❌ 方法2 测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testVercelMethod3() {
+            showResult('正在测试方法3: 简化Response...', 'loading');
+            
+            try {
+                console.log('发送请求到 /api/vercel-test?method=3');
+                const startTime = Date.now();
+                
+                const response = await fetch('/api/vercel-test?method=3');
+                const endTime = Date.now();
+                console.log('收到响应:', response.status, response.statusText);
+                
+                const text = await response.text();
+                console.log('响应内容:', text);
+                
+                showResult(
+                    `✅ 方法3 测试成功!\n\n` +
+                    `状态码: ${response.status}\n` +
+                    `响应时间: ${endTime - startTime}ms\n` +
+                    `内容类型: ${response.headers.get('content-type')}\n` +
+                    `响应内容: ${text}`,
+                    'success'
+                );
+                
+            } catch (error) {
+                console.error('请求失败:', error);
+                showResult(`❌ 方法3 测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testVercelMethod4() {
+            showResult('正在测试方法4: 带CORS...', 'loading');
+            
+            try {
+                console.log('发送请求到 /api/vercel-test?method=4');
+                const startTime = Date.now();
+                
+                const response = await fetch('/api/vercel-test?method=4');
+                const endTime = Date.now();
+                console.log('收到响应:', response.status, response.statusText);
+                
+                const text = await response.text();
+                console.log('响应内容:', text);
+                
+                showResult(
+                    `✅ 方法4 测试成功!\n\n` +
+                    `状态码: ${response.status}\n` +
+                    `响应时间: ${endTime - startTime}ms\n` +
+                    `内容类型: ${response.headers.get('content-type')}\n` +
+                    `响应内容: ${text}`,
+                    'success'
+                );
+                
+            } catch (error) {
+                console.error('请求失败:', error);
+                showResult(`❌ 方法4 测试失败: ${error.message}`, 'error');
             }
         }
         

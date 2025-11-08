@@ -1,14 +1,12 @@
 // Vercel官方推荐的JSON API格式
 export default async function handler(request, response) {
-  console.log('[TEST-JSON] 开始处理请求')
+  console.log('[JSON-OFFICIAL] 收到请求')
   
   const data = {
-    message: 'Hello from JSON API',
+    message: 'Hello from Official JSON API',
     timestamp: new Date().toISOString(),
     success: true
   }
-  
-  console.log('[TEST-JSON] 准备返回JSON:', data)
   
   // 使用官方推荐的response.json()方法
   response.status(200).json(data)
