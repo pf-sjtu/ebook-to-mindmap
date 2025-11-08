@@ -348,29 +348,248 @@ export class AIService {
   }
 
   async summarizeChapter(title: string, content: string, bookType: 'fiction' | 'non-fiction' = 'non-fiction', outputLanguage: SupportedLanguage = 'en', customPrompt?: string): Promise<string> {
-    try {
-      const promptConfig = this.getCurrentPromptConfig()
-      const customChapterPrompt = customPrompt || (bookType === 'fiction' ? promptConfig.chapterSummary.fiction : promptConfig.chapterSummary.nonFiction)
-      
-      let prompt = bookType === 'fiction'
-        ? getFictionChapterSummaryPrompt(title, content, customChapterPrompt)
-        : getNonFictionChapterSummaryPrompt(title, content, customChapterPrompt)
+    const promptConfig = this.getCurrentPromptConfig()
+    const customChapterPrompt = customPrompt || (bookType === 'fiction' ? promptConfig.chapterSummary.fiction : promptConfig.chapterSummary.nonFiction)
+    
+    let prompt = bookType === 'fiction'
+      ? getFictionChapterSummaryPrompt(title, content, customChapterPrompt)
+      : getNonFictionChapterSummaryPrompt(title, content, customChapterPrompt)
 
-      // 如果有自定义提示词，则拼接到原始prompt后面
-      if (customPrompt && customPrompt.trim()) {
-        prompt += `\n\n补充要求：${customPrompt.trim()}`
-      }
-
-      const summary = await this.generateContent(prompt, outputLanguage)
-
-      if (!summary || summary.trim().length === 0) {
-        throw new Error('AI返回了空的总结')
-      }
-
-      return summary.trim()
-    } catch (error) {
-      throw new Error(`章节总结失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    // 如果有自定义提示词，则拼接到原始prompt后面
+    if (customPrompt && customPrompt.trim()) {
+      prompt += `\n\n补充要求：${customPrompt.trim()}`
     }
+
+    // 特殊处理400状态码的重试逻辑
+    let lastError: any = null
+    let attemptCount = 0
+    
+    while (attemptCount < 2) { // 最多尝试2次（首次+重试一次）
+      try {
+        console.log(`[AI服务] 章节总结 - 尝试第 ${attemptCount + 1} 次，标题: ${title}`)
+        
+        const summary = await this.generateContentWithStatusCheck(prompt, outputLanguage)
+
+        if (!summary || summary.trim().length === 0) {
+          throw new Error('AI返回了空的总结')
+        }
+
+        return summary.trim()
+      } catch (error: any) {
+        lastError = error
+        attemptCount++
+        
+        // 检查是否是400状态码错误
+        if (error?.status === 400 && attemptCount < 2) {
+          console.warn(`[AI服务] 章节总结 - 检测到400状态码错误，准备重试 (第${attemptCount}次)`, {
+            title,
+            error: error?.message || error,
+            status: error?.status
+          })
+          // 继续下一次尝试
+          continue
+        } else if (error?.status === 400 && attemptCount >= 2) {
+          // 400状态码重试失败，返回格式化的错误信息
+          const errorContent = this.extractErrorContent(error)
+          const formattedError = `错误，模型返回：${errorContent}`
+          
+          console.error(`[AI服务] 章节总结 - 400状态码重试失败，跳过章节`, {
+            title,
+            error: error?.message || error,
+            status: error?.status,
+            formattedError
+          })
+          
+          return formattedError
+        } else {
+          // 其他错误，直接抛出
+          throw error
+        }
+      }
+    }
+    
+    // 理论上不会到达这里
+    throw new Error(`章节总结失败: ${lastError instanceof Error ? lastError.message : '未知错误'}`)
+  }
+
+  // 提取错误内容的方法
+  private extractErrorContent(error: any): string {
+    try {
+      // 尝试解析错误响应体
+      if (error?.body) {
+        const errorData = typeof error.body === 'string' ? JSON.parse(error.body) : error.body
+        if (errorData?.error?.message) {
+          return errorData.error.message
+        }
+        if (errorData?.message) {
+          return errorData.message
+        }
+      }
+      
+      // 如果无法解析，返回错误消息
+      return error?.message || error?.toString() || '未知错误'
+    } catch {
+      // 解析失败，返回原始错误信息
+      return error?.message || error?.toString() || '未知错误'
+    }
+  }
+
+  // 带状态检查的内容生成方法
+  private async generateContentWithStatusCheck(prompt: string, outputLanguage?: SupportedLanguage): Promise<string> {
+    const config = this.getCurrentConfig()
+    const language = outputLanguage || 'en'
+    const systemPrompt = getLanguageInstruction(language)
+    
+    return this.executeWithRetry(
+      async () => {
+        if (config.provider === 'gemini') {
+          // Gemini API 不直接支持系统提示，将系统提示合并到用户提示前面
+          const finalPrompt = `${prompt}\n\n**${systemPrompt}**`
+          
+          // 如果启用代理，使用代理请求 Gemini API
+          if (config.proxyEnabled && config.proxyUrl) {
+            return await this.generateGeminiWithProxy(finalPrompt, config)
+          } else {
+            const result = await this.model.generateContent(finalPrompt, {
+              generationConfig: {
+                temperature: config.temperature || 0.7
+              }
+            })
+            const response = await result.response
+            
+            // 统计token使用量（Gemini API返回使用情况）
+            try {
+              const usage = (result as any).response?.usageMetadata
+              if (usage?.totalTokenCount) {
+                this.recordTokenUsage(usage.totalTokenCount)
+              }
+            } catch (_error) {
+              // 如果无法获取token使用量，忽略错误
+            }
+            
+            return response.text()
+          }
+        } else if (config.provider === 'openai' || config.provider === '302.ai') {
+          const messages: Array<{role: 'system' | 'user', content: string}> = [
+            {
+              role: 'user',
+              content: prompt + '\n\n' + systemPrompt
+            }
+          ]
+          
+          const response = await proxyFetch(`${this.model.apiUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.model.apiKey}`
+            },
+            body: JSON.stringify({
+              model: this.model.model,
+              messages,
+              temperature: config.temperature || 0.7
+            })
+          }, config.proxyEnabled ? config.proxyUrl : undefined)
+
+          if (!response.ok) {
+            const errorBody = await response.text()
+            const error = new Error(`OpenAI API请求失败: ${response.status} ${response.statusText} - ${errorBody}`) as any
+            error.status = response.status
+            error.body = errorBody
+            
+            console.error('OpenAI API错误详情:', {
+              status: response.status,
+              statusText: response.statusText,
+              body: errorBody,
+              url: `${this.model.apiUrl}/chat/completions`,
+              model: this.model.model,
+              provider: config.provider,
+              proxyEnabled: config.proxyEnabled,
+              proxyUrl: config.proxyUrl
+            })
+            throw error
+          }
+
+          const data = await response.json()
+          
+          // 统计token使用量（OpenAI API返回使用情况）
+          try {
+            if (data.usage?.total_tokens) {
+              this.recordTokenUsage(data.usage.total_tokens)
+            }
+          } catch (_error) {
+            // 如果无法获取token使用量，忽略错误
+          }
+          
+          return data.choices[0]?.message?.content || ''
+        } else if (config.provider === 'ollama') {
+          // Ollama API 调用
+          const messages: Array<{role: 'system' | 'user', content: string}> = [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+          
+          const requestHeaders: Record<string, string> = {
+            'Content-Type': 'application/json'
+          }
+          
+          // 如果提供了API密钥，则添加Authorization头
+          if (this.model.apiKey) {
+            requestHeaders['Authorization'] = `Bearer ${this.model.apiKey}`
+          }
+          
+          const response = await proxyFetch(`${this.model.apiUrl}/api/chat`, {
+            method: 'POST',
+            headers: requestHeaders,
+            body: JSON.stringify({
+              model: this.model.model,
+              messages,
+              stream: false,
+              options: {
+                temperature: config.temperature || 0.7
+              }
+            })
+          }, config.proxyEnabled ? config.proxyUrl : undefined)
+
+          if (!response.ok) {
+            const errorBody = await response.text()
+            const error = new Error(`Ollama API请求失败: ${response.status} ${response.statusText} - ${errorBody}`) as any
+            error.status = response.status
+            error.body = errorBody
+            
+            console.error('Ollama API错误详情:', {
+              status: response.status,
+              statusText: response.statusText,
+              body: errorBody,
+              url: `${this.model.apiUrl}/api/chat`,
+              model: this.model.model,
+              provider: config.provider,
+              proxyEnabled: config.proxyEnabled,
+              proxyUrl: config.proxyUrl
+            })
+            throw error
+          }
+
+          const data = await response.json()
+          return data.message?.content || ''
+        }
+        
+        throw new Error(`不支持的AI提供商: ${config.provider}`)
+      },
+      '内容生成',
+      {
+        provider: config.provider,
+        model: config.model,
+        promptLength: prompt.length,
+        outputLanguage: language,
+        timestamp: new Date().toISOString()
+      }
+    )
   }
 
   async analyzeConnections(chapters: Chapter[], outputLanguage: SupportedLanguage = 'en'): Promise<string> {
