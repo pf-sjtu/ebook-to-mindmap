@@ -100,6 +100,7 @@ export interface WebDAVConfig {
   syncPath: string // 同步路径（默认为/fastReader）
   lastSyncTime: string | null // 最后同步时间
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error' // 连接状态
+  useProxy?: boolean // 是否使用代理（默认false）
 }
 
 // AI服务选项接口
@@ -342,7 +343,8 @@ const defaultWebDAVConfig: WebDAVConfig = {
   autoSync: false,
   syncPath: '/fastReader',
   lastSyncTime: null,
-  connectionStatus: 'disconnected'
+  connectionStatus: 'disconnected',
+  useProxy: false
 }
 
 const defaultPromptConfig: PromptConfig = DEFAULT_PROMPT_CONFIG

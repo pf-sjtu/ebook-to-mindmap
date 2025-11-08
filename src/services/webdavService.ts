@@ -23,27 +23,31 @@ export interface WebDAVOperationResult<T = any> {
 export type UploadProgressCallback = (progress: number) => void
 
 /**
- * 获取代理后的URL
+ * 获取处理后的URL - 支持Vercel部署
  * @param originalUrl 原始URL
- * @returns 代理后的URL
+ * @param useProxy 是否使用代理
+ * @returns 处理后的URL
  */
-function getProxiedUrl(originalUrl: string): string {
-  // 在开发环境中，如果使用的是坚果云的URL，转换为代理URL
-  if ((import.meta as any).env.DEV && originalUrl.includes('dav.jianguoyun.com')) {
-    const url = new URL(originalUrl)
-    // 提取路径部分，去掉 /dav 前缀
-    let pathname = url.pathname
-    if (pathname.startsWith('/dav/')) {
-      pathname = pathname.substring(4) // 去掉 '/dav'
-    } else if (pathname === '/dav') {
-      pathname = '/' // 根目录
-    }
-    // 如果路径为空，设为根路径
-    if (pathname === '') {
-      pathname = '/'
-    }
-    return `/webdav${pathname}`
+function getProcessedUrl(originalUrl: string, useProxy: boolean = false): string {
+  // 检测是否在Vercel环境中
+  const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+  const isDev = (import.meta as any).env.DEV
+  
+  // Vercel环境使用Serverless Function代理
+  if (isVercel && originalUrl.includes('dav.jianguoyun.com')) {
+    console.log('[getProcessedUrl] Vercel环境，使用代理:', originalUrl)
+    // 始终返回代理基础URL，让WebDAV库在此基础上构建路径
+    return '/api/webdav'
   }
+  
+  // 开发环境自动使用Vite代理（避免CORS问题）
+  if (isDev && originalUrl.includes('dav.jianguoyun.com')) {
+    console.log('[getProcessedUrl] 开发环境，使用Vite代理:', originalUrl)
+    return '/webdav'
+  }
+  
+  // 其他情况返回原始URL
+  console.log('[getProcessedUrl] 直连模式:', originalUrl)
   return originalUrl
 }
 
@@ -67,20 +71,29 @@ export class WebDAVService {
         }
       }
 
-      // 获取代理后的URL
-      const proxiedUrl = getProxiedUrl(config.serverUrl)
+      // 获取处理后的URL（根据环境自动选择代理模式）
+      const processedUrl = getProcessedUrl(config.serverUrl, config.useProxy || false)
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      const isDev = (import.meta as any).env.DEV
+      const proxyMode = isVercel ? 'Vercel Serverless Function' : (config.useProxy || isDev ? 'Vite开发代理' : '直连')
       console.log('初始化WebDAV客户端，原始URL:', config.serverUrl)
-      console.log('初始化WebDAV客户端，代理URL:', proxiedUrl)
+      console.log('初始化WebDAV客户端，处理后URL:', processedUrl)
+      console.log('代理模式:', proxyMode)
 
-      // 创建WebDAV客户端，使用更严格的配置
-      this.client = createClient(proxiedUrl, {
+      // 创建WebDAV客户端
+      const clientConfig: any = {
         username: config.username,
-        password: config.password,
-        // 添加额外的配置来确保使用代理
-        headers: {
+        password: config.password
+      }
+      
+      // 只有在非代理模式下才添加User-Agent头部
+      if (!isVercel && !config.useProxy) {
+        clientConfig.headers = {
           'User-Agent': 'ebook-to-mindmap/1.0'
         }
-      })
+      }
+      
+      this.client = createClient(processedUrl, clientConfig)
 
       // 测试连接
       const testResult = await this.testConnection()
@@ -143,30 +156,64 @@ export class WebDAVService {
     }
 
     try {
-      // 确保路径格式正确
-      let normalizedPath = path
+      console.log('请求目录内容，路径:', path)
+      console.log('当前WebDAV客户端配置:', {
+        baseURL: this.config?.serverUrl,
+        processedURL: getProcessedUrl(this.config?.serverUrl || '', this.config?.useProxy || false)
+      })
       
-      // 清理路径，移除 ../dav/ 前缀
+      // 标准化路径
+      let normalizedPath = path
       if (normalizedPath.startsWith('../dav/')) {
         normalizedPath = normalizedPath.replace('../dav/', '/')
       }
-      
       if (!normalizedPath.startsWith('/')) {
         normalizedPath = '/' + normalizedPath
       }
       
-      console.log('请求目录内容，路径:', normalizedPath)
+      console.log('标准化后路径:', normalizedPath)
+      console.log('即将发送WebDAV请求到基础URL:', getProcessedUrl(this.config?.serverUrl || '', this.config?.useProxy || false))
+      
       const contents = await this.client.getDirectoryContents(normalizedPath, { deep })
       
       // 转换文件信息格式
       const fileList: WebDAVFileInfo[] = (contents as any[]).map(item => {
-        let filename = item.filename
+        // 检测是否在Vercel环境中
+        const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
         
-        // 如果返回的是绝对URL，转换为相对路径
-        if (filename.startsWith('http://localhost:5174/dav/')) {
-          filename = filename.replace('http://localhost:5174/dav/', '/')
-        } else if (filename.startsWith('https://dav.jianguoyun.com/dav/')) {
-          filename = filename.replace('https://dav.jianguoyun.com/dav/', '/')
+        // 重写filename路径，确保使用代理URL
+        let filename = item.filename
+        console.log('[getDirectoryContents] 原始filename:', filename)
+        
+        if (isVercel) {
+          // 处理各种可能的URL格式
+          if (filename.includes('dav.jianguoyun.com')) {
+            console.log('[getDirectoryContents] 重写URL:', filename)
+            // 提取相对路径并重写为代理路径
+            const url = new URL(filename)
+            let pathname = url.pathname
+            if (pathname.startsWith('/dav/')) {
+              pathname = pathname.substring(4) // 去掉 '/dav'
+            }
+            filename = `/api/webdav${pathname}`
+            console.log('[getDirectoryContents] 重写后:', filename)
+          } else if (filename.startsWith('/../dav/') || filename.includes('/../dav/')) {
+            console.log('[getDirectoryContents] 重写相对路径:', filename)
+            // 使用正则表达式匹配并替换
+            filename = filename.replace(/\/\.\.\/\.\.\/dav\//, '/api/webdav/')
+            console.log('[getDirectoryContents] 重写后:', filename)
+          } else if (filename.startsWith('/dav/')) {
+            console.log('[getDirectoryContents] 重写绝对路径:', filename)
+            filename = filename.replace('/dav/', '/api/webdav/')
+            console.log('[getDirectoryContents] 重写后:', filename)
+          }
+        } else {
+          // 开发环境的路径处理
+          if (filename.startsWith('http://localhost:5174/dav/')) {
+            filename = filename.replace('http://localhost:5174/dav/', '/')
+          } else if (filename.startsWith('https://dav.jianguoyun.com/dav/')) {
+            filename = filename.replace('https://dav.jianguoyun.com/dav/', '/')
+          }
         }
         
         return {
