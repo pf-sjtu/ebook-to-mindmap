@@ -58,8 +58,14 @@ export default async function handler(request, response) {
     console.log(`[PROXY] 原始路径: ${urlObj.pathname}`)
     const pathParts = urlObj.pathname.split('/api/webdav/')
     console.log(`[PROXY] 路径分割:`, pathParts)
-    const webdavPath = pathParts[1] || ''
-    const targetUrl = `https://dav.jianguoyun.com/dav/${webdavPath}${urlObj.search}`
+    let webdavPath = pathParts[1] || ''
+    
+    // 确保路径以 / 开头
+    if (webdavPath && !webdavPath.startsWith('/')) {
+      webdavPath = '/' + webdavPath
+    }
+    
+    const targetUrl = `https://dav.jianguoyun.com/dav${webdavPath}${urlObj.search}`
     
     console.log(`[PROXY] ${method} ${url} -> ${targetUrl}`)
     console.log(`[PROXY] webdavPath: "${webdavPath}"`)

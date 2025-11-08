@@ -159,6 +159,10 @@ export class WebDAVService {
 
     try {
       console.log('请求目录内容，路径:', path)
+      console.log('当前WebDAV客户端配置:', {
+        baseURL: this.config?.serverUrl,
+        processedURL: getProcessedUrl(this.config?.serverUrl || '', this.config?.useProxy || false)
+      })
       
       // 标准化路径
       let normalizedPath = path
@@ -168,6 +172,9 @@ export class WebDAVService {
       if (!normalizedPath.startsWith('/')) {
         normalizedPath = '/' + normalizedPath
       }
+      
+      console.log('标准化后路径:', normalizedPath)
+      console.log('即将发送WebDAV请求到基础URL:', getProcessedUrl(this.config?.serverUrl || '', this.config?.useProxy || false))
       
       const contents = await this.client.getDirectoryContents(normalizedPath, { deep })
       
