@@ -3,8 +3,9 @@ import {
   loadPromptConfig
 } from '../config/promptLoader'
 
-// 加载v1版本的配置
+// 加载v1和v2版本的配置
 const v1Config = loadPromptConfig('v1')
+const v2Config = loadPromptConfig('v2')
 
 // 导出v1版本的模板（保持向后兼容）
 export const CHAPTER_SUMMARY_TEMPLATES = {
@@ -47,44 +48,44 @@ export const OVERALL_SUMMARY_TEMPLATES = {
   }
 } as const
 
-// 导出v2版本的模板（预留）
+// 导出v2版本的模板
 export const CHAPTER_SUMMARY_TEMPLATES_V2 = {
   fiction: {
     name: '小说类章节总结 V2',
-    template: '预留模板'
+    template: v2Config.chapterSummary.fiction
   },
   nonFiction: {
     name: '社科类章节总结 V2',
-    template: '预留模板'
+    template: v2Config.chapterSummary.nonFiction
   }
 } as const
 
 export const MINDMAP_TEMPLATES_V2 = {
   chapter: {
     name: '章节思维导图 V2',
-    template: '预留模板'
+    template: v2Config.mindmap.chapter
   },
   arrow: {
     name: '思维导图箭头连接 V2',
-    template: '预留模板'
+    template: v2Config.mindmap.arrow
   },
   combined: {
     name: '整书思维导图 V2',
-    template: '预留模板'
+    template: v2Config.mindmap.combined
   }
 } as const
 
 export const CONNECTION_ANALYSIS_TEMPLATES_V2 = {
   standard: {
     name: '标准章节关联分析 V2',
-    template: '预留模板'
+    template: v2Config.connectionAnalysis
   }
 } as const
 
 export const OVERALL_SUMMARY_TEMPLATES_V2 = {
   standard: {
     name: '标准全书总结 V2',
-    template: '预留模板'
+    template: v2Config.overallSummary
   }
 } as const
 

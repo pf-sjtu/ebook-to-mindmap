@@ -228,7 +228,7 @@ export class EpubProcessor {
         }
         
         // 然后递归处理子项目
-        if (item.subitems && item.subitems.length > 0 && maxDepth > 0 && currentDepth < maxDepth) {
+        if (item.subitems && item.subitems.length > 0 && maxDepth > 0 && currentDepth < maxDepth - 1) {
           const subChapters = await this.extractChaptersFromToc(book, item.subitems, currentDepth + 1, maxDepth, chapterNamingMode, totalChapters, preserveAnchors)
           chapterInfos.push(...subChapters)
         }
