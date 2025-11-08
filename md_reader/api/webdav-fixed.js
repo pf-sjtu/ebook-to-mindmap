@@ -1,20 +1,18 @@
-// 修复版本的WebDAV代理服务器 - 解决响应问题
-export default async function handler(request) {
+// 修复版本的WebDAV代理服务器 - 使用Vercel官方格式
+export default async function handler(request, response) {
   console.log(`[FIXED] 收到请求: ${request.method} ${request.url}`)
   
   // 处理OPTIONS请求
   if (request.method === 'OPTIONS') {
     console.log('[FIXED] 处理OPTIONS请求')
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent',
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Max-Age': '86400'
-      }
-    })
+    response.status(200)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent')
+      .setHeader('Access-Control-Allow-Credentials', 'true')
+      .setHeader('Access-Control-Max-Age', '86400')
+      .send('')
+    return
   }
   
   try {
@@ -33,7 +31,7 @@ export default async function handler(request) {
     
     console.log(`[FIXED] 转发到: ${targetUrl}`)
     
-    // 准备请求头 - 简化处理
+    // 准备请求头
     const requestHeaders = {}
     if (request.headers?.entries) {
       for (const [key, value] of request.headers.entries()) {
@@ -52,67 +50,57 @@ export default async function handler(request) {
     console.log(`[FIXED] 请求头数量: ${Object.keys(requestHeaders).length}`)
     
     // 发送请求
-    const response = await fetch(targetUrl, {
+    const fetchResponse = await fetch(targetUrl, {
       method: request.method,
       headers: requestHeaders,
       body: request.body,
       redirect: 'manual'
     })
     
-    console.log(`[FIXED] 收到响应: ${response.status} ${response.statusText}`)
+    console.log(`[FIXED] 收到响应: ${fetchResponse.status} ${fetchResponse.statusText}`)
     
-    // 读取响应体 - 使用最简单的方式
+    // 读取响应体
     let responseText = ''
     try {
-      responseText = await response.text()
+      responseText = await fetchResponse.text()
       console.log(`[FIXED] 响应体长度: ${responseText.length}`)
     } catch (error) {
       console.error(`[FIXED] 读取响应体失败:`, error)
       responseText = `读取响应体失败: ${error.message}`
     }
     
-    // 构建响应头 - 确保包含必要的CORS头部
-    const responseHeaders = {
-      'Content-Type': response.headers.get('content-type') || 'application/xml; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent',
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Max-Age': '86400'
-    }
+    // 设置响应头
+    const contentType = fetchResponse.headers.get('content-type') || 'application/xml; charset=utf-8'
+    response.status(fetchResponse.status)
+      .setHeader('Content-Type', contentType)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent')
+      .setHeader('Access-Control-Allow-Credentials', 'true')
     
-    // 添加其他响应头（跳过一些可能有问题的）
-    if (response.headers?.entries) {
-      for (const [key, value] of response.headers.entries()) {
+    // 添加其他响应头
+    if (fetchResponse.headers?.entries) {
+      for (const [key, value] of fetchResponse.headers.entries()) {
         if (!['connection', 'transfer-encoding', 'content-encoding'].includes(key.toLowerCase())) {
-          responseHeaders[key] = value
+          response.setHeader(key, value)
         }
       }
     }
     
-    console.log(`[FIXED] 返回响应，状态: ${response.status}`)
+    console.log(`[FIXED] 返回响应，状态: ${fetchResponse.status}`)
     
-    // 返回响应 - 使用最简单的方式
-    return new Response(responseText, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders
-    })
+    // 发送响应
+    response.send(responseText)
     
   } catch (error) {
     console.error('[FIXED] 代理请求失败:', error)
     
     // 返回错误响应
-    return new Response(JSON.stringify({
-      error: '代理请求失败',
-      message: error.message || '未知错误',
-      stack: error.stack
-    }, null, 2), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
-    })
+    response.status(500)
+      .json({
+        error: '代理请求失败',
+        message: error.message || '未知错误',
+        stack: error.stack
+      })
   }
 }

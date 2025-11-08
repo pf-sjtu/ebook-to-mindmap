@@ -1,20 +1,15 @@
-// 简单的ping测试API
-export default async function handler(request) {
+// Vercel官方推荐的ping API格式
+export default async function handler(request, response) {
   console.log('[PING] 收到请求')
   
-  return new Response(JSON.stringify({
+  const data = {
     message: 'pong',
     timestamp: new Date().toISOString(),
     method: request.method,
     url: request.url,
     success: true
-  }), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    }
-  })
+  }
+  
+  // 使用官方推荐的response.json()方法
+  response.status(200).json(data)
 }
