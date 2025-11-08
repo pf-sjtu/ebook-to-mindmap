@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    {
+      "source": "/api/webdav/(.*)",
+      "destination": "/api/webdav"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
