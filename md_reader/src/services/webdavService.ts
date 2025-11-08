@@ -95,12 +95,40 @@ export class WebDAVService {
         password: config.password
       }
       
-      // 只有在非代理模式下才添加User-Agent头部
+      // 检测移动端浏览器
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      console.log('移动端浏览器检测:', isMobile)
+      
+      // 根据环境和浏览器类型配置请求头
       if (!isVercel && !config.useProxy) {
+        // 直连模式的请求头
         clientConfig.headers = {
           'User-Agent': 'md-reader/1.0'
         }
+        
+        if (isMobile) {
+          clientConfig.headers['X-Requested-With'] = 'XMLHttpRequest'
+          clientConfig.headers['Accept'] = '*/*'
+        }
+      } else if (isVercel) {
+        // Vercel代理模式下，为WebDAV客户端添加特殊配置
+        clientConfig.headers = {
+          'User-Agent': 'md-reader/1.0',
+          'Accept': 'application/xml, text/xml, */*'
+        }
+        
+        if (isMobile) {
+          clientConfig.headers['X-Requested-With'] = 'XMLHttpRequest'
+          clientConfig.headers['Cache-Control'] = 'no-cache'
+        }
       }
+      
+      console.log('WebDAV客户端配置:', {
+        url: processedUrl,
+        hasHeaders: !!clientConfig.headers,
+        headerKeys: clientConfig.headers ? Object.keys(clientConfig.headers) : [],
+        isMobile: isMobile
+      })
       
       this.client = createClient(processedUrl, clientConfig)
 
@@ -129,21 +157,56 @@ export class WebDAVService {
     }
 
     try {
-      console.log('测试WebDAV连接...')
+      // 检测移动端环境
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      
+      console.log('测试WebDAV连接...', {
+        isMobile: isMobile,
+        isVercel: isVercel,
+        userAgent: navigator.userAgent
+      })
+      
       // 尝试获取根目录内容来测试连接
       const result = await this.getDirectoryContents('/', false)
       if (result.success) {
         console.log('WebDAV连接测试成功')
         return { success: true, data: true }
       } else {
-        return { success: false, error: result.error || '连接测试失败' }
+        // 增强错误处理，特别是403错误
+        let errorMessage = result.error || '连接测试失败'
+        
+        if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
+          errorMessage = '访问被拒绝，可能是权限问题或移动端兼容性问题'
+        } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+          errorMessage = '认证失败，请检查用户名和密码'
+        } else if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+          errorMessage = '服务器地址不正确'
+        } else if (errorMessage.includes('405') || errorMessage.includes('Method Not Allowed')) {
+          errorMessage = '请求方法不被支持，可能是代理配置问题'
+        } else if (errorMessage.includes('invalid response')) {
+          errorMessage = '响应格式无效，可能是代理服务器问题'
+        }
+        
+        return { success: false, error: errorMessage }
       }
     } catch (error) {
       console.error('WebDAV连接测试失败:', error)
-      return {
-        success: false,
-        error: `连接测试失败: ${error instanceof Error ? error.message : '未知错误'}`
+      let errorMessage = '连接失败'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('403') || error.message.includes('Forbidden')) {
+          errorMessage = '访问被拒绝，可能是权限问题或移动端兼容性问题'
+        } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          errorMessage = '认证失败，请检查用户名和密码'
+        } else if (error.message.includes('404') || error.message.includes('Not Found')) {
+          errorMessage = '服务器地址不正确'
+        } else {
+          errorMessage = `连接失败: ${error.message}`
+        }
       }
+      
+      return { success: false, error: errorMessage }
     }
   }
 

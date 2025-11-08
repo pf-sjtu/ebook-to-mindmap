@@ -8,16 +8,29 @@ const SUPPORTED_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PROPFIND', 'PROPPATC
 export default async function handler(request, response) {
   let url = request.url
   
-  // 添加CORS头部
-  response.setHeader('Access-Control-Allow-Origin', '*')
-  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS')
-  response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent')
-  response.setHeader('Access-Control-Allow-Credentials', 'true')
+  // 添加CORS头部 - 增强移动端兼容性
+  const origin = request.headers.origin
+  response.setHeader('Access-Control-Allow-Origin', origin || '*')
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS, HEAD, PATCH')
+  response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name')
+  response.setHeader('Access-Control-Allow-Credentials', 'false')
   response.setHeader('Access-Control-Max-Age', '86400')
+  response.setHeader('Vary', 'Origin')
   
-  // 处理OPTIONS预检请求
+  // 添加额外的移动端兼容头部
+  response.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+  response.setHeader('Pragma', 'no-cache')
+  response.setHeader('Expires', '0')
+  
+  console.log(`[PROXY] 请求来源: ${origin}`)
+  console.log(`[PROXY] User-Agent: ${request.headers['user-agent']}`)
+  console.log(`[PROXY] 请求方法: ${request.method}`)
+  
+  // 处理OPTIONS预检请求 - 增强移动端处理
   if (request.method === 'OPTIONS') {
+    console.log(`[PROXY] 处理OPTIONS预检请求`)
     response.status(200)
+      .header('Content-Length', '0')
       .send('')
     return
   }

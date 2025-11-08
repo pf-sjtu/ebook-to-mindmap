@@ -18,18 +18,41 @@ export default async function handler(request, response) {
   
   console.log(`[HANDLER] 收到请求: ${request.method} ${url}`)
   
-  // 处理OPTIONS请求
+  // 处理OPTIONS请求 - 增强移动端兼容性
   if (request.method === 'OPTIONS') {
     console.log('[HANDLER] 处理OPTIONS请求')
+    const origin = request.headers?.get ? request.headers.get('origin') : request.headers?.origin || '*'
+    
     response.status(200)
-      .setHeader('Access-Control-Allow-Origin', '*')
-      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS')
-      .setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent')
-      .setHeader('Access-Control-Allow-Credentials', 'true')
+      .setHeader('Access-Control-Allow-Origin', origin || '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS, HEAD, PATCH')
+      .setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name')
+      .setHeader('Access-Control-Allow-Credentials', 'false')
       .setHeader('Access-Control-Max-Age', '86400')
+      .setHeader('Vary', 'Origin')
+      .setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+      .setHeader('Pragma', 'no-cache')
+      .setHeader('Expires', '0')
+      .header('Content-Length', '0')
       .send('')
     return
   }
+  
+  // 添加CORS头部 - 增强移动端兼容性
+  const origin = request.headers?.get ? request.headers.get('origin') : request.headers?.origin
+  response.setHeader('Access-Control-Allow-Origin', origin || '*')
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, OPTIONS, HEAD, PATCH')
+  response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Depth, Destination, Overwrite, Timeout, User-Agent, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name')
+  response.setHeader('Access-Control-Allow-Credentials', 'false')
+  response.setHeader('Access-Control-Max-Age', '86400')
+  response.setHeader('Vary', 'Origin')
+  response.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+  response.setHeader('Pragma', 'no-cache')
+  response.setHeader('Expires', '0')
+  
+  console.log(`[PROXY] 请求来源: ${origin}`)
+  console.log(`[PROXY] User-Agent: ${request.headers?.get ? request.headers.get('user-agent') : request.headers?.['user-agent']}`)
+  console.log(`[PROXY] 请求方法: ${request.method}`)
   
   // 检查是否支持的方法
   if (!SUPPORTED_METHODS.includes(request.method || '')) {

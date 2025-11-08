@@ -86,12 +86,40 @@ export class WebDAVService {
         password: config.password
       }
       
-      // 只有在非代理模式下才添加User-Agent头部
+      // 检测移动端浏览器
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      console.log('移动端浏览器检测:', isMobile)
+      
+      // 根据环境和浏览器类型配置请求头
       if (!isVercel && !config.useProxy) {
+        // 直连模式的请求头
         clientConfig.headers = {
           'User-Agent': 'ebook-to-mindmap/1.0'
         }
+        
+        if (isMobile) {
+          clientConfig.headers['X-Requested-With'] = 'XMLHttpRequest'
+          clientConfig.headers['Accept'] = '*/*'
+        }
+      } else if (isVercel) {
+        // Vercel代理模式下，为WebDAV客户端添加特殊配置
+        clientConfig.headers = {
+          'User-Agent': 'ebook-to-mindmap/1.0',
+          'Accept': 'application/xml, text/xml, */*'
+        }
+        
+        if (isMobile) {
+          clientConfig.headers['X-Requested-With'] = 'XMLHttpRequest'
+          clientConfig.headers['Cache-Control'] = 'no-cache'
+        }
       }
+      
+      console.log('WebDAV客户端配置:', {
+        url: processedUrl,
+        hasHeaders: !!clientConfig.headers,
+        headerKeys: clientConfig.headers ? Object.keys(clientConfig.headers) : [],
+        isMobile: isMobile
+      })
       
       this.client = createClient(processedUrl, clientConfig)
 
@@ -120,22 +148,50 @@ export class WebDAVService {
     }
 
     try {
+      // 检测移动端环境
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      
+      console.log('测试WebDAV连接...', {
+        isMobile: isMobile,
+        isVercel: isVercel,
+        userAgent: navigator.userAgent
+      })
+      
       // 尝试获取根目录内容来测试连接
       await this.client.getDirectoryContents('/')
+      console.log('WebDAV连接测试成功')
       return { success: true, data: true }
     } catch (error) {
       let errorMessage = '连接失败'
       
       if (error instanceof Error) {
+        console.error('WebDAV连接测试失败:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        })
+        
         if (error.message.includes('401') || error.message.includes('Unauthorized')) {
           errorMessage = '认证失败，请检查用户名和密码'
+        } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+          errorMessage = '访问被拒绝，可能是权限问题或移动端兼容性问题'
         } else if (error.message.includes('404') || error.message.includes('Not Found')) {
           errorMessage = '服务器地址不正确'
+        } else if (error.message.includes('405') || error.message.includes('Method Not Allowed')) {
+          errorMessage = '请求方法不被支持，可能是代理配置问题'
         } else if (error.message.includes('ENOTFOUND') || error.message.includes('Network')) {
           errorMessage = '网络连接失败，请检查服务器地址'
+        } else if (error.message.includes('CORS')) {
+          errorMessage = 'CORS错误，请检查服务器配置'
+        } else if (error.message.includes('invalid response')) {
+          errorMessage = '响应格式无效，可能是代理服务器问题'
         } else {
-          errorMessage = error.message
+          errorMessage = `连接失败: ${error.message}`
         }
+      } else {
+        console.error('WebDAV连接测试失败 - 未知错误:', error)
+        errorMessage = '连接失败: 未知错误'
       }
       
       return { success: false, error: errorMessage }
@@ -338,7 +394,7 @@ export class WebDAVService {
             // 如果是 Buffer（Node.js 环境）或其他类型，转换为Uint8Array再获取buffer
             const uint8Array = binaryContent instanceof Buffer ? 
               new Uint8Array(binaryContent) : 
-              new Uint8Array(binaryContent as unknown as ArrayBuffer | ArrayBufferView)
+              new Uint8Array(binaryContent as unknown as ArrayBufferLike)
             arrayBuffer = uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength) as ArrayBuffer
           }
           
@@ -416,13 +472,32 @@ export class WebDAVService {
       const proxyUrl = isVercel ? `/api/webdav${encodedPath}` : `/webdav${encodedPath}`
       console.log('代理下载URL:', proxyUrl)
       
+      // 检测移动端浏览器
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      console.log('移动端检测:', isMobile, 'User-Agent:', navigator.userAgent)
+      
+      // 构建请求头 - 增强移动端兼容性
+      const requestHeaders: Record<string, string> = {
+        'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
+        'User-Agent': 'ebook-to-mindmap/1.0',
+        'Accept': '*/*',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+      
+      // 移动端特殊处理
+      if (isMobile) {
+        requestHeaders['X-Requested-With'] = 'XMLHttpRequest'
+        console.log('检测到移动端浏览器，添加特殊请求头')
+      }
+      
+      console.log('请求头配置:', Object.keys(requestHeaders).join(', '))
+      
       // 使用fetch下载
       const response = await fetch(proxyUrl, {
         method: 'GET',
-        headers: {
-          'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
-          'User-Agent': 'ebook-to-mindmap/1.0'
-        }
+        headers: requestHeaders,
+        cache: 'no-store'
       })
       
       if (!response.ok) {
@@ -524,7 +599,7 @@ export class WebDAVService {
         // 处理Buffer或其他类型
         const uint8Array = binaryContent instanceof Buffer ? 
           new Uint8Array(binaryContent) : 
-          new Uint8Array(binaryContent as ArrayBuffer | ArrayBufferView)
+          new Uint8Array(binaryContent as unknown as ArrayBufferLike)
         arrayBuffer = uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength) as ArrayBuffer
       }
       
@@ -1073,6 +1148,10 @@ export class WebDAVService {
       const proxyUrl = isVercel ? `/api/webdav${encodedPath}` : `/webdav${encodedPath}`
       console.log('代理上传URL:', proxyUrl)
       
+      // 检测移动端浏览器
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      console.log('移动端检测:', isMobile, 'User-Agent:', navigator.userAgent)
+      
       // 准备上传数据
       let body: BodyInit
       if (typeof data === 'string') {
@@ -1083,15 +1162,30 @@ export class WebDAVService {
         body = data
       }
       
+      // 构建请求头 - 增强移动端兼容性
+      const requestHeaders: Record<string, string> = {
+        'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
+        'User-Agent': 'ebook-to-mindmap/1.0',
+        'Content-Type': 'text/markdown',
+        'Accept': '*/*',
+        'Cache-Control': 'no-cache'
+      }
+      
+      // 移动端特殊处理
+      if (isMobile) {
+        requestHeaders['X-Requested-With'] = 'XMLHttpRequest'
+        requestHeaders['Pragma'] = 'no-cache'
+        console.log('检测到移动端浏览器，添加特殊请求头')
+      }
+      
+      console.log('上传请求头配置:', Object.keys(requestHeaders).join(', '))
+      
       // 发送PUT请求
       const response = await fetch(proxyUrl, {
         method: 'PUT',
-        headers: {
-          'Authorization': 'Basic ' + btoa(`${this.config.username}:${this.config.password}`),
-          'User-Agent': 'ebook-to-mindmap/1.0',
-          'Content-Type': 'text/markdown'
-        },
-        body
+        headers: requestHeaders,
+        body,
+        cache: 'no-store'
       })
       
       if (!response.ok) {
