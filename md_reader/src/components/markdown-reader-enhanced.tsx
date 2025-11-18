@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkCjkFriendly from "remark-cjk-friendly";
+import { normalizeMarkdownTypography } from '@/lib/markdown';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -490,8 +491,9 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
       
       // 预处理Markdown内容，将跨行标题转换为标准格式
       const processedText = preprocessMarkdown(text);
+      const normalized = normalizeMarkdownTypography(processedText);
       
-      setContent(processedText);
+      setContent(normalized);
       setEditContent(text); // 编辑时仍使用原始内容
       setOriginalContent(text);
       setFileName(file.name);
@@ -503,7 +505,7 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
       setHistoryIndex(0);
       
       // 扫描并编码标题ID（使用预处理后的内容）
-      const headingsMap = scanAndEncodeHeadings(processedText);
+      const headingsMap = scanAndEncodeHeadings(normalized);
       setHeadingsMap(headingsMap);
       
       // 生成目录
@@ -590,8 +592,9 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
   const handleSaveEdit = () => {
     // 预处理编辑后的内容
     const processedText = preprocessMarkdown(editContent);
+    const normalized = normalizeMarkdownTypography(processedText);
     
-    setContent(processedText);
+    setContent(normalized);
     setIsEditing(false);
     // 保存后重置历史记录
     setEditHistory([editContent]);
@@ -599,7 +602,7 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
     console.log('保存编辑，重置历史记录');
     
     // 重新扫描并编码标题ID（使用预处理后的内容）
-    const headingsMap = scanAndEncodeHeadings(processedText);
+    const headingsMap = scanAndEncodeHeadings(normalized);
     setHeadingsMap(headingsMap);
     
     // 重新生成目录
@@ -655,11 +658,14 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
     (window as any).reencodeTimeout = setTimeout(() => {
       // 预处理编辑后的内容用于标题扫描
       const processedText = preprocessMarkdown(newContent);
-      const headingsMap = scanAndEncodeHeadings(processedText);
+      const normalized = normalizeMarkdownTypography(processedText);
+      const headingsMap = scanAndEncodeHeadings(normalized);
       setHeadingsMap(headingsMap);
       
       const tocItems = generateTocFromMap(headingsMap);
       setTocItems(tocItems);
+
+      setContent(normalized);
     }, 1000); // 1秒防抖，避免频繁重新编码
   };
 
@@ -668,8 +674,10 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
     if (!replaceText) return;
     
     const newContent = editContent.replace(new RegExp(replaceText, 'g'), replaceWith);
+    const processedText = preprocessMarkdown(newContent);
+    const normalized = normalizeMarkdownTypography(processedText);
     setEditContent(newContent);
-    setContent(newContent);
+    setContent(normalized);
     setIsReplaceDialogOpen(false);
     setReplaceText('');
     setReplaceWith('');
@@ -888,10 +896,17 @@ export const MarkdownReaderEnhanced: React.FC<MarkdownReaderProps> = ({
                       {content}
                     </ReactMarkdown>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
+                )} else {
+                  // ...
+                  handleSaveEdit = async () => {
+                    // ...
+                    const normalizedContent = normalizeMarkdownTypography(editContent);
+                    // ...
+                    await saveFile(normalizedContent);
+                    // ...
+                  };
+                  // ...
+                }
             <Card 
               className={`h-full flex items-center justify-center cursor-pointer transition-all ${
                 isDragging 

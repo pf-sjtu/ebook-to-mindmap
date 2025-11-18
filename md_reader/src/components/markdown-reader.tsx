@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkCjkFriendly from "remark-cjk-friendly";
+import { normalizeMarkdownTypography } from '@/lib/markdown';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { DarkModeToggle } from './dark-mode-toggle';
@@ -337,7 +338,7 @@ export const MarkdownReader: React.FC<MarkdownReaderProps> = ({
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkCjkFriendly]}
                   >
-                    {content}
+                    {normalizeMarkdownTypography(content)}
                   </ReactMarkdown>
                 </div>
               )}
@@ -423,7 +424,7 @@ export const MarkdownReader: React.FC<MarkdownReaderProps> = ({
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkCjkFriendly]}
                 >
-                  {`# Markdown 阅读器示例
+                  {normalizeMarkdownTypography(`# Markdown 阅读器示例
 
 这是一个功能丰富的 **Markdown 阅读器**，具有以下特性：
 
@@ -477,8 +478,7 @@ console.log(greet("World"));
 | 文件上传 | ✅ | 支持 .md 文件 |
 
 ---
-
-开始使用这个阅读器，享受舒适的 Markdown 阅读体验！`}
+开始使用这个阅读器，享受舒适的 Markdown 阅读体验！`)}
                 </ReactMarkdown>
               </div>
             </CardContent>
